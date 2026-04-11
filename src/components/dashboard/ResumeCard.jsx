@@ -55,24 +55,28 @@ const ResumeCard = ({ resume, onEdit, onDelete, onDuplicate, onDownload }) => {
           <button
             onClick={onEdit}
             className="flex-1 p-2 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+            title="Edit"
           >
             <FiEdit className="w-4 h-4 mx-auto" />
           </button>
           <button
             onClick={onDownload}
             className="flex-1 p-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+            title="Download"
           >
             <FiDownload className="w-4 h-4 mx-auto" />
           </button>
           <button
             onClick={onDuplicate}
             className="flex-1 p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+            title="Duplicate"
           >
             <FiCopy className="w-4 h-4 mx-auto" />
           </button>
           <button
             onClick={onDelete}
             className="flex-1 p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            title="Delete"
           >
             <FiTrash2 className="w-4 h-4 mx-auto" />
           </button>

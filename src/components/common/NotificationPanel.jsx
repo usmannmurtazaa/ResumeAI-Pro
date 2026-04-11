@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiX, FiCheck, FiInfo, FiAlertTriangle, 
   FiCheckCircle, FiClock, FiFileText, FiUser,
-  FiTrash2, FiMoreVertical
+  FiTrash2, FiMoreVertical, FiBell  // Added FiBell import
 } from 'react-icons/fi';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
