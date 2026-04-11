@@ -8,7 +8,6 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { siteConfig } from '../../config/siteConfig';
 import Button from '../ui/Button';
 import Avatar from '../ui/Avatar';
 import NotificationPanel from './NotificationPanel';
@@ -84,6 +83,7 @@ const Navbar = () => {
               <button
                 onClick={() => setShowSearch(!showSearch)}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Search"
               >
                 <FiSearch className="w-5 h-5" />
               </button>
@@ -92,6 +92,7 @@ const Navbar = () => {
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Toggle theme"
               >
                 {isDark ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
               </button>
@@ -102,6 +103,7 @@ const Navbar = () => {
                   <button
                     onClick={() => setShowNotifications(!showNotifications)}
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    aria-label="Notifications"
                   >
                     <FiBell className="w-5 h-5" />
                   </button>
@@ -118,8 +120,9 @@ const Navbar = () => {
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                     className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    aria-label="User menu"
                   >
-                    <Avatar name={user.displayName || user.email} size="sm" />
+                    <Avatar name={user.displayName || user.email || ''} size="sm" />
                     <FiChevronDown className={`w-4 h-4 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
                   </button>
 
@@ -193,6 +196,7 @@ const Navbar = () => {
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Menu"
               >
                 {isMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
               </button>

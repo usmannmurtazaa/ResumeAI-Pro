@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX } from 'react-icons/fi';
-import Button from './Button';
 
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   useEffect(() => {
@@ -47,6 +46,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
                   <button
                     onClick={onClose}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label="Close modal"
                   >
                     <FiX className="w-5 h-5" />
                   </button>

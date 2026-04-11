@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { FiMail, FiPhone, FiMapPin, FiLinkedin, FiGithub } from 'react-icons/fi';
 
 const Template1 = ({ data }) => {
-  const { personal = {}, education = [], experience = [], skills = {}, projects = [], certifications = [] } = data;
+  const { personal = {}, education = [], experience = [], skills = {}, projects = [] } = data;
 
   return (
     <motion.div
@@ -146,7 +146,7 @@ const Template1 = ({ data }) => {
 
         {/* Projects */}
         {projects.length > 0 && (
-          <section className="mb-6">
+          <section>
             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-3 border-b-2 border-primary-500 pb-2">
               Projects
             </h2>
@@ -159,11 +159,6 @@ const Template1 = ({ data }) => {
                   <p className="text-gray-600 dark:text-gray-400 text-sm">
                     {project.description}
                   </p>
-                  {project.technologies && (
-                    <p className="text-sm text-primary-600 dark:text-primary-400 mt-1">
-                      {project.technologies}
-                    </p>
-                  )}
                 </div>
               ))}
             </div>

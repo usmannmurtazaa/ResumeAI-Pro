@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiMail, FiPhone, FiMapPin, FiLinkedin, FiGithub } from 'react-icons/fi';
+import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
 
 const Template3 = ({ data }) => {
-  const { personal = {}, education = [], experience = [], skills = {}, projects = [] } = data;
+  const { personal = {}, experience = [], skills = {}, projects = [] } = data;
 
   return (
     <motion.div

@@ -2,7 +2,6 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiLinkedin, FiGithub, FiGlobe } from 'react-icons/fi';
 import Input from '../../ui/Input';
-import Button from '../../ui/Button';
 
 const PersonalInfo = ({ data, onChange }) => {
   const { register, handleSubmit, formState: { errors } } = useForm({

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { doc, getDoc, setDoc, updateDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, addDoc, collection } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
@@ -12,13 +12,9 @@ export const useResume = (resumeId) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (resumeId && user) {
-      fetchResume();
-    }
-  }, [resumeId, user]);
-
-  const fetchResume = async () => {
+  const fetchResume = useCallback(async () => {
+    if (!resumeId || !user) return;
+    
     try {
       setLoading(true);
       const docRef = doc(db, 'resumes', resumeId);
@@ -42,9 +38,15 @@ export const useResume = (resumeId) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [resumeId, user, navigate]);
+
+  useEffect(() => {
+    fetchResume();
+  }, [fetchResume]);
 
   const saveResume = async (data) => {
+    if (!user) return;
+    
     try {
       setSaving(true);
       
@@ -66,14 +68,10 @@ export const useResume = (resumeId) => {
           createdAt: new Date().toISOString()
         });
         
-        if (!resumeId) {
-          navigate(`/builder/${docRef.id}`, { replace: true });
-        }
-        
+        navigate(`/builder/${docRef.id}`, { replace: true });
         setResume({ id: docRef.id, ...resumeData });
       }
       
-      toast.success('Resume saved successfully');
       return true;
     } catch (error) {
       console.error('Error saving resume:', error);

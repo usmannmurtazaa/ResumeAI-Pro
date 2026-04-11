@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUpload, FiFile, FiCheckCircle, FiAlertCircle, FiTrendingUp, FiX } from 'react-icons/fi';
+import { FiUpload, FiCheckCircle, FiAlertCircle, FiTrendingUp } from 'react-icons/fi';
 import { parseResume } from '../../utils/resumeParser';
 import { calculateATSScore, analyzeResume } from '../../utils/atsKeywords';
 import Card from '../ui/Card';
@@ -11,7 +11,6 @@ import Badge from '../ui/Badge';
 import toast from 'react-hot-toast';
 
 const ATSScanner = ({ onDataExtracted }) => {
-  const [file, setFile] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [extractedData, setExtractedData] = useState(null);
@@ -22,10 +21,9 @@ const ATSScanner = ({ onDataExtracted }) => {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/msword': ['.doc']
     },
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024,
     onDrop: async (acceptedFiles) => {
       if (acceptedFiles.length > 0) {
-        setFile(acceptedFiles[0]);
         await scanResume(acceptedFiles[0]);
       }
     }
@@ -34,11 +32,9 @@ const ATSScanner = ({ onDataExtracted }) => {
   const scanResume = async (resumeFile) => {
     setScanning(true);
     try {
-      // Parse resume
       const parsed = await parseResume(resumeFile);
       setExtractedData(parsed);
 
-      // Calculate ATS score
       const score = calculateATSScore(parsed);
       const analysis = analyzeResume(parsed);
 
@@ -194,7 +190,6 @@ const ATSScanner = ({ onDataExtracted }) => {
                 Import Data to Builder
               </Button>
               <Button variant="outline" onClick={() => {
-                setFile(null);
                 setScanResult(null);
                 setExtractedData(null);
               }}>

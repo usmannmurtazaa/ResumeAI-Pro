@@ -10,7 +10,7 @@ const Skills = ({ data, onChange }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [selectedIndustry, setSelectedIndustry] = useState('technology');
   
-  const { register, handleSubmit, setValue, watch } = useForm({
+  const { handleSubmit, setValue, watch } = useForm({
     defaultValues: {
       technical: data?.technical || [],
       soft: data?.soft || [],
@@ -71,6 +71,7 @@ const Skills = ({ data, onChange }) => {
               type="button"
               onClick={() => removeSkill(category, skill)}
               className="hover:text-red-500"
+              aria-label={`Remove ${skill}`}
             >
               <FiX className="w-4 h-4" />
             </button>

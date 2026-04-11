@@ -34,7 +34,6 @@ const actionVerbs = [
 
 export const calculateATSScore = (resumeData) => {
   let score = 0;
-  const maxScore = 100;
   
   // Check for complete sections (40 points)
   const requiredSections = ['personal', 'education', 'experience', 'skills'];

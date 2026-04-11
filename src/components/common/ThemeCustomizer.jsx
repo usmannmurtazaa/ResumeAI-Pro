@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiSettings, FiX, FiCheck, FiSun, FiMoon, FiDroplet } from 'react-icons/fi';
+import { FiSettings, FiSun, FiMoon } from 'react-icons/fi';
 import { useTheme } from '../../contexts/ThemeContext';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
@@ -28,6 +27,7 @@ const ThemeCustomizer = () => {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 p-3 glass-card rounded-full shadow-lg hover:shadow-xl transition-all z-40"
+        aria-label="Customize theme"
       >
         <FiSettings className="w-5 h-5" />
       </button>
@@ -101,6 +101,7 @@ const ThemeCustomizer = () => {
                     value={theme.primary}
                     onChange={(e) => setTheme({ ...theme, primary: e.target.value })}
                     className="w-12 h-10 rounded-lg cursor-pointer"
+                    aria-label="Primary color"
                   />
                   <input
                     type="text"
@@ -118,6 +119,7 @@ const ThemeCustomizer = () => {
                     value={theme.accent}
                     onChange={(e) => setTheme({ ...theme, accent: e.target.value })}
                     className="w-12 h-10 rounded-lg cursor-pointer"
+                    aria-label="Accent color"
                   />
                   <input
                     type="text"

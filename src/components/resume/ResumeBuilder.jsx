@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useResume } from '../../hooks/useResume';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -12,9 +12,8 @@ import Certifications from './sections/Certifications';
 import ResumePreview from './ResumePreview';
 import TemplateSelector from './TemplateSelector';
 import { calculateATSScore } from '../../utils/atsKeywords';
-import { FiSave, FiEye, FiDownload, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { FiSave, FiEye, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import Button from '../ui/Button';
-import toast from 'react-hot-toast';
 
 const sections = [
   { id: 'personal', name: 'Personal Info', component: PersonalInfo },
@@ -27,7 +26,6 @@ const sections = [
 
 const ResumeBuilder = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { resume, saveResume, loading } = useResume(id);
   const [currentSection, setCurrentSection] = useState(0);
   const [formData, setFormData] = useState({});
@@ -44,15 +42,9 @@ const ResumeBuilder = () => {
     }
   }, [resume]);
 
-  useEffect(() => {
-    if (Object.keys(debouncedFormData).length > 0) {
-      handleAutoSave();
-      const score = calculateATSScore(debouncedFormData);
-      setAtsScore(score);
-    }
-  }, [debouncedFormData]);
-
-  const handleAutoSave = async () => {
+  const handleAutoSave = useCallback(async () => {
+    if (Object.keys(formData).length === 0) return;
+    
     try {
       await saveResume({
         data: formData,
@@ -63,7 +55,15 @@ const ResumeBuilder = () => {
     } catch (error) {
       console.error('Auto-save failed:', error);
     }
-  };
+  }, [formData, selectedTemplate, atsScore, saveResume]);
+
+  useEffect(() => {
+    if (Object.keys(debouncedFormData).length > 0) {
+      handleAutoSave();
+      const score = calculateATSScore(debouncedFormData);
+      setAtsScore(score);
+    }
+  }, [debouncedFormData, handleAutoSave]);
 
   const handleSectionChange = (sectionData) => {
     setFormData(prev => ({
@@ -161,10 +161,7 @@ const ResumeBuilder = () => {
         {/* Main Content */}
         <div className={`grid ${showPreview ? 'lg:grid-cols-2' : 'grid-cols-1'} gap-8`}>
           {/* Form Section */}
-          <motion.div
-            layout
-            className="glass-card"
-          >
+          <motion.div layout className="glass-card">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSection}

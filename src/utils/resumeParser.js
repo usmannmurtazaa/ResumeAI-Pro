@@ -1,7 +1,6 @@
 import * as pdfjs from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
-// Set PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export const parseResume = async (file) => {
@@ -57,21 +56,17 @@ const extractResumeData = (text) => {
     certifications: []
   };
 
-  // Extract email
   const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   if (emailMatch) data.personal.email = emailMatch[0];
 
-  // Extract phone
-  const phoneMatch = text.match(/[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}/);
+  const phoneMatch = text.match(/[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}/);
   if (phoneMatch) data.personal.phone = phoneMatch[0];
 
-  // Extract name (first line usually contains name)
   const lines = text.split('\n').filter(line => line.trim());
   if (lines.length > 0) {
     data.personal.fullName = lines[0].trim();
   }
 
-  // Extract skills (common programming languages and tools)
   const skillKeywords = [
     'JavaScript', 'Python', 'Java', 'React', 'Node.js', 'AWS', 'Docker',
     'Kubernetes', 'SQL', 'MongoDB', 'TypeScript', 'Vue', 'Angular',
@@ -83,7 +78,6 @@ const extractResumeData = (text) => {
   );
   data.skills.technical = foundSkills;
 
-  // Extract education (look for degree keywords)
   const degreeKeywords = ['Bachelor', 'Master', 'PhD', 'B.S.', 'M.S.', 'B.A.', 'M.A.', 'MBA'];
   degreeKeywords.forEach(degree => {
     if (text.includes(degree)) {
