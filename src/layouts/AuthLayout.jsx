@@ -1,14 +1,22 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ThemeToggle from '../components/common/ThemeToggle';
+import { FiCheck } from 'react-icons/fi';
 
 const AuthLayout = ({ children, title }) => {
+  const features = [
+    'AI-powered ATS optimization',
+    'Professional templates',
+    'Real-time preview',
+    'Keyword suggestions',
+    'Instant PDF download'
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left Panel - Branding */}
+    <div className="min-h-screen flex">
+      {/* Left Panel - Branding (Only ONE instance) */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-600 via-primary-700 to-accent-700 p-12 relative overflow-hidden">
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 z-20">
           <ThemeToggle />
         </div>
         
@@ -18,36 +26,27 @@ const AuthLayout = ({ children, title }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <Link to="/" className="inline-block mb-8">
-              <img src="/logo-white.svg" alt="ResumeAi Pro" className="h-10" />
-            </Link>
-            
-            <h1 className="text-4xl font-bold text-white mb-4">
+            <h1 className="text-4xl font-bold text-white mb-2">ResumeAi Pro</h1>
+            <h2 className="text-2xl font-semibold text-white/90 mb-4">
               Create Your ATS-Optimized Resume
-            </h1>
-            <p className="text-xl text-white/90 mb-8">
+            </h2>
+            <p className="text-lg text-white/80 mb-8">
               Join thousands of professionals who've landed their dream jobs with ResumeAi Pro.
             </p>
             
             <div className="space-y-4">
-              {[
-                'AI-powered ATS optimization',
-                'Professional templates',
-                'Real-time preview',
-                'Keyword suggestions',
-                'Instant PDF download'
-              ].map((feature, index) => (
+              {features.map((feature, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
+                  transition={{ delay: index * 0.1 }}
                   className="flex items-center gap-3 text-white/90"
                 >
-                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-sm">
-                    ✓
+                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <FiCheck className="w-4 h-4 text-white" />
                   </div>
-                  <span>{feature}</span>
+                  <span className="text-lg">{feature}</span>
                 </motion.div>
               ))}
             </div>
@@ -61,15 +60,17 @@ const AuthLayout = ({ children, title }) => {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-gray-50 dark:bg-gray-900">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-8 bg-gray-50 dark:bg-gray-900">
         <div className="w-full max-w-md">
-          <div className="lg:hidden text-center mb-8">
-            <Link to="/" className="inline-block">
-              <img src="/logo.svg" alt="ResumeAi Pro" className="h-8 mx-auto mb-4" />
-            </Link>
-            <h1 className="text-2xl font-bold gradient-text">ResumeAi Pro</h1>
+          {/* Mobile Logo */}
+          <div className="lg:hidden mb-8 text-center">
+            <h1 className="text-3xl font-bold gradient-text">ResumeAi Pro</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Create Your ATS-Optimized Resume
+            </p>
           </div>
           
+          {/* Theme Toggle for Mobile */}
           <div className="lg:hidden absolute top-4 right-4">
             <ThemeToggle />
           </div>

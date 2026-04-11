@@ -47,10 +47,10 @@ const LoginForm = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md mx-auto"
+        className="w-full"
       >
-        <div className="glass-card">
-          <h2 className="text-3xl font-bold text-center mb-2 gradient-text">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700">
+          <h2 className="text-2xl font-bold text-center mb-1 text-gray-900 dark:text-white">
             Welcome Back
           </h2>
           <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
@@ -66,7 +66,7 @@ const LoginForm = () => {
               variant="outline"
               onClick={() => setShowPhoneAuth(true)}
               icon={<FcPhone className="w-5 h-5" />}
-              className="w-full bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600"
+              className="w-full bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600"
             >
               Continue with Phone
             </Button>
@@ -75,7 +75,7 @@ const LoginForm = () => {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
