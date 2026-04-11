@@ -8,7 +8,7 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import GoogleAuthButton from './GoogleAuthButton';
 import PhoneAuth from './PhoneAuth';
-import toast from 'react-hot-toast';
+import { FcPhone } from 'react-icons/fc';
 
 const SignUpForm = () => {
   const { signup } = useAuth();
@@ -25,23 +25,21 @@ const SignUpForm = () => {
     setLoading(true);
     try {
       await signup(data.email, data.password, data.displayName);
-      toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error) {
       console.error(error);
-      toast.error(error.message || 'Failed to create account');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSuccess = (user) => {
-    toast.success('Successfully signed up with Google!');
+    console.log('Google sign-up successful:', user);
     navigate('/dashboard');
   };
 
   const handlePhoneSuccess = (user) => {
-    toast.success('Phone verified successfully!');
+    console.log('Phone sign-up successful:', user);
     navigate('/dashboard');
   };
 
@@ -53,21 +51,46 @@ const SignUpForm = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md mx-auto"
       >
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700">
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold gradient-text mb-2">
-              Create Account
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Join ResumeAi Pro to build your professional resume
-            </p>
+        <div className="glass-card">
+          <h2 className="text-3xl font-bold text-center mb-2 gradient-text">
+            Create Account
+          </h2>
+          <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
+            Join ResumeAi Pro and land your dream job
+          </p>
+
+          {/* Social Sign Up Options */}
+          <div className="space-y-3 mb-6">
+            <GoogleAuthButton onSuccess={handleGoogleSuccess} mode="signup" />
+            
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowPhoneAuth(true)}
+              icon={<FcPhone className="w-5 h-5" />}
+              className="w-full bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600"
+            >
+              Continue with Phone
+            </Button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                Or sign up with email
+              </span>
+            </div>
           </div>
           
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
               label="Full Name"
               type="text"
-              icon={<FiUser className="text-gray-400" />}
+              icon={<FiUser />}
               {...register('displayName', {
                 required: 'Full name is required',
                 minLength: {
@@ -76,13 +99,12 @@ const SignUpForm = () => {
                 }
               })}
               error={errors.displayName?.message}
-              placeholder="John Doe"
             />
 
             <Input
               label="Email Address"
               type="email"
-              icon={<FiMail className="text-gray-400" />}
+              icon={<FiMail />}
               {...register('email', {
                 required: 'Email is required',
                 pattern: {
@@ -91,18 +113,18 @@ const SignUpForm = () => {
                 }
               })}
               error={errors.email?.message}
-              placeholder="you@example.com"
             />
 
             <Input
               label="Password"
               type={showPassword ? 'text' : 'password'}
-              icon={<FiLock className="text-gray-400" />}
+              icon={<FiLock />}
               rightIcon={
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="focus:outline-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="focus:outline-none"
+                  tabIndex={-1}
                 >
                   {showPassword ? <FiEyeOff /> : <FiEye />}
                 </button>
@@ -119,18 +141,18 @@ const SignUpForm = () => {
                 }
               })}
               error={errors.password?.message}
-              placeholder="••••••••"
             />
 
             <Input
               label="Confirm Password"
               type={showConfirmPassword ? 'text' : 'password'}
-              icon={<FiLock className="text-gray-400" />}
+              icon={<FiLock />}
               rightIcon={
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="focus:outline-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="focus:outline-none"
+                  tabIndex={-1}
                 >
                   {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
                 </button>
@@ -140,14 +162,13 @@ const SignUpForm = () => {
                 validate: value => value === password || 'Passwords do not match'
               })}
               error={errors.confirmPassword?.message}
-              placeholder="••••••••"
             />
 
             <div className="flex items-start">
               <input
                 type="checkbox"
                 id="terms"
-                className="mt-1 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 bg-white dark:bg-gray-700"
+                className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 {...register('terms', {
                   required: 'You must accept the terms and conditions'
                 })}
@@ -155,7 +176,7 @@ const SignUpForm = () => {
               <label htmlFor="terms" className="ml-2 text-sm text-gray-600 dark:text-gray-400">
                 I agree to the{' '}
                 <Link to="/terms" className="text-primary-600 hover:text-primary-700 dark:text-primary-400">
-                  Terms
+                  Terms of Service
                 </Link>{' '}
                 and{' '}
                 <Link to="/privacy" className="text-primary-600 hover:text-primary-700 dark:text-primary-400">
@@ -164,42 +185,17 @@ const SignUpForm = () => {
               </label>
             </div>
             {errors.terms && (
-              <p className="text-sm text-red-500 -mt-2">{errors.terms.message}</p>
+              <p className="text-sm text-red-500">{errors.terms.message}</p>
             )}
 
             <Button
               type="submit"
               loading={loading}
               className="w-full"
-              disabled={loading}
             >
-              {loading ? 'Creating Account...' : 'Sign Up'}
+              Create Account
             </Button>
           </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                Or continue with
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <GoogleAuthButton onSuccess={handleGoogleSuccess} mode="signup" />
-            
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowPhoneAuth(true)}
-              className="w-full"
-            >
-              Continue with Phone
-            </Button>
-          </div>
 
           <div className="mt-6 text-center">
             <p className="text-gray-600 dark:text-gray-400">
@@ -215,7 +211,8 @@ const SignUpForm = () => {
         </div>
       </motion.div>
 
-      <PhoneAuth 
+      {/* Phone Authentication Modal */}
+      <PhoneAuth
         isOpen={showPhoneAuth}
         onClose={() => setShowPhoneAuth(false)}
         onSuccess={handlePhoneSuccess}

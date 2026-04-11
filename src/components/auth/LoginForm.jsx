@@ -3,12 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FcPhone } from 'react-icons/fc';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import GoogleAuthButton from './GoogleAuthButton';
 import PhoneAuth from './PhoneAuth';
-import toast from 'react-hot-toast';
 
 const LoginForm = () => {
   const { login } = useAuth();
@@ -23,23 +23,21 @@ const LoginForm = () => {
     setLoading(true);
     try {
       await login(data.email, data.password);
-      toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error) {
       console.error(error);
-      toast.error(error.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSuccess = (user) => {
-    toast.success('Successfully signed in with Google!');
+    console.log('Google sign-in successful:', user);
     navigate('/dashboard');
   };
 
   const handlePhoneSuccess = (user) => {
-    toast.success('Successfully signed in with phone!');
+    console.log('Phone sign-in successful:', user);
     navigate('/dashboard');
   };
 
@@ -51,21 +49,46 @@ const LoginForm = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md mx-auto"
       >
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700">
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold gradient-text mb-2">
-              Welcome Back
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Sign in to continue to your account
-            </p>
+        <div className="glass-card">
+          <h2 className="text-3xl font-bold text-center mb-2 gradient-text">
+            Welcome Back
+          </h2>
+          <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
+            Sign in to your ResumeAi Pro account
+          </p>
+
+          {/* Social Sign In Options */}
+          <div className="space-y-3 mb-6">
+            <GoogleAuthButton onSuccess={handleGoogleSuccess} mode="signin" />
+            
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowPhoneAuth(true)}
+              icon={<FcPhone className="w-5 h-5" />}
+              className="w-full bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600"
+            >
+              Continue with Phone
+            </Button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                Or sign in with email
+              </span>
+            </div>
           </div>
           
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <Input
               label="Email Address"
               type="email"
-              icon={<FiMail className="text-gray-400" />}
+              icon={<FiMail />}
               {...register('email', {
                 required: 'Email is required',
                 pattern: {
@@ -74,18 +97,18 @@ const LoginForm = () => {
                 }
               })}
               error={errors.email?.message}
-              placeholder="you@example.com"
             />
 
             <Input
               label="Password"
               type={showPassword ? 'text' : 'password'}
-              icon={<FiLock className="text-gray-400" />}
+              icon={<FiLock />}
               rightIcon={
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="focus:outline-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="focus:outline-none"
+                  tabIndex={-1}
                 >
                   {showPassword ? <FiEyeOff /> : <FiEye />}
                 </button>
@@ -98,18 +121,12 @@ const LoginForm = () => {
                 }
               })}
               error={errors.password?.message}
-              placeholder="••••••••"
             />
 
             <div className="flex items-center justify-between">
               <label className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 bg-white dark:bg-gray-700" 
-                />
-                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                  Remember me
-                </span>
+                <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
               </label>
               
               <Link
@@ -124,35 +141,10 @@ const LoginForm = () => {
               type="submit"
               loading={loading}
               className="w-full"
-              disabled={loading}
             >
-              {loading ? 'Signing In...' : 'Sign In'}
+              Sign In
             </Button>
           </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                Or continue with
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <GoogleAuthButton onSuccess={handleGoogleSuccess} mode="signin" />
-            
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowPhoneAuth(true)}
-              className="w-full"
-            >
-              Continue with Phone
-            </Button>
-          </div>
 
           <div className="mt-6 text-center">
             <p className="text-gray-600 dark:text-gray-400">
@@ -168,7 +160,8 @@ const LoginForm = () => {
         </div>
       </motion.div>
 
-      <PhoneAuth 
+      {/* Phone Authentication Modal */}
+      <PhoneAuth
         isOpen={showPhoneAuth}
         onClose={() => setShowPhoneAuth(false)}
         onSuccess={handlePhoneSuccess}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '../../services/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../services/firebase';
 import { FcGoogle } from 'react-icons/fc';
 import Button from '../ui/Button';
 import toast from 'react-hot-toast';
@@ -14,11 +15,41 @@ const GoogleAuthButton = ({ onSuccess, mode = 'signin' }) => {
     
     try {
       const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Check if user exists in Firestore, if not create a new document
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        // Create new user document for Google sign-ups
+        await setDoc(userDocRef, {
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          role: 'user',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          authProvider: 'google'
+        });
+      }
+      
       toast.success(`Successfully ${mode === 'signin' ? 'signed in' : 'signed up'} with Google!`);
-      onSuccess?.(result.user);
+      onSuccess?.(user);
     } catch (error) {
       console.error('Google auth error:', error);
-      toast.error(error.message || 'Failed to authenticate with Google');
+      
+      // Handle specific error cases
+      if (error.code === 'auth/popup-closed-by-user') {
+        toast.error('Sign-in popup was closed');
+      } else if (error.code === 'auth/popup-blocked') {
+        toast.error('Sign-in popup was blocked by your browser');
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        toast.error('An account already exists with the same email address');
+      } else {
+        toast.error(error.message || 'Failed to authenticate with Google');
+      }
     } finally {
       setLoading(false);
     }
