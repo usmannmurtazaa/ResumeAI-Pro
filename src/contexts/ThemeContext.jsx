@@ -11,10 +11,25 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('customTheme');
+    return saved ? JSON.parse(saved) : { primary: '#6366f1', accent: '#8b5cf6' };
+  });
+
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme');
     return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+
+  useEffect(() => {
+    // Apply CSS variables
+    const root = document.documentElement;
+    root.style.setProperty('--color-primary', theme.primary);
+    root.style.setProperty('--color-accent', theme.accent);
+
+    // Save to localStorage
+    localStorage.setItem('customTheme', JSON.stringify(theme));
+  }, [theme]);
 
   useEffect(() => {
     if (isDark) {
@@ -28,8 +43,15 @@ export const ThemeProvider = ({ children }) => {
 
   const toggleTheme = () => setIsDark(!isDark);
 
+  const value = {
+    theme,
+    setTheme,
+    isDark,
+    toggleTheme
+  };
+
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

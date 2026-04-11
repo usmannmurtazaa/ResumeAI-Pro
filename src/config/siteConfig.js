@@ -1,17 +1,23 @@
 export const siteConfig = {
-  name: 'ATS Resume Builder',
-  description: 'Create professional, ATS-optimized resumes that help you land your dream job',
-  url: 'https://atsresumebuilder.netlify.app',
-  ogImage: 'https://atsresumebuilder.com/og-image.jpg',
-  links: {
-    twitter: 'https://twitter.com/usmannmurtazaa',
+  name: 'ResumeAi Pro',
+  tagline: 'AI-Powered ATS Resume Builder',
+  description: 'Create professional, ATS-optimized resumes with AI-powered suggestions. Land your dream job faster with ResumeAi Pro.',
+  url: 'https://resumeaipro.netlify.app',
+  ogImage: 'https://resumeai.pro/og-image.png',
+  author: 'Usman Murtaza',
+  authorLinks: {
     github: 'https://github.com/usmannmurtazaa',
-    linkedin: 'https://linkedin.com/usmanmurtaza01'
+    portfolio: 'https://usmanmurtaza.netlify.app',
+    linkedin: 'https://linkedin.com/in/usmanmurtaza01'
+  },
+  links: {
+    twitter: 'https://twitter.com/resumeaipro',
+    github: 'https://github.com/usmannmurtazaa/resumeaipro'
   },
   contact: {
-    email: 'usmanmurtazaportfolio@gmail.com',
-    phone: '+92 319 0034982'
+    email: 'support@resumeai.pro'
   },
+
   pricing: {
     free: {
       name: 'Free',

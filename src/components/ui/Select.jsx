@@ -19,9 +19,9 @@ const Select = forwardRef(({
         <select
           ref={ref}
           className={`
-            w-full px-4 py-3 rounded-xl appearance-none
+            w-full px-4 py-2 rounded-lg appearance-none
             border border-gray-200 dark:border-gray-700
-            bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm
+            bg-white dark:bg-gray-800
             focus:ring-2 focus:ring-primary-500 focus:border-transparent
             outline-none transition-all duration-200 cursor-pointer
             ${error ? 'border-red-500 focus:ring-red-500' : ''}

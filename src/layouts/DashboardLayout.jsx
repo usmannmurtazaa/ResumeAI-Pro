@@ -6,17 +6,26 @@ import Breadcrumb from '../components/common/Breadcrumb';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
 const DashboardLayout = ({ children }) => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  const handleSidebarToggle = () => {
+    const newState = !sidebarCollapsed;
+    setSidebarCollapsed(newState);
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
+  };
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <Sidebar isCollapsed={sidebarCollapsed} onToggle={handleSidebarToggle} />
         
         <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
           <Navbar />
           
-          <main className="p-6">
+          <main className="pt-16 p-6">
             <div className="mb-6">
               <Breadcrumb />
             </div>

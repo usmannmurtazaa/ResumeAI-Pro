@@ -16,6 +16,7 @@ const Avatar = ({
   };
 
   const getInitials = (name) => {
+    if (!name) return '?';
     return name
       .split(' ')
       .map(word => word[0])
@@ -24,17 +25,30 @@ const Avatar = ({
       .slice(0, 2);
   };
 
+  const getColorFromName = (name) => {
+    const colors = [
+      'from-blue-500 to-blue-600',
+      'from-purple-500 to-purple-600',
+      'from-green-500 to-green-600',
+      'from-orange-500 to-orange-600',
+      'from-pink-500 to-pink-600',
+      'from-cyan-500 to-cyan-600',
+    ];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[index % colors.length];
+  };
+
   return (
     <div className={`
       ${sizes[size]} rounded-full overflow-hidden
-      bg-gradient-to-r from-primary-500 to-accent-500
+      bg-gradient-to-br ${getColorFromName(name)}
       flex items-center justify-center text-white font-medium
       ${className}
     `}>
       {src ? (
         <img src={src} alt={alt} className="w-full h-full object-cover" />
       ) : (
-        <span>{name ? getInitials(name) : '?'}</span>
+        <span>{getInitials(name)}</span>
       )}
     </div>
   );

@@ -8,12 +8,20 @@ const Breadcrumb = ({ items = [] }) => {
   const generateBreadcrumbs = () => {
     if (items.length > 0) return items;
 
-    // Auto-generate from pathname
     const paths = location.pathname.split('/').filter(x => x);
-    return paths.map((path, index) => ({
-      label: path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' '),
-      path: '/' + paths.slice(0, index + 1).join('/')
-    }));
+    const breadcrumbs = [{ label: 'Dashboard', path: '/dashboard' }];
+    
+    if (paths.length > 1) {
+      const additionalPaths = paths.slice(1);
+      additionalPaths.forEach((path, index) => {
+        breadcrumbs.push({
+          label: path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' '),
+          path: '/' + paths.slice(0, index + 2).join('/')
+        });
+      });
+    }
+    
+    return breadcrumbs;
   };
 
   const breadcrumbs = generateBreadcrumbs();
@@ -21,7 +29,7 @@ const Breadcrumb = ({ items = [] }) => {
   return (
     <nav className="flex items-center space-x-2 text-sm">
       <Link 
-        to="/" 
+        to="/dashboard" 
         className="flex items-center text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
       >
         <FiHome className="w-4 h-4" />
