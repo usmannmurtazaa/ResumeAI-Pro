@@ -9,13 +9,14 @@
 # production
 /build
 /dist
+/server
 
 # misc
 .DS_Store
 .env.local
-.env.development
+.env.development.local
 .env.test.local
-.env.production
+.env.production.local
 .env
 
 # logs
