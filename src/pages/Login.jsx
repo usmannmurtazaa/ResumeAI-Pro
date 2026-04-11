@@ -12,7 +12,7 @@ const Login = () => {
   }
 
   return (
-    <AuthLayout title="Welcome Back">
+    <AuthLayout>
       <LoginForm />
     </AuthLayout>
   );

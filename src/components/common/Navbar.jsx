@@ -28,6 +28,7 @@ const Navbar = () => {
       await logout();
       navigate('/');
       setIsProfileOpen(false);
+      setIsMenuOpen(false);
     } catch (error) {
       console.error(error);
     }
@@ -44,6 +45,10 @@ const Navbar = () => {
     { to: '/ats-scanner', label: 'ATS Scanner', icon: FiSearch },
   ];
 
+  const closeMobileMenu = () => {
+    setIsMenuOpen(false);
+  };
+
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/20 dark:border-gray-700/20">
@@ -55,12 +60,12 @@ const Navbar = () => {
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-1">
               {navLinks.map(link => (
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
                 >
                   {link.label}
                 </Link>
@@ -70,7 +75,7 @@ const Navbar = () => {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
                 >
                   {link.label}
                 </Link>
@@ -85,7 +90,7 @@ const Navbar = () => {
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 aria-label="Search"
               >
-                <FiSearch className="w-5 h-5" />
+                <FiSearch className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               </button>
 
               {/* Theme Toggle */}
@@ -94,18 +99,18 @@ const Navbar = () => {
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 aria-label="Toggle theme"
               >
-                {isDark ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
+                {isDark ? <FiSun className="w-5 h-5 text-gray-700 dark:text-gray-300" /> : <FiMoon className="w-5 h-5 text-gray-700 dark:text-gray-300" />}
               </button>
 
-              {/* Notifications */}
+              {/* Notifications - Hidden on mobile */}
               {user && (
-                <div className="relative">
+                <div className="hidden sm:block relative">
                   <button
                     onClick={() => setShowNotifications(!showNotifications)}
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     aria-label="Notifications"
                   >
-                    <FiBell className="w-5 h-5" />
+                    <FiBell className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                   </button>
                   <NotificationPanel 
                     isOpen={showNotifications} 
@@ -114,16 +119,16 @@ const Navbar = () => {
                 </div>
               )}
 
-              {/* User Menu */}
+              {/* User Menu - Hidden on mobile */}
               {user ? (
-                <div className="relative">
+                <div className="hidden sm:block relative">
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                     className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     aria-label="User menu"
                   >
                     <Avatar name={user.displayName || user.email || ''} size="sm" />
-                    <FiChevronDown className={`w-4 h-4 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                    <FiChevronDown className={`w-4 h-4 text-gray-700 dark:text-gray-300 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   <AnimatePresence>
@@ -135,14 +140,14 @@ const Navbar = () => {
                         className="absolute right-0 mt-2 w-56 glass-card p-2"
                       >
                         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                          <p className="font-medium truncate">{user.displayName || 'User'}</p>
-                          <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                          <p className="font-medium text-gray-900 dark:text-white truncate">{user.displayName || 'User'}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                         </div>
                         
                         <Link
                           to="/profile"
                           onClick={() => setIsProfileOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
                         >
                           <FiUser className="w-4 h-4" />
                           Profile
@@ -151,7 +156,7 @@ const Navbar = () => {
                         <Link
                           to="/settings"
                           onClick={() => setIsProfileOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
                         >
                           <FiSettings className="w-4 h-4" />
                           Settings
@@ -161,7 +166,7 @@ const Navbar = () => {
                           <Link
                             to="/admin"
                             onClick={() => setIsProfileOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
                           >
                             <FiSettings className="w-4 h-4" />
                             Admin Panel
@@ -182,11 +187,11 @@ const Navbar = () => {
                   </AnimatePresence>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" onClick={() => navigate('/login')}>
+                <div className="hidden sm:flex items-center gap-2">
+                  <Button variant="ghost" onClick={() => navigate('/login')} size="sm">
                     Sign In
                   </Button>
-                  <Button onClick={() => navigate('/signup')}>
+                  <Button onClick={() => navigate('/signup')} size="sm">
                     Get Started
                   </Button>
                 </div>
@@ -195,10 +200,10 @@ const Navbar = () => {
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
                 aria-label="Menu"
               >
-                {isMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
+                {isMenuOpen ? <FiX className="w-6 h-6 text-gray-700 dark:text-gray-300" /> : <FiMenu className="w-6 h-6 text-gray-700 dark:text-gray-300" />}
               </button>
             </div>
           </div>
@@ -210,19 +215,68 @@ const Navbar = () => {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="md:hidden py-4 border-t border-gray-200 dark:border-gray-700"
+                className="lg:hidden py-4 border-t border-gray-200 dark:border-gray-700"
               >
-                {[...navLinks, ...(user ? userLinks : [])].map(link => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
-                  >
-                    {link.icon && <link.icon className="w-5 h-5" />}
-                    {link.label}
-                  </Link>
-                ))}
+                <div className="space-y-1">
+                  {[...navLinks, ...(user ? userLinks : [])].map(link => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={closeMobileMenu}
+                      className="flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                    >
+                      {link.icon && <link.icon className="w-5 h-5" />}
+                      {link.label}
+                    </Link>
+                  ))}
+                  
+                  {user ? (
+                    <>
+                      <hr className="my-2 border-gray-200 dark:border-gray-700" />
+                      <Link
+                        to="/profile"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                      >
+                        <FiUser className="w-5 h-5" />
+                        Profile
+                      </Link>
+                      <Link
+                        to="/settings"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                      >
+                        <FiSettings className="w-5 h-5" />
+                        Settings
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                      >
+                        <FiLogOut className="w-5 h-5" />
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <hr className="my-2 border-gray-200 dark:border-gray-700" />
+                      <Link
+                        to="/login"
+                        onClick={closeMobileMenu}
+                        className="block px-4 py-3 text-center text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        to="/signup"
+                        onClick={closeMobileMenu}
+                        className="block px-4 py-3 text-center bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg"
+                      >
+                        Get Started
+                      </Link>
+                    </>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

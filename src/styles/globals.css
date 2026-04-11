@@ -14,10 +14,30 @@
   }
   
   body {
-    @apply bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900;
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-gray-900 dark:text-white font-bold;
+  }
+
+  p {
+    @apply text-gray-600 dark:text-gray-300;
+  }
+
+  label {
+    @apply text-gray-700 dark:text-gray-300;
+  }
+
+  input, textarea, select {
+    @apply text-gray-900 dark:text-white;
+  }
+
+  input::placeholder, textarea::placeholder {
+    @apply text-gray-400 dark:text-gray-500;
   }
 
   ::-webkit-scrollbar {
@@ -55,15 +75,37 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200;
+    @apply w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 
+           bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+           focus:ring-2 focus:ring-primary-500 focus:border-transparent 
+           outline-none transition-all duration-200
+           placeholder:text-gray-400 dark:placeholder:text-gray-500;
   }
 
   .btn-primary {
-    @apply px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 
+           hover:from-primary-600 hover:to-accent-600 text-white 
+           rounded-xl font-medium shadow-lg hover:shadow-xl 
+           transform hover:-translate-y-0.5 transition-all duration-200 
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
   }
 
   .btn-secondary {
-    @apply px-6 py-3 border-2 border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 rounded-xl font-medium transition-all duration-200;
+    @apply px-6 py-3 border-2 border-gray-300 dark:border-gray-600 
+           hover:border-primary-500 dark:hover:border-primary-500 
+           text-gray-700 dark:text-gray-300
+           rounded-xl font-medium transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply px-6 py-3 text-gray-600 dark:text-gray-300 
+           hover:bg-gray-100 dark:hover:bg-gray-800 
+           rounded-xl font-medium transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700;
   }
 
   .hover-lift {
@@ -74,5 +116,29 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  .text-primary {
+    @apply text-gray-900 dark:text-white;
+  }
+  
+  .text-secondary {
+    @apply text-gray-600 dark:text-gray-300;
+  }
+  
+  .text-muted {
+    @apply text-gray-500 dark:text-gray-400;
+  }
+  
+  .bg-primary {
+    @apply bg-white dark:bg-gray-900;
+  }
+  
+  .bg-secondary {
+    @apply bg-gray-50 dark:bg-gray-800;
+  }
+  
+  .border-default {
+    @apply border-gray-200 dark:border-gray-700;
   }
 }

@@ -1,10 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ThemeToggle from '../components/common/ThemeToggle';
 
 const AuthLayout = ({ children, title }) => {
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-600 via-primary-700 to-accent-700 p-12 relative overflow-hidden">
         <div className="absolute top-4 right-4">
@@ -17,32 +18,38 @@ const AuthLayout = ({ children, title }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
+            <Link to="/" className="inline-block mb-8">
+              <img src="/logo-white.svg" alt="ResumeAi Pro" className="h-10" />
+            </Link>
+            
             <h1 className="text-4xl font-bold text-white mb-4">
               Create Your ATS-Optimized Resume
             </h1>
             <p className="text-xl text-white/90 mb-8">
-              Join thousands of professionals who've landed their dream jobs with our resume builder.
+              Join thousands of professionals who've landed their dream jobs with ResumeAi Pro.
             </p>
             
             <div className="space-y-4">
-              <div className="flex items-center gap-3 text-white/80">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  ✓
-                </div>
-                <span>ATS-friendly templates</span>
-              </div>
-              <div className="flex items-center gap-3 text-white/80">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  ✓
-                </div>
-                <span>Real-time preview</span>
-              </div>
-              <div className="flex items-center gap-3 text-white/80">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  ✓
-                </div>
-                <span>Keyword optimization</span>
-              </div>
+              {[
+                'AI-powered ATS optimization',
+                'Professional templates',
+                'Real-time preview',
+                'Keyword suggestions',
+                'Instant PDF download'
+              ].map((feature, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + index * 0.1 }}
+                  className="flex items-center gap-3 text-white/90"
+                >
+                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-sm">
+                    ✓
+                  </div>
+                  <span>{feature}</span>
+                </motion.div>
+              ))}
             </div>
           </motion.div>
         </div>
@@ -54,21 +61,18 @@ const AuthLayout = ({ children, title }) => {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-900">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-gray-50 dark:bg-gray-900">
         <div className="w-full max-w-md">
+          <div className="lg:hidden text-center mb-8">
+            <Link to="/" className="inline-block">
+              <img src="/logo.svg" alt="ResumeAi Pro" className="h-8 mx-auto mb-4" />
+            </Link>
+            <h1 className="text-2xl font-bold gradient-text">ResumeAi Pro</h1>
+          </div>
+          
           <div className="lg:hidden absolute top-4 right-4">
             <ThemeToggle />
           </div>
-          
-          <div className="mb-8 lg:hidden">
-            <h1 className="text-3xl font-bold gradient-text">ATS Resume Builder</h1>
-          </div>
-          
-          {title && (
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-              {title}
-            </h2>
-          )}
           
           {children}
         </div>
