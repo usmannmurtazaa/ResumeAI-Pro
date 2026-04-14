@@ -9,7 +9,7 @@ import {
   FiCode, FiLayout, FiMessageCircle, FiThumbsUp,
   FiArrowLeft, FiTwitter, FiLinkedin, FiFacebook,
   FiLink, FiCheckCircle, FiAlertCircle, FiCopy,
-  FiChevronLeft, FiChevronRight
+  FiChevronLeft
 } from 'react-icons/fi';
 import MainLayout from '../layouts/MainLayout';
 import Card from '../components/ui/Card';
