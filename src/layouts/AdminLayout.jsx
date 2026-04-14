@@ -31,7 +31,7 @@ import Navbar from '../components/common/Navbar';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
-import { useNotification } from '../contexts/NotificationContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Tooltip from '../components/ui/Tooltip';

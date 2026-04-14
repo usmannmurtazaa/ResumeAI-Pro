@@ -1,8 +1,14 @@
+// src/hooks/useDocumentTitle.js
 import { useEffect } from 'react';
 
-const useDocumentTitle = (title) => {
+export const useDocumentTitle = (title) => {
   useEffect(() => {
-    document.title = `${title} | ResumeAi Pro`;
+    const previousTitle = document.title;
+    document.title = `${title} | ResumeAI Pro`;
+    
+    return () => {
+      document.title = previousTitle;
+    };
   }, [title]);
 };
 
