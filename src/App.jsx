@@ -8,9 +8,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ResumeProvider } from './contexts/ResumeContext';
-import { SettingsProvider } from './contexts/SettingsContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import Loader from './components/common/Loader';
@@ -49,8 +49,8 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      cacheTime: 1000 * 60 * 30, // 30 minutes
+      staleTime: 1000 * 60 * 5,
+      cacheTime: 1000 * 60 * 30,
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -260,7 +260,6 @@ const AnimatedRoutes = () => {
 };
 
 function App() {
-  // Check for saved theme preference
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -272,15 +271,9 @@ function App() {
     }
   }, []);
 
-  // Handle online/offline status
   useEffect(() => {
-    const handleOnline = () => {
-      document.body.classList.remove('offline');
-    };
-    
-    const handleOffline = () => {
-      document.body.classList.add('offline');
-    };
+    const handleOnline = () => document.body.classList.remove('offline');
+    const handleOffline = () => document.body.classList.add('offline');
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -291,7 +284,6 @@ function App() {
     };
   }, []);
 
-  // Preload critical routes
   useEffect(() => {
     const preloadRoutes = ['/dashboard', '/builder'];
     preloadRoutes.forEach(route => {
@@ -308,9 +300,9 @@ function App() {
         <Router>
           <ThemeProvider>
             <AuthProvider>
-              <NotificationProvider>
-                <ResumeProvider>
-                  <SettingsProvider>
+              <SettingsProvider>
+                <NotificationProvider>
+                  <ResumeProvider>
                     <DndProvider backend={HTML5Backend}>
                       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
                         <AnalyticsTracker />
@@ -320,7 +312,6 @@ function App() {
                           <AnimatedRoutes />
                         </Suspense>
                         
-                        {/* Toast Notifications */}
                         <Toaster 
                           position="top-right"
                           reverseOrder={false}
@@ -344,7 +335,6 @@ function App() {
                           }}
                         />
                         
-                        {/* Development Mode Indicator */}
                         {process.env.NODE_ENV === 'development' && (
                           <div className="fixed bottom-4 left-4 z-50 opacity-40 hover:opacity-100 transition-opacity">
                             <div className="px-3 py-1.5 bg-yellow-500 text-white text-xs font-medium rounded-full shadow-lg flex items-center gap-1.5 backdrop-blur-sm">
@@ -354,20 +344,18 @@ function App() {
                           </div>
                         )}
                         
-                        {/* Offline Indicator */}
                         <div className="offline-indicator fixed top-0 left-0 right-0 bg-yellow-500 text-white text-center py-1 text-sm z-50 transform -translate-y-full transition-transform">
                           You are currently offline. Some features may be unavailable.
                         </div>
                       </div>
                     </DndProvider>
-                  </SettingsProvider>
-                </ResumeProvider>
-              </NotificationProvider>
+                  </ResumeProvider>
+                </NotificationProvider>
+              </SettingsProvider>
             </AuthProvider>
           </ThemeProvider>
         </Router>
         
-        {/* React Query DevTools (Development Only) */}
         {process.env.NODE_ENV === 'development' && (
           <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />
         )}
