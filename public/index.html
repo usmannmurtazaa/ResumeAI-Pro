@@ -26,7 +26,7 @@
     <meta name="revisit-after" content="7 days" />
     <meta name="language" content="English" />
     <meta name="rating" content="General" />
-    <meta name="copyright" content="© 2024 ResumeAI Pro. All rights reserved." />
+    <meta name="copyright" content="© 2026 ResumeAI Pro. All rights reserved." />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -96,6 +96,13 @@
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    
+    <!-- Process polyfill for browser -->
+    <script>
+      window.process = window.process || { env: {} };
+      window.process.env = window.process.env || {};
+      window.process.env.NODE_ENV = 'production';
+    </script>
     
     <!-- Fallback Font -->
     <style>
@@ -280,7 +287,7 @@
         },
         "softwareVersion": "2.0.0",
         "datePublished": "2024-01-01",
-        "dateModified": "2024-12-31"
+        "dateModified": "2026-12-31"
       }
     </script>
     
@@ -369,7 +376,11 @@
           const loader = document.getElementById('initial-loader');
           if (loader) {
             loader.classList.add('hidden');
-            setTimeout(() => loader.remove(), 300);
+            setTimeout(function() {
+              if (loader && loader.parentNode) {
+                loader.parentNode.removeChild(loader);
+              }
+            }, 300);
           }
         };
         
@@ -383,13 +394,14 @@
     
     <!-- Service Worker Registration -->
     <script>
-      if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-        window.addEventListener('load', () => {
+      // Only register service worker in production
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js').then(
-            (registration) => {
+            function(registration) {
               console.log('Service Worker registered:', registration.scope);
             },
-            (error) => {
+            function(error) {
               console.log('Service Worker registration failed:', error);
             }
           );
@@ -401,6 +413,9 @@
     <noscript>
       <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
         <h1>ResumeAI Pro requires JavaScript</h1>
+        <p>Please enable JavaScript in your browser to use this application.</p>
+        <p>JavaScript is required for the interactive resume builder and ATS optimization features.</p>
+      </div>
     </noscript>
   </body>
 </html>
