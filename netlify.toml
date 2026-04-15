@@ -1,11 +1,10 @@
 [build]
-  command = "CI=false DISABLE_ESLINT_PLUGIN=true npm run build"
+  command = "CI=false npm run build"
   publish = "build"
 
 [build.environment]
   NODE_VERSION = "18"
-  DISABLE_ESLINT_PLUGIN = "true"
-  ESLINT_NO_DEV_ERRORS = "true"
+  CI = "false"
 
 [[redirects]]
   from = "/*"
@@ -16,5 +15,5 @@
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"

@@ -1,5 +1,4 @@
-// src/hooks/useDebounce.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -18,15 +17,16 @@ export const useDebounce = (value, delay) => {
 };
 
 export const useDebouncedCallback = (callback, delay) => {
-  const debouncedCallback = useDebounce(callback, delay);
-  
-  useEffect(() => {
-    if (typeof debouncedCallback === 'function' && debouncedCallback !== callback) {
-      debouncedCallback();
+  const timeoutRef = useRef(null);
+
+  const debouncedCallback = useCallback((...args) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
-  }, [debouncedCallback, callback]);
+    timeoutRef.current = setTimeout(() => {
+      callback(...args);
+    }, delay);
+  }, [callback, delay]);
 
   return debouncedCallback;
 };
-
-export default useDebounce;
