@@ -27,7 +27,7 @@ import toast from 'react-hot-toast';
 const Navbar = () => {
   const { user, logout, userRole, isPremium } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { unreadCount } = useNotification();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const scrollDirection = useScrollDirection();

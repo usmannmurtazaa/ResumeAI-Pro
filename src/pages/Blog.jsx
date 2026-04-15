@@ -6,7 +6,8 @@ import {
   FiSearch, FiFilter, FiChevronRight, FiBookOpen,
   FiStar, FiHeart, FiShare2, FiBookmark, FiEye,
   FiArrowRight, FiZap, FiTarget, FiAward, FiBriefcase,
-  FiCode, FiLayout, FiMessageCircle, FiThumbsUp
+  FiCode, FiLayout, FiMessageCircle, FiThumbsUp,
+  FiCheckCircle  
 } from 'react-icons/fi';
 import MainLayout from '../layouts/MainLayout';
 import Card from '../components/ui/Card';

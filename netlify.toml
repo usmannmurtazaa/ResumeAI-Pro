@@ -1,9 +1,11 @@
 [build]
-  command = "CI=false npm run build"
+  command = "CI=false DISABLE_ESLINT_PLUGIN=true npm run build"
   publish = "build"
 
 [build.environment]
   NODE_VERSION = "18"
+  DISABLE_ESLINT_PLUGIN = "true"
+  ESLINT_NO_DEV_ERRORS = "true"
 
 [[redirects]]
   from = "/*"

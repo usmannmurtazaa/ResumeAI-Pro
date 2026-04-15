@@ -27,16 +27,9 @@ import {
   signInWithPhoneNumber
 } from 'firebase/auth';
 import { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  serverTimestamp,
-  onSnapshot,
-  collection,
-  query,
-  where,
-  getDocs
+  doc, setDoc, getDoc, updateDoc, deleteDoc,
+  serverTimestamp, collection, query, where, 
+  getDocs, writeBatch
 } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { logAnalyticsEvent } from '../services/firebase';

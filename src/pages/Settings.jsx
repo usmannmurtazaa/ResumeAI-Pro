@@ -57,7 +57,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const { user, logout, updateUserProfile, deleteAccount } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { notificationSettings, updateNotificationSettings } = useNotification();
+  const { notificationSettings, updateNotificationSettings } = useNotifications();
   
   const [activeTab, setActiveTab] = useState('notifications');
   const [isSaving, setIsSaving] = useState(false);

@@ -27,7 +27,8 @@ import {
   getStorage, 
   connectStorageEmulator,
   ref,
-  uploadBytesResumable
+  uploadBytesResumable,
+  getDownloadURL
 } from 'firebase/storage';
 import { 
   getAnalytics, 

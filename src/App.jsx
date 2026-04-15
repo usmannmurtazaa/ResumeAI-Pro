@@ -17,6 +17,8 @@ import Loader from './components/common/Loader';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { logAnalyticsEvent } from './services/firebase';
 import { useAuth } from './hooks/useAuth';
+import './styles/globals.css';
+import './styles/animations.css';
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home'));
@@ -42,9 +44,6 @@ const BlogPost = lazy(() => import('./pages/BlogPost'));
 const Careers = lazy(() => import('./pages/Careers'));
 const Help = lazy(() => import('./pages/Help'));
 const NotFound = lazy(() => import('./pages/NotFound'));
-
-import './styles/globals.css';
-import './styles/animations.css';
 
 // Create Query Client
 const queryClient = new QueryClient({

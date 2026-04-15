@@ -64,7 +64,7 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
   const location = useLocation();
   const { user, logout, isPremium, subscription } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { resumes, recentResumes, stats } = useResume();
   
   // Set greeting based on time of day

@@ -412,7 +412,6 @@ export const checkFirebaseHealth = async () => {
   }
 };
 
-// Export a default object with all services
 const firebaseServices = {
   app,
   auth,
@@ -423,6 +422,7 @@ const firebaseServices = {
   performance,
   remoteConfig,
   messaging,
+  vertexAI,
   providers: {
     google: googleProvider,
     github: githubProvider,

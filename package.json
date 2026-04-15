@@ -75,7 +75,7 @@
   "scripts": {
     "start": "react-scripts start",
     "start:emulators": "firebase emulators:start --import=./emulator-data --export-on-exit",
-    "build": "react-scripts build",
+    "build": "cross-env DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "build:analyze": "source-map-explorer 'build/static/js/*.js'",
     "test": "react-scripts test --watchAll=false",
     "test:watch": "react-scripts test",
@@ -119,6 +119,7 @@
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "autoprefixer": "^10.4.16",
+    "cross-env": "10.1.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",

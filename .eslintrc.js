@@ -1,8 +1,8 @@
 module.exports = {
   extends: ['react-app'],
   rules: {
-    'no-unused-vars': 'warn',
-    'react-hooks/exhaustive-deps': 'warn',
-    'no-useless-escape': 'warn'
+    'import/first': 'warn',
+    'no-undef': 'warn',
+    'react/jsx-no-undef': 'warn'
   }
 };

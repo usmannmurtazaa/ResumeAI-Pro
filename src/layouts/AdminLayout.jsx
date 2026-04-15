@@ -54,7 +54,7 @@ const AdminLayout = ({ children, title, description }) => {
   const location = useLocation();
   const { user, logout, hasRole } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   
   // Check if user is admin
   const isAdmin = hasRole('admin');
