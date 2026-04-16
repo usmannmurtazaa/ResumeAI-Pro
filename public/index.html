@@ -39,7 +39,6 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="ResumeAI Pro" />
     <meta property="og:locale" content="en_US" />
-    <meta property="fb:app_id" content="your_fb_app_id" />
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -51,23 +50,8 @@
     <meta name="twitter:site" content="@resumeaipro" />
     <meta name="twitter:creator" content="@usmannmurtazaa" />
     
-    <!-- LinkedIn -->
-    <meta property="linkedin:card" content="summary_large_image" />
-    <meta property="linkedin:title" content="ResumeAI Pro - AI-Powered ATS Resume Builder" />
-    <meta property="linkedin:description" content="Create professional, ATS-optimized resumes with AI-powered suggestions." />
-    <meta property="linkedin:image" content="https://resumeaipro.netlify.app/linkedin-image.png" />
-    
-    <!-- Pinterest -->
-    <meta name="pinterest-rich-pin" content="true" />
-    
     <!-- Canonical URL -->
     <link rel="canonical" href="https://resumeaipro.netlify.app" />
-    
-    <!-- Alternate Languages -->
-    <link rel="alternate" hreflang="en" href="https://resumeaipro.netlify.app" />
-    <link rel="alternate" hreflang="es" href="https://resumeaipro.netlify.app/es" />
-    <link rel="alternate" hreflang="fr" href="https://resumeaipro.netlify.app/fr" />
-    <link rel="alternate" hreflang="x-default" href="https://resumeaipro.netlify.app" />
     
     <!-- Favicon and Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -92,7 +76,6 @@
     <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
     <link rel="dns-prefetch" href="https://storage.googleapis.com" />
     <link rel="dns-prefetch" href="https://www.googleapis.com" />
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -124,24 +107,17 @@
         text-rendering: optimizeLegibility;
       }
       
-      /* Prevent FOUC */
       html {
         visibility: visible;
         opacity: 1;
-      }
-      
-      /* Smooth scrolling */
-      html {
         scroll-behavior: smooth;
       }
       
-      /* Focus outline for accessibility */
       *:focus-visible {
         outline: 2px solid #3b82f6;
         outline-offset: 2px;
       }
       
-      /* Selection styling */
       ::selection {
         background-color: #3b82f6;
         color: white;
@@ -152,7 +128,6 @@
         color: white;
       }
       
-      /* Custom scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -172,7 +147,6 @@
         background: #a1a1a1;
       }
       
-      /* Dark mode scrollbar */
       @media (prefers-color-scheme: dark) {
         ::-webkit-scrollbar-track {
           background: #1f2937;
@@ -187,7 +161,6 @@
         }
       }
       
-      /* Loading spinner */
       .initial-loader {
         position: fixed;
         top: 0;
@@ -281,10 +254,6 @@
           "Keyword suggestions",
           "Instant PDF download"
         ],
-        "screenshot": {
-          "@type": "ImageObject",
-          "url": "https://resumeaipro.netlify.app/screenshot.png"
-        },
         "softwareVersion": "2.0.0",
         "datePublished": "2024-01-01",
         "dateModified": "2026-12-31"
@@ -387,26 +356,6 @@
         // Fallback timeout
         setTimeout(window.removeInitialLoader, 5000);
       })();
-    </script>
-    
-    <!-- Main Entry Point -->
-    <script type="module" src="/src/index.jsx"></script>
-    
-    <!-- Service Worker Registration -->
-    <script>
-      // Only register service worker in production
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js').then(
-            function(registration) {
-              console.log('Service Worker registered:', registration.scope);
-            },
-            function(error) {
-              console.log('Service Worker registration failed:', error);
-            }
-          );
-        });
-      }
     </script>
     
     <!-- NoScript Fallback -->
