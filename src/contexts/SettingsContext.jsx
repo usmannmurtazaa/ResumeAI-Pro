@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  setDoc,
+  onSnapshot, 
+  updateDoc, 
+  serverTimestamp 
+} from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useDebouncedCallback } from '../hooks/useDebounce';
