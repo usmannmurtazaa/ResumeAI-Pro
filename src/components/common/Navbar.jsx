@@ -179,9 +179,6 @@ const Navbar = () => {
                   className="relative h-8 w-auto"
                 />
               </div>
-              <span className="hidden sm:block font-bold text-lg gradient-text">
-                ResumeAI Pro
-              </span>
             </Link>
 
             {/* Desktop Navigation */}
