@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ResumeAI Pro" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- Primary Meta Tags -->
+    <title>ResumeAI Pro - AI-Powered ATS Resume Builder | Create Professional Resumes</title>
+    <meta name="title" content="ResumeAI Pro - AI-Powered ATS Resume Builder" />
+    <meta name="description" content="Create professional, ATS-optimized resumes with AI-powered suggestions. 25+ premium templates, real-time scoring, and instant PDF download. Land your dream job faster with ResumeAI Pro." />
+    <meta name="keywords" content="resume builder, ATS resume, CV maker, professional resume, AI resume builder, job application, career tools, resume templates, cover letter, job search, resume optimizer, ATS score" />
+    <meta name="author" content="Usman Murtaza" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="language" content="English" />
+    <meta name="rating" content="General" />
+    <meta name="copyright" content="© 2026 ResumeAI Pro. All rights reserved." />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://resumeaipro.netlify.app" />
+    <meta property="og:title" content="ResumeAI Pro - AI-Powered ATS Resume Builder" />
+    <meta property="og:description" content="Create professional, ATS-optimized resumes with AI-powered suggestions. 25+ premium templates, real-time scoring, and instant PDF download." />
+    <meta property="og:image" content="https://resumeaipro.netlify.app/og-image.png" />
+    <meta property="og:image:alt" content="ResumeAI Pro - Professional Resume Builder" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="ResumeAI Pro" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://resumeaipro.netlify.app" />
+    <meta name="twitter:title" content="ResumeAI Pro - AI-Powered ATS Resume Builder" />
+    <meta name="twitter:description" content="Create professional, ATS-optimized resumes with AI-powered suggestions. 25+ premium templates and real-time scoring." />
+    <meta name="twitter:image" content="https://resumeaipro.netlify.app/twitter-image.png" />
+    <meta name="twitter:image:alt" content="ResumeAI Pro - Professional Resume Builder" />
+    <meta name="twitter:site" content="@resumeaipro" />
+    <meta name="twitter:creator" content="@usmannmurtazaa" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://resumeaipro.netlify.app" />
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#3b82f6" />
+    
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Preconnect to External Domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://firestore.googleapis.com" />
+    <link rel="preconnect" href="https://storage.googleapis.com" />
+    <link rel="preconnect" href="https://www.googleapis.com" />
+    
+    <!-- DNS Prefetch -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://www.googleapis.com" />
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    
+    <!-- Process polyfill for browser -->
+    <script>
+      window.process = window.process || { env: {} };
+      window.process.env = window.process.env || {};
+      window.process.env.NODE_ENV = 'production';
+    </script>
+    
+    <!-- Fallback Font -->
+    <style>
+      @font-face {
+        font-family: 'Inter Fallback';
+        src: local('Arial');
+        ascent-override: 90%;
+        descent-override: 22.43%;
+        line-gap-override: 0%;
+        size-adjust: 107.64%;
+      }
+      
+      body {
+        font-family: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+      
+      html {
+        visibility: visible;
+        opacity: 1;
+        scroll-behavior: smooth;
+      }
+      
+      *:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+      }
+      
+      ::selection {
+        background-color: #3b82f6;
+        color: white;
+      }
+      
+      ::-moz-selection {
+        background-color: #3b82f6;
+        color: white;
+      }
+      
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a1a1a1;
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        ::-webkit-scrollbar-track {
+          background: #1f2937;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: #4b5563;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: #6b7280;
+        }
+      }
+      
+      .initial-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f9fafb;
+        z-index: 9999;
+        transition: opacity 0.3s ease;
+      }
+      
+      .initial-loader.dark {
+        background: #111827;
+      }
+      
+      .initial-loader .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      .initial-loader.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+    
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ResumeAI Pro",
+        "alternateName": "ATS Resume Builder",
+        "url": "https://resumeaipro.netlify.app",
+        "description": "AI-powered ATS resume builder with professional templates and real-time optimization.",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "Free plan available"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "ratingCount": "5000",
+          "bestRating": "5",
+          "worstRating": "1"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Usman Murtaza",
+          "url": "https://usmanmurtaza.netlify.app"
+        },
+        "creator": {
+          "@type": "Person",
+          "name": "Usman Murtaza"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "ResumeAI Pro",
+          "url": "https://resumeaipro.netlify.app",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://resumeaipro.netlify.app/logo.png",
+            "width": "512",
+            "height": "512"
+          },
+          "sameAs": [
+            "https://twitter.com/resumeaipro",
+            "https://linkedin.com/company/resumeaipro",
+            "https://github.com/resumeaipro"
+          ]
+        },
+        "featureList": [
+          "AI-powered ATS optimization",
+          "Professional templates",
+          "Real-time preview",
+          "Keyword suggestions",
+          "Instant PDF download"
+        ],
+        "softwareVersion": "2.0.0",
+        "datePublished": "2024-01-01",
+        "dateModified": "2026-12-31"
+      }
+    </script>
+    
+    <!-- Organization Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "ResumeAI Pro",
+        "url": "https://resumeaipro.netlify.app",
+        "logo": "https://resumeaipro.netlify.app/logo.png",
+        "sameAs": [
+          "https://twitter.com/resumeaipro",
+          "https://linkedin.com/company/resumeaipro",
+          "https://github.com/resumeaipro",
+          "https://facebook.com/resumeaipro",
+          "https://instagram.com/resumeaipro"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "email": "support@resumeaipro.com",
+          "url": "https://resumeaipro.netlify.app/contact"
+        }
+      }
+    </script>
+    
+    <!-- FAQ Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is an ATS resume?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "An ATS (Applicant Tracking System) resume is optimized to pass through automated screening software used by employers to filter job applications."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does ResumeAI Pro help with ATS optimization?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ResumeAI Pro uses AI to analyze your resume against industry-specific keywords, provides real-time ATS scoring, and offers suggestions to improve compatibility."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is ResumeAI Pro free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, ResumeAI Pro offers a free plan with one resume, basic templates, and ATS scoring. Premium plans unlock unlimited resumes and advanced features."
+            }
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Initial Loader -->
+    <div id="initial-loader" class="initial-loader">
+      <div class="spinner"></div>
+    </div>
+    
+    <!-- Root Element -->
+    <div id="root"></div>
+    
+    <!-- Loader Removal Script -->
+    <script>
+      (function() {
+        // Check for dark mode preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem('theme');
+        const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+        
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.getElementById('initial-loader').classList.add('dark');
+        }
+        
+        // Remove loader after app mounts
+        window.removeInitialLoader = function() {
+          const loader = document.getElementById('initial-loader');
+          if (loader) {
+            loader.classList.add('hidden');
+            setTimeout(function() {
+              if (loader && loader.parentNode) {
+                loader.parentNode.removeChild(loader);
+              }
+            }, 300);
+          }
+        };
+        
+        // Fallback timeout
+        setTimeout(window.removeInitialLoader, 5000);
+      })();
+    </script>
+    
+    <!-- NoScript Fallback -->
+    <noscript>
+      <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
+        <h1>ResumeAI Pro requires JavaScript</h1>
+        <p>Please enable JavaScript in your browser to use this application.</p>
+        <p>JavaScript is required for the interactive resume builder and ATS optimization features.</p>
+      </div>
+    </noscript>
+  </body>
+</html>
