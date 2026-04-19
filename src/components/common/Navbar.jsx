@@ -140,31 +140,47 @@ const Navbar = () => {
   return (
     <>
       <motion.nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrollDirection === 'down' && !isMenuOpen ? '-translate-y-full' : 'translate-y-0'
-        } ${
-          isScrolled || location.pathname !== '/'
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrollDirection === 'down' && !isMenuOpen ? '-translate-y-full' : 'translate-y-0'
+          } ${isScrolled || location.pathname !== '/'
             ? 'glass border-b border-white/20 dark:border-gray-700/20 shadow-sm'
             : 'bg-transparent'
-        }`}
+          }`}
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.3 }}
       >
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            
+
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-3 group">
+              <motion.div
+                className="relative"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-accent-500 rounded-lg blur opacity-0 group-hover:opacity-50 transition-opacity" />
+                <img
+                  src="/logo.svg"
+                  alt="ResumeAI Pro"
+                  className="relative h-8 w-auto"
+                />
+              </motion.div>
+              <span className="hidden sm:block font-bold text-lg gradient-text">
+                ResumeAI Pro
+              </span>
+            </Link>
+
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-1">
               {navLinks.map(link => (
                 <Tooltip key={link.to} content={link.label}>
                   <Link
                     to={link.to}
-                    className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all group ${
-                      isActive(link.to, link.exact)
-                        ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
-                        : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
+                    className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all group ${isActive(link.to, link.exact)
+                      ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
+                      : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
                   >
                     <span className="flex items-center gap-2">
                       <link.icon className="w-4 h-4" />
@@ -196,13 +212,12 @@ const Navbar = () => {
                     >
                       <Link
                         to={link.to}
-                        className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all group ${
-                          isActive(link.to)
-                            ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
-                            : link.highlight
-                              ? 'text-white bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 shadow-md hover:shadow-lg'
-                              : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                        }`}
+                        className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all group ${isActive(link.to)
+                          ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
+                          : link.highlight
+                            ? 'text-white bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 shadow-md hover:shadow-lg'
+                            : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                          }`}
                       >
                         <span className="flex items-center gap-2">
                           <link.icon className="w-4 h-4" />
@@ -541,13 +556,12 @@ const Navbar = () => {
                       key={link.to}
                       to={link.to}
                       onClick={() => setIsMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        link.highlight && user
-                          ? 'text-white bg-gradient-to-r from-primary-500 to-accent-500'
-                          : isActive(link.to, link.exact)
-                            ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${link.highlight && user
+                        ? 'text-white bg-gradient-to-r from-primary-500 to-accent-500'
+                        : isActive(link.to, link.exact)
+                          ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }`}
                     >
                       {link.icon && <link.icon className="w-5 h-5" />}
                       <span className="flex-1">{link.label}</span>
