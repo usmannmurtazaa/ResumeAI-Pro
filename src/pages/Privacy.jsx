@@ -1,60 +1,53 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { FiShield, FiLock, FiEye, FiTrash2, FiGlobe, FiServer } from 'react-icons/fi';
 import MainLayout from '../layouts/MainLayout';
 import Card from '../components/ui/Card';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const Privacy = () => {
+  useDocumentTitle('Privacy Policy - ResumeAI Pro');
+
+  const sections = [
+    { icon: FiShield, title: 'Information We Collect', content: 'We collect information you provide directly, such as account details, resume content, and payment information. We also collect usage data to improve our services.' },
+    { icon: FiLock, title: 'How We Use Your Information', content: 'We use your information to provide and improve our services, process payments, communicate with you, and ensure platform security. We never sell your personal data.' },
+    { icon: FiEye, title: 'Information Sharing', content: 'We do not share your personal information with third parties except as necessary to provide our services (e.g., payment processors) or when required by law.' },
+    { icon: FiTrash2, title: 'Data Retention & Deletion', content: 'We retain your data as long as your account is active. You can delete your account at any time, and we will permanently remove your data within 30 days.' },
+    { icon: FiServer, title: 'Data Security', content: 'We use industry-standard encryption (256-bit SSL) and secure infrastructure to protect your data. All data is stored on Google Cloud Platform with Firebase security rules.' },
+    { icon: FiGlobe, title: 'International Transfers', content: 'Your data may be transferred and stored outside your country. We ensure appropriate safeguards are in place for such transfers.' },
+  ];
+
   return (
     <MainLayout>
       <div className="min-h-screen pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
-          <h1 className="text-4xl font-bold mb-8 gradient-text">Privacy Policy</h1>
-          
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Privacy <span className="gradient-text">Policy</span></h1>
+            <p className="text-gray-600 dark:text-gray-400">Last updated: January 1, 2026</p>
+          </motion.div>
+
           <Card className="p-8 space-y-6">
-            <p className="text-gray-600 dark:text-gray-400">
-              Last updated: January 15, 2024
+            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+              At ResumeAI Pro, we take your privacy seriously. This Privacy Policy explains how we collect, use, and protect your personal information.
             </p>
 
-            <section>
-              <h2 className="text-xl font-semibold mb-3">1. Information We Collect</h2>
-              <p className="text-gray-700 dark:text-gray-300">
-                We collect information you provide directly to us, including your name, email address, 
-                and resume content. We also collect usage data to improve our services.
-              </p>
-            </section>
+            {sections.map((section, index) => (
+              <motion.div key={index} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="border-b border-gray-200 dark:border-gray-700 last:border-0 pb-6 last:pb-0">
+                <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                  <section.icon className="w-5 h-5 text-primary-500" />
+                  {section.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{section.content}</p>
+              </motion.div>
+            ))}
 
-            <section>
-              <h2 className="text-xl font-semibold mb-3">2. How We Use Your Information</h2>
-              <p className="text-gray-700 dark:text-gray-300">
-                We use your information to provide, maintain, and improve our services, 
-                communicate with you, and ensure the security of our platform.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold mb-3">3. Data Security</h2>
-              <p className="text-gray-700 dark:text-gray-300">
-                We implement appropriate security measures to protect your personal information. 
-                Your data is encrypted and stored securely.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold mb-3">4. Your Rights</h2>
-              <p className="text-gray-700 dark:text-gray-300">
-                You have the right to access, correct, or delete your personal information. 
-                Contact us to exercise these rights.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold mb-3">5. Contact Us</h2>
-              <p className="text-gray-700 dark:text-gray-300">
+            <div className="pt-4">
+              <h3 className="text-xl font-semibold mb-3">Contact Us</h3>
+              <p className="text-gray-600 dark:text-gray-400">
                 If you have questions about this Privacy Policy, please contact us at{' '}
-                <a href="mailto:privacy@atsresume.com" className="text-primary-600">
-                  privacy@atsresume.com
-                </a>
+                <a href="mailto:privacy@resumeaipro.com" className="text-primary-500 hover:text-primary-600">privacy@resumeaipro.com</a>.
               </p>
-            </section>
+            </div>
           </Card>
         </div>
       </div>

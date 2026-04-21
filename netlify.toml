@@ -4,30 +4,43 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  NPM_VERSION = "9"
   CI = "false"
+  DISABLE_ESLINT_PLUGIN = "true"
+  GENERATE_SOURCEMAP = "false"
 
+# ============================================
+# REDIRECTS
+# ============================================
+
+# SPA Fallback - Must be last
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
   force = true
 
-[[headers]]
-  for = "/static/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+# Redirect www to apex domain
+[[redirects]]
+  from = "https://www.resumeaixpro.netlify.app/*"
+  to = "https://resumeaixpro.netlify.app/:splat"
+  status = 301
+  force = true
 
-[[headers]]
-  for = "/*.js"
-  [headers.values]
-    Content-Type = "application/javascript; charset=UTF-8"
-    Cache-Control = "public, max-age=31536000, immutable"
+# Legacy redirects
+[[redirects]]
+  from = "/old-pricing"
+  to = "/pricing"
+  status = 301
 
-[[headers]]
-  for = "/*.css"
-  [headers.values]
-    Content-Type = "text/css; charset=UTF-8"
-    Cache-Control = "public, max-age=31536000, immutable"
+[[redirects]]
+  from = "/resume-builder"
+  to = "/builder"
+  status = 301
+
+# ============================================
+# SECURITY HEADERS (Global)
+# ============================================
 
 [[headers]]
   for = "/*"
@@ -35,3 +48,164 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(self), interest-cohort=()"
+    Cross-Origin-Embedder-Policy = "credentialless"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+
+# Content Security Policy (CSP)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://*.firebaseio.com https://*.stripe.com https://cdn.jsdelivr.net;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: https: blob: https://*.googleusercontent.com https://*.stripe.com;
+      connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.stripe.com https://api.openai.com https://sentry.io;
+      frame-src 'self' https://*.firebaseapp.com https://*.stripe.com https://www.youtube.com;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    """
+
+# ============================================
+# CACHE HEADERS
+# ============================================
+
+# Static assets - Long cache
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# JavaScript files
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=UTF-8"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# CSS files
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Content-Type = "text/css; charset=UTF-8"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Images
+[[headers]]
+  for = "/*.@(jpg|jpeg|gif|png|svg|webp|ico|avif)"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Fonts
+[[headers]]
+  for = "/*.@(woff|woff2|ttf|eot|otf)"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# HTML - Short cache
+[[headers]]
+  for = "/*.@(html|htm)"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Content-Type = "text/html; charset=UTF-8"
+
+# JSON data files
+[[headers]]
+  for = "/*.@(json|xml|txt)"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+# Service Worker - No cache
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+# Manifest
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+    Content-Type = "application/manifest+json"
+
+# ============================================
+# PLUGINS
+# ============================================
+
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+  [plugins.inputs]
+    output_path = "lighthouse.html"
+    failing_assertions = "categories.performance=0.9,categories.accessibility=0.9"
+
+[[plugins]]
+  package = "netlify-plugin-gatsby-cache"
+
+[[plugins]]
+  package = "@netlify/plugin-sitemap"
+  [plugins.inputs]
+    baseUrl = "https://resumeaixpro.netlify.app"
+    buildDir = "build"
+    exclude = ["/admin/*", "/dashboard/*", "/builder/*"]
+
+# ============================================
+# FUNCTIONS
+# ============================================
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["firebase-admin", "firebase-functions", "sharp", "puppeteer"]
+  included_files = ["functions/**", "!functions/node_modules/**"]
+
+# ============================================
+# EDGE FUNCTIONS (Optional)
+# ============================================
+
+# [[edge_functions]]
+#   path = "/*"
+#   function = "geolocation"
+#   cache = "manual"
+
+# ============================================
+# ENVIRONMENT VARIABLES (Sensitive)
+# ============================================
+
+# [build.environment]
+#   REACT_APP_FIREBASE_API_KEY = "from-dashboard"
+#   REACT_APP_OPENAI_API_KEY = "from-dashboard"
+#   REACT_APP_STRIPE_PUBLIC_KEY = "from-dashboard"
+
+# ============================================
+# BRANCH DEPLOY SETTINGS
+# ============================================
+
+[context.production]
+  command = "CI=false npm run build:prod"
+
+[context.production.environment]
+  NODE_ENV = "production"
+  REACT_APP_ENVIRONMENT = "production"
+  REACT_APP_SITE_URL = "https://resumeaixpro.netlify.app"
+  GENERATE_SOURCEMAP = "false"
+
+[context.deploy-preview]
+  command = "CI=false npm run build"
+
+[context.deploy-preview.environment]
+  REACT_APP_ENVIRONMENT = "preview"
+  REACT_APP_SITE_URL = "${DEPLOY_PRIME_URL}"
+  GENERATE_SOURCEMAP = "true"
+
+[context.branch-deploy]
+  command = "CI=false npm run build"
+
+[context.branch-deploy.environment]
+  REACT_APP_ENVIRONMENT = "staging"
+  REACT_APP_SITE_URL = "https://resumeaixpro.netlify.app"

@@ -19,7 +19,7 @@ export const siteConfig = {
   ],
   
   // URLs
-  url: process.env.REACT_APP_SITE_URL || 'https://resumeaipro.netlify.app',
+  url: process.env.REACT_APP_SITE_URL || 'https://resumeaixpro.netlify.app',
   apiUrl: process.env.REACT_APP_API_URL || 'https://api.resumeai.pro',
   
   // Author Information

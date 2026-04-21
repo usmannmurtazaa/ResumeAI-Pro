@@ -5,7 +5,7 @@
   "description": "Professional ATS Resume Builder with AI-powered optimization - Create stunning, ATS-friendly resumes that land interviews",
   "author": "Usman Murtaza <usman@resumeaipro.com> (https://usmanmurtaza.netlify.app)",
   "license": "MIT",
-  "homepage": "https://resumeaipro.netlify.app",
+  "homepage": "https://resumeaixpro.netlify.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/usmannmurtazaa/resumeai-pro.git"
@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^3.1.14",
+    "@sentry/react": "10.49.0",
     "@stripe/react-stripe-js": "^2.4.0",
     "@stripe/stripe-js": "^2.2.0",
     "@tanstack/react-query": "^5.14.0",
@@ -70,13 +71,15 @@
     "tailwind-merge": "^2.2.0",
     "use-debounce": "^10.0.0",
     "uuid": "^9.0.1",
+    "web-vitals": "5.2.0",
     "zustand": "4.5.7"
   },
   "scripts": {
     "start": "react-scripts start",
     "start:emulators": "firebase emulators:start --import=./emulator-data --export-on-exit",
-    "build": "cross-env DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build": "cross-env DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false react-scripts build",
     "build:analyze": "source-map-explorer 'build/static/js/*.js'",
+    "build:prod": "cross-env DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false NODE_ENV=production react-scripts build",
     "test": "react-scripts test --watchAll=false",
     "test:watch": "react-scripts test",
     "test:coverage": "react-scripts test --coverage --watchAll=false",
@@ -91,7 +94,7 @@
     "deploy:firestore": "firebase deploy --only firestore:rules,firestore:indexes",
     "deploy:storage": "firebase deploy --only storage",
     "deploy:staging": "npm run build && firebase deploy --project staging",
-    "deploy:production": "npm run build && firebase deploy --project production",
+    "deploy:production": "npm run build:prod && firebase deploy --project production",
     "emulators": "firebase emulators:start",
     "emulators:export": "firebase emulators:export ./emulator-data",
     "logs": "firebase functions:log",
@@ -105,10 +108,16 @@
     "version": "npm version",
     "release:patch": "npm version patch && git push --follow-tags",
     "release:minor": "npm version minor && git push --follow-tags",
-    "release:major": "npm version major && git push --follow-tags"
+    "release:major": "npm version major && git push --follow-tags",
+    "update:deps": "npx npm-check-updates -u && npm install"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@netlify/plugin-lighthouse": "6.0.4",
+    "@netlify/plugin-sitemap": "0.8.1",
+    "@tailwindcss/aspect-ratio": "0.4.2",
+    "@tailwindcss/forms": "0.5.9",
+    "@tailwindcss/typography": "0.5.15",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
@@ -118,7 +127,9 @@
     "@types/react-dom": "^18.2.18",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
-    "autoprefixer": "^10.4.16",
+    "ajv": "8.17.1",
+    "ajv-keywords": "5.1.0",
+    "autoprefixer": "10.4.20",
     "cross-env": "10.1.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
@@ -131,12 +142,14 @@
     "husky": "^8.0.3",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "jest-watch-typeahead": "^2.2.2",
     "lint-staged": "^15.2.0",
-    "postcss": "^8.4.32",
+    "netlify-plugin-gatsby-cache": "0.3.2",
+    "postcss": "8.4.49",
     "prettier": "^3.1.1",
     "react-scripts": "5.0.1",
     "source-map-explorer": "^2.5.3",
-    "tailwindcss": "^3.4.0",
+    "tailwindcss": "3.4.17",
     "webpack-bundle-analyzer": "^4.10.1"
   },
   "browserslist": {
@@ -172,7 +185,8 @@
       "src/**/*.{js,jsx}",
       "!src/**/*.test.{js,jsx}",
       "!src/index.js",
-      "!src/serviceWorker.js"
+      "!src/serviceWorker.js",
+      "!src/**/*.stories.{js,jsx}"
     ],
     "coverageThreshold": {
       "global": {

@@ -6,6 +6,8 @@ import {
   TwitterAuthProvider,
   PhoneAuthProvider,
   EmailAuthProvider,
+  FacebookAuthProvider,
+  OAuthProvider,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
@@ -21,14 +23,18 @@ import {
   connectFirestoreEmulator,
   enableNetwork,
   disableNetwork,
-  waitForPendingWrites
+  waitForPendingWrites,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import { 
   getStorage, 
   connectStorageEmulator,
   ref,
   uploadBytesResumable,
-  getDownloadURL
+  getDownloadURL,
+  deleteObject,
+  listAll
 } from 'firebase/storage';
 import { 
   getAnalytics, 
@@ -61,9 +67,11 @@ import {
   getMessaging, 
   getToken, 
   onMessage,
-  isSupported as isMessagingSupported
+  isSupported as isMessagingSupported,
+  deleteToken
 } from 'firebase/messaging';
 import { getVertexAI, getGenerativeModel } from 'firebase/vertexai-preview';
+import { getAppCheck, initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // ============================================
 // CONFIGURATION VALIDATION
@@ -129,6 +137,10 @@ export const firebaseUIConfig = {
       provider: TwitterAuthProvider.PROVIDER_ID
     },
     {
+      provider: FacebookAuthProvider.PROVIDER_ID,
+      scopes: ['email', 'public_profile']
+    },
+    {
       provider: EmailAuthProvider.PROVIDER_ID,
       requireDisplayName: true,
       signInMethod: 'password'
@@ -136,7 +148,7 @@ export const firebaseUIConfig = {
     {
       provider: PhoneAuthProvider.PROVIDER_ID,
       defaultCountry: 'US',
-      whitelistedCountries: ['US', 'CA', 'GB', 'AU', 'IN', 'DE', 'FR', 'JP']
+      whitelistedCountries: ['US', 'CA', 'GB', 'AU', 'IN', 'DE', 'FR', 'JP', 'PK']
     }
   ],
   tosUrl: '/terms-of-service',
@@ -175,6 +187,24 @@ const initializeFirebase = () => {
 export const app = initializeFirebase();
 
 // ============================================
+// APP CHECK (Production Security)
+// ============================================
+
+export let appCheck = null;
+
+if (process.env.NODE_ENV === 'production' && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
+  try {
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(process.env.REACT_APP_RECAPTCHA_SITE_KEY),
+      isTokenAutoRefreshEnabled: true
+    });
+    console.log('🛡️ App Check initialized');
+  } catch (error) {
+    console.warn('App Check initialization failed:', error);
+  }
+}
+
+// ============================================
 // INITIALIZE SERVICES
 // ============================================
 
@@ -192,6 +222,14 @@ githubProvider.addScope('user:email');
 githubProvider.addScope('read:user');
 
 export const twitterProvider = new TwitterAuthProvider();
+
+export const facebookProvider = new FacebookAuthProvider();
+facebookProvider.addScope('email');
+facebookProvider.addScope('public_profile');
+
+export const microsoftProvider = new OAuthProvider('microsoft.com');
+microsoftProvider.addScope('user.read');
+microsoftProvider.addScope('email');
 
 export const phoneProvider = new PhoneAuthProvider(auth);
 
@@ -234,7 +272,7 @@ if (typeof window !== 'undefined') {
       
       // Set default user properties
       setUserProperties(analytics, {
-        app_version: process.env.REACT_APP_VERSION || '1.0.0',
+        app_version: process.env.REACT_APP_VERSION || '2.5.0',
         environment: process.env.NODE_ENV,
         platform: 'web'
       });
@@ -248,8 +286,8 @@ if (typeof window !== 'undefined') {
     performance = getPerformance(app);
     console.log('⚡ Performance monitoring initialized');
     
-    // Log Core Web Vitals in development
-    if (process.env.NODE_ENV === 'development') {
+    // Log Core Web Vitals in development only if enabled
+    if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_LOG_WEB_VITALS === 'true') {
       onCLS(metric => console.log('CLS:', metric.value));
       onFID(metric => console.log('FID:', metric.value));
       onLCP(metric => console.log('LCP:', metric.value));
@@ -275,9 +313,11 @@ if (typeof window !== 'undefined') {
       min_app_version: '1.0.0',
       max_resumes_free: 5,
       enable_ai_suggestions: true,
-      enable_job_matching: false,
+      enable_job_matching: true,
       enable_collaboration: false,
-      pricing_annual_discount: 20
+      pricing_annual_discount: 20,
+      enable_beta_features: false,
+      enable_chat_support: true
     };
     
     console.log('🎛️ Remote Config initialized');
@@ -422,6 +462,21 @@ export const getAllRemoteConfig = () => {
   return getAll(remoteConfig);
 };
 
+export const getRemoteConfigBoolean = (key) => {
+  const value = getRemoteConfigValue(key);
+  return value?.asBoolean() || false;
+};
+
+export const getRemoteConfigString = (key) => {
+  const value = getRemoteConfigValue(key);
+  return value?.asString() || '';
+};
+
+export const getRemoteConfigNumber = (key) => {
+  const value = getRemoteConfigValue(key);
+  return value?.asNumber() || 0;
+};
+
 // Messaging helpers
 export const requestNotificationPermission = async () => {
   if (!messaging) return null;
@@ -447,6 +502,17 @@ export const onMessageListener = (callback) => {
   return onMessage(messaging, callback);
 };
 
+export const deleteNotificationToken = async () => {
+  if (!messaging) return false;
+  try {
+    await deleteToken(messaging);
+    return true;
+  } catch (error) {
+    console.error('Error deleting token:', error);
+    return false;
+  }
+};
+
 // Analytics helpers
 export const logAnalyticsEvent = (eventName, eventParams = {}) => {
   if (analytics) {
@@ -455,6 +521,12 @@ export const logAnalyticsEvent = (eventName, eventParams = {}) => {
       timestamp: new Date().toISOString(),
       page: window.location.pathname
     });
+  }
+};
+
+export const setUserAnalyticsProperties = (properties) => {
+  if (analytics) {
+    setUserProperties(analytics, properties);
   }
 };
 
@@ -482,10 +554,29 @@ export const stopTrace = async (perfTrace) => {
   }
 };
 
+export const incrementMetric = async (perfTrace, metricName, value = 1) => {
+  if (perfTrace) {
+    perfTrace.incrementMetric(metricName, value);
+  }
+};
+
 // Vertex AI helpers
 export const getGenerativeModelInstance = (modelName = 'gemini-pro') => {
   if (!vertexAI) return null;
   return getGenerativeModel(vertexAI, { model: modelName });
+};
+
+export const generateAIContent = async (prompt) => {
+  const model = getGenerativeModelInstance();
+  if (!model) return null;
+  
+  try {
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (error) {
+    console.error('Error generating AI content:', error);
+    return null;
+  }
 };
 
 // Utility functions
@@ -504,7 +595,8 @@ export const getFirebaseEnvironment = () => {
     performanceEnabled: !!performance,
     remoteConfigEnabled: !!remoteConfig,
     messagingEnabled: !!messaging,
-    vertexAIEnabled: !!vertexAI
+    vertexAIEnabled: !!vertexAI,
+    appCheckEnabled: !!appCheck
   };
 };
 
@@ -519,7 +611,8 @@ export const checkFirebaseHealth = async () => {
     performance: !!performance,
     remoteConfig: !!remoteConfig,
     messaging: !!messaging,
-    vertexAI: !!vertexAI
+    vertexAI: !!vertexAI,
+    appCheck: !!appCheck
   };
 
   console.log('🏥 Firebase Health Check:', health);
@@ -549,6 +642,31 @@ export const uploadFile = (path, file, onProgress) => {
   });
 };
 
+export const deleteFile = async (path) => {
+  try {
+    const storageRef = ref(storage, path);
+    await deleteObject(storageRef);
+    return true;
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    return false;
+  }
+};
+
+export const listFiles = async (path) => {
+  try {
+    const storageRef = ref(storage, path);
+    const result = await listAll(storageRef);
+    return {
+      items: result.items,
+      prefixes: result.prefixes
+    };
+  } catch (error) {
+    console.error('Error listing files:', error);
+    return { items: [], prefixes: [] };
+  }
+};
+
 // ============================================
 // EXPORT DEFAULT
 // ============================================
@@ -564,10 +682,13 @@ const firebaseServices = {
   remoteConfig,
   messaging,
   vertexAI,
+  appCheck,
   providers: {
     google: googleProvider,
     github: githubProvider,
     twitter: twitterProvider,
+    facebook: facebookProvider,
+    microsoft: microsoftProvider,
     phone: phoneProvider
   }
 };
@@ -577,4 +698,4 @@ if (process.env.NODE_ENV === 'development') {
   console.log('📦 Firebase Services:', Object.keys(firebaseServices).filter(k => firebaseServices[k]));
 }
 
-export default firebase;
+export default firebaseServices;

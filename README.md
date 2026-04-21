@@ -1,6 +1,3 @@
-This is an absolutely fantastic README! It's comprehensive, well-structured, visually appealing, and professional. Here's an enhanced version with even more polish, additional sections, and production-ready details:
-
-```markdown
 # 🚀 ResumeAI Pro
 
 <div align="center">
@@ -14,7 +11,7 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
     <img src="https://img.shields.io/badge/Tailwind-3.4.0-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind" />
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome" />
-    <img src="https://img.shields.io/badge/Version-2.0.0-blue.svg" alt="Version" />
+    <img src="https://img.shields.io/badge/Version-2.5.0-blue.svg" alt="Version" />
   </p>
   
   <p>
@@ -61,6 +58,7 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
 | 📄 Resumes Created | 100,000+ |
 | ⭐ User Rating | 4.9/5 |
 | 🎯 Interview Success Rate | 85% |
+| 📋 Free Resumes | 5 |
 
 ### 💡 Why ResumeAI Pro?
 
@@ -70,6 +68,7 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
 - **Real-Time Preview**: See changes as you make them
 - **Comprehensive Analytics**: Track your resume performance
 - **Secure & Private**: Bank-level encryption and GDPR compliant
+- **Free Tier**: 5 free resumes, no credit card required
 
 ---
 
@@ -82,6 +81,7 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
 | 🌐 Google Sign-In | One-click Google authentication | ✅ |
 | 📱 Phone OTP | Phone number verification with OTP | ✅ |
 | 🐦 GitHub OAuth | Sign in with GitHub | ✅ |
+| 📘 Facebook OAuth | Sign in with Facebook | ✅ |
 | 🛡️ Role-Based Access | User and Admin role management | ✅ |
 | 🔒 2FA Ready | Two-factor authentication support | 🔄 |
 | 🔐 Firebase Security | Production-ready security rules | ✅ |
@@ -101,20 +101,20 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
 ### 🤖 ATS Intelligence
 | Feature | Description | Status |
 |---------|-------------|--------|
-| 📊 Real-Time ATS Score | Live compatibility scoring | ✅ |
+| 📊 Real-Time ATS Score | Live compatibility scoring with letter grade | ✅ |
 | 🔍 Resume Scanner | Upload and analyze existing resumes | ✅ |
 | 💡 Keyword Suggestions | Industry-specific recommendations | ✅ |
 | 📈 Improvement Tips | Actionable optimization suggestions | ✅ |
-| 📑 Detailed Reports | Comprehensive ATS analysis | ✅ |
+| 📑 Detailed Reports | Comprehensive ATS analysis with breakdown | ✅ |
 | 🎯 Industry Detection | Auto-detect target industry | ✅ |
 
 ### 👤 User Dashboard
 | Feature | Description | Status |
 |---------|-------------|--------|
-| 📁 Resume Management | Create, edit, duplicate, delete | ✅ |
-| 📊 Analytics Overview | Track resume performance | ✅ |
+| 📁 Resume Management | Create, edit, duplicate, delete, archive | ✅ |
+| 📊 Analytics Overview | Track resume performance and downloads | ✅ |
 | 🎯 Quick Actions | Fast access to common tasks | ✅ |
-| 🔔 Smart Notifications | Stay updated on activity | ✅ |
+| 🔔 Smart Notifications | Stay updated on activity with browser notifications | ✅ |
 | 📱 Mobile Responsive | Full mobile support | ✅ |
 | 🌓 Dark/Light Mode | Theme switching with persistence | ✅ |
 
@@ -138,6 +138,7 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
 | 🔲 Glassmorphism | Modern glass design | ✅ |
 | ⚡ Fast Performance | Optimized loading and rendering | ✅ |
 | ♿ Accessibility | WCAG 2.1 AA compliant | ✅ |
+| ⌨️ Keyboard Shortcuts | 15+ shortcuts for power users | ✅ |
 
 ---
 
@@ -147,58 +148,15 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
   
 | Environment | URL | Status |
 |-------------|-----|--------|
-| 🌍 **Production** | [resumeaipro.netlify.app](https://resumeaipro.netlify.app) | 🟢 Live |
-| 🧪 **Staging** | [staging.resumeaipro.netlify.app](https://staging.resumeaipro.netlify.app) | 🟡 Testing |
-| 🛠️ **Development** | [dev.resumeaipro.netlify.app](https://dev.resumeaipro.netlify.app) | 🔵 Dev |
+| 🌍 **Production** | [resumeaixpro.netlify.app](https://resumeaixpro.netlify.app) | 🟢 Live |
 
 ### 🔑 Demo Credentials
 
 | Role | Email | Password |
 |------|-------|----------|
-| 👤 **User** | demo@example.com | demo123456 |
-| 👑 **Admin** | admin@example.com | admin123456 |
+| 👤 **User** | demo@resumeaipro.com | demo123456 |
+| 👑 **Admin** | admin@resumeaipro.com | admin123456 |
 
-</div>
-
----
-
-## 🎨 Screenshots
-
-<div align="center">
-  <table>
-    <tr>
-      <td><b>🏠 Landing Page</b></td>
-      <td><b>🔐 Authentication</b></td>
-    </tr>
-    <tr>
-      <td><img src="https://via.placeholder.com/400x250/6366f1/ffffff?text=Landing+Page" alt="Landing" /></td>
-      <td><img src="https://via.placeholder.com/400x250/8b5cf6/ffffff?text=Login+Screen" alt="Login" /></td>
-    </tr>
-    <tr>
-      <td><b>📝 Resume Builder</b></td>
-      <td><b>👁️ Live Preview</b></td>
-    </tr>
-    <tr>
-      <td><img src="https://via.placeholder.com/400x250/ec4899/ffffff?text=Resume+Builder" alt="Builder" /></td>
-      <td><img src="https://via.placeholder.com/400x250/10b981/ffffff?text=Live+Preview" alt="Preview" /></td>
-    </tr>
-    <tr>
-      <td><b>📊 User Dashboard</b></td>
-      <td><b>👑 Admin Dashboard</b></td>
-    </tr>
-    <tr>
-      <td><img src="https://via.placeholder.com/400x250/f59e0b/ffffff?text=User+Dashboard" alt="User Dashboard" /></td>
-      <td><img src="https://via.placeholder.com/400x250/ef4444/ffffff?text=Admin+Dashboard" alt="Admin Dashboard" /></td>
-    </tr>
-    <tr>
-      <td><b>🤖 ATS Scanner</b></td>
-      <td><b>📄 Templates</b></td>
-    </tr>
-    <tr>
-      <td><img src="https://via.placeholder.com/400x250/3b82f6/ffffff?text=ATS+Scanner" alt="ATS Scanner" /></td>
-      <td><img src="https://via.placeholder.com/400x250/8b5cf6/ffffff?text=Templates" alt="Templates" /></td>
-    </tr>
-  </table>
 </div>
 
 ---
@@ -220,25 +178,18 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
 | Icons | React Icons | 4.12.0 |
 | PDF | jsPDF + html2canvas | 2.5.1 |
 | State | Zustand + Context | 4.5.7 |
+| Query | TanStack Query | 5.14.0 |
 
 ### Backend & Services
-| Category | Technology | Version |
-|----------|-----------|---------|
-| Platform | Firebase | 10.7.1 |
-| Database | Cloud Firestore | - |
-| Auth | Firebase Auth | - |
-| Storage | Cloud Storage | - |
-| Functions | Cloud Functions | Node 18 |
-| Hosting | Firebase Hosting | - |
-| Analytics | Firebase Analytics | - |
-
-### Development Tools
 | Category | Technology |
 |----------|-----------|
-| Linting | ESLint + Prettier |
-| Testing | Jest + React Testing Library |
-| Git Hooks | Husky + lint-staged |
-| Deployment | Netlify / Vercel |
+| Platform | Firebase |
+| Database | Cloud Firestore |
+| Auth | Firebase Auth |
+| Storage | Cloud Storage |
+| Functions | Cloud Functions (Node 18) |
+| Hosting | Netlify / Firebase |
+| Analytics | Firebase Analytics |
 
 </div>
 
@@ -256,523 +207,79 @@ This is an absolutely fantastic README! It's comprehensive, well-structured, vis
 ### 🚀 One-Command Setup
 
 ```bash
-# Clone and install
-git clone https://github.com/usmannmurtazaa/resumeai-pro.git && cd resumeai-pro && npm install
+# Clone, install, and start
+git clone https://github.com/usmannmurtazaa/resumeai-pro.git && cd resumeai-pro && npm install && cp .env.example .env && npm start
 
-# Copy environment variables
-cp .env.example .env
+---
 
-# Start development server
-npm start
-```
+📦 Detailed Installation
 
-### 📦 Detailed Installation
-
-#### 1️⃣ Clone the Repository
-
-```bash
+# 1. Clone repository
 git clone https://github.com/usmannmurtazaa/resumeai-pro.git
 cd resumeai-pro
-```
 
-#### 2️⃣ Install Dependencies
-
-```bash
+# 2. Install dependencies
 npm install
-```
 
-#### 3️⃣ Environment Configuration
-
-Create a `.env` file in the root directory:
-
-```bash
+# 3. Configure environment
 cp .env.example .env
-```
+# Edit .env with your Firebase credentials
 
-Edit `.env` with your Firebase configuration:
-
-```env
-# Firebase Configuration
-REACT_APP_FIREBASE_API_KEY=your_api_key_here
-REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-REACT_APP_FIREBASE_PROJECT_ID=your_project_id
-REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-REACT_APP_FIREBASE_APP_ID=your_app_id
-REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
-
-# Optional Integrations
-REACT_APP_OPENAI_API_KEY=your_openai_key
-REACT_APP_STRIPE_PUBLIC_KEY=your_stripe_key
-```
-
-#### 4️⃣ Run Development Server
-
-```bash
+# 4. Start development server
 npm start
-```
 
-Visit `http://localhost:3000` 🎉
-
-#### 5️⃣ Build for Production
-
-```bash
-npm run build
-```
-
----
-
-## 🔥 Firebase Setup
-
-### 1️⃣ Create Firebase Project
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Click **"Add Project"**
-3. Enter project name: `resumeai-pro`
-4. Follow setup wizard
-
-### 2️⃣ Register Web App
-
-1. Click **Web App** (</>)
-2. Register app: `resumeai-pro-web`
-3. Copy configuration to `.env`
-
-### 3️⃣ Enable Authentication
-
-```
-Authentication → Sign-in methods
-├── ✅ Email/Password
-├── ✅ Google (configure OAuth)
-├── ✅ Phone (enable)
-└── ✅ GitHub (optional)
-```
-
-### 4️⃣ Create Firestore Database
-
-```
-Firestore Database → Create database
-├── Start in test mode
-└── Choose location (us-central1)
-```
-
-### 5️⃣ Set Up Storage
-
-```
-Storage → Get Started
-├── Start in test mode
-└── Choose location
-```
-
-### 6️⃣ Deploy Security Rules
-
-```bash
-# Install Firebase CLI
-npm install -g firebase-tools
-
-# Login
-firebase login
-
-# Initialize
-firebase init
-
-# Select features:
-# ✅ Firestore
-# ✅ Storage
-# ✅ Hosting
-# ✅ Functions
-# ✅ Emulators
-
-# Deploy rules
-firebase deploy --only firestore:rules
-firebase deploy --only storage:rules
-```
-
-### 7️⃣ Deploy Indexes
-
-```bash
-firebase deploy --only firestore:indexes
-```
-
----
-
-## 🚀 Deployment
-
-### 📦 Build the Application
-
-```bash
-# Production build
+# 5. Build for production
 npm run build
 
-# Analyze bundle size
-npm run analyze
-```
+---
 
-### ▲ Deploy to Vercel (Recommended)
+🤝 Contributing
 
-```bash
-# Install Vercel CLI
-npm i -g vercel
+We ❤️ contributions! Here's how:
 
-# Deploy to production
-vercel --prod
-```
+Fork the repository
 
-### 🌐 Deploy to Netlify
+Create a feature branch (git checkout -b feature/amazing-feature)
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/usmannmurtazaa/resumeai-pro)
+Commit your changes (git commit -m '✨ Add amazing feature')
 
-```bash
-# Install Netlify CLI
-npm i -g netlify-cli
+Push to the branch (git push origin feature/amazing-feature)
 
-# Deploy
-netlify deploy --prod
-```
+Open a Pull Request
 
-### 🔥 Deploy to Firebase Hosting
-
-```bash
-# Deploy everything
-firebase deploy
-
-# Deploy only hosting
-firebase deploy --only hosting
-```
-
-### ☁️ Deploy Cloud Functions
-
-```bash
-# Deploy functions
-firebase deploy --only functions
-
-# Deploy specific function
-firebase deploy --only functions:sendWelcomeEmail
-```
+See CONTRIBUTING.md for detailed guidelines.
 
 ---
 
-## 📁 Project Structure
+📄 License
 
-```
-resumeai-pro/
-├── 📂 public/                      # Static assets
-│   ├── 🖼️ favicon.svg             # Favicon
-│   ├── 🖼️ logo.svg                # Logo
-│   ├── 🖼️ og-image.png            # Social preview
-│   ├── 📄 manifest.json           # PWA manifest
-│   ├── 📄 robots.txt              # SEO
-│   └── 📄 index.html              # Entry HTML
-│
-├── 📂 src/
-│   ├── 📂 components/             # React components
-│   │   ├── 📂 auth/              # Authentication
-│   │   │   ├── LoginForm.jsx
-│   │   │   ├── SignUpForm.jsx
-│   │   │   ├── PrivateRoute.jsx
-│   │   │   └── GoogleAuthButton.jsx
-│   │   │
-│   │   ├── 📂 dashboard/         # Dashboard
-│   │   │   ├── UserDashboard.jsx
-│   │   │   ├── AdminDashboard.jsx
-│   │   │   └── ResumeCard.jsx
-│   │   │
-│   │   ├── 📂 resume/            # Resume builder
-│   │   │   ├── ResumeBuilder.jsx
-│   │   │   ├── ResumePreview.jsx
-│   │   │   ├── sections/         # Form sections
-│   │   │   └── templates/        # Resume templates
-│   │   │
-│   │   ├── 📂 common/            # Shared components
-│   │   │   ├── Navbar.jsx
-│   │   │   ├── Sidebar.jsx
-│   │   │   ├── Footer.jsx
-│   │   │   └── Loader.jsx
-│   │   │
-│   │   └── 📂 ui/                # UI primitives
-│   │       ├── Button.jsx
-│   │       ├── Input.jsx
-│   │       ├── Card.jsx
-│   │       └── Modal.jsx
-│   │
-│   ├── 📂 contexts/              # React contexts
-│   │   ├── AuthContext.jsx
-│   │   ├── ThemeContext.jsx
-│   │   ├── NotificationContext.jsx
-│   │   └── SettingsContext.jsx
-│   │
-│   ├── 📂 services/              # Services
-│   │   ├── firebase.js           # Firebase config
-│   │   ├── authService.js        # Auth service
-│   │   ├── resumeService.js      # Resume service
-│   │   └── storageService.js     # Storage service
-│   │
-│   ├── 📂 utils/                 # Utilities
-│   │   ├── atsKeywords.js        # ATS keywords
-│   │   ├── pdfGenerator.js       # PDF generation
-│   │   └── validators.js         # Form validators
-│   │
-│   ├── 📂 hooks/                 # Custom hooks
-│   │   ├── useAuth.js
-│   │   ├── useResume.js
-│   │   └── useDebounce.js
-│   │
-│   ├── 📂 pages/                 # Page components
-│   │   ├── Home.jsx
-│   │   ├── Login.jsx
-│   │   ├── SignUp.jsx
-│   │   ├── Dashboard.jsx
-│   │   ├── Builder.jsx
-│   │   └── Admin.jsx
-│   │
-│   ├── 📂 layouts/               # Layout components
-│   │   ├── MainLayout.jsx
-│   │   ├── DashboardLayout.jsx
-│   │   ├── AdminLayout.jsx
-│   │   └── AuthLayout.jsx
-│   │
-│   ├── 📂 styles/                # Global styles
-│   │   ├── globals.css
-│   │   └── animations.css
-│   │
-│   ├── 📄 App.jsx                # Root component
-│   └── 📄 index.js               # Entry point
-│
-├── 📂 functions/                  # Firebase Cloud Functions
-│   ├── 📄 index.js               # Functions entry
-│   └── 📄 package.json           # Functions dependencies
-│
-├── 📄 .env.example               # Environment template
-├── 📄 .eslintrc.js               # ESLint configuration
-├── 📄 .prettierrc                # Prettier configuration
-├── 📄 tailwind.config.js         # Tailwind configuration
-├── 📄 firebase.json              # Firebase configuration
-├── 📄 firestore.rules            # Firestore security rules
-├── 📄 firestore.indexes.json     # Firestore indexes
-├── 📄 storage.rules              # Storage security rules
-├── 📄 package.json               # Dependencies
-├── 📄 README.md                  # Documentation
-└── 📄 LICENSE                    # License
-```
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+Copyright © 2026 Usman Murtaza
 
 ---
 
-## 📚 Documentation
+👨‍💻 Author
 
-### 📖 Core Concepts
-
-| Document | Description |
-|----------|-------------|
-| [📘 Getting Started](https://docs.resumeaipro.com/getting-started) | Quick start guide |
-| [🔐 Authentication](https://docs.resumeaipro.com/auth) | Auth system overview |
-| [📝 Resume Builder](https://docs.resumeaipro.com/builder) | Builder documentation |
-| [🤖 ATS Scanner](https://docs.resumeaipro.com/ats-scanner) | Scanner guide |
-| [👑 Admin Panel](https://docs.resumeaipro.com/admin) | Admin documentation |
-
-### 🔧 API Reference
-
-| Endpoint | Description |
-|----------|-------------|
-| `POST /api/resumes` | Create resume |
-| `GET /api/resumes/:id` | Get resume |
-| `PUT /api/resumes/:id` | Update resume |
-| `DELETE /api/resumes/:id` | Delete resume |
-| `POST /api/ats/scan` | Scan resume |
-| `GET /api/analytics` | Get analytics |
-
-### 🎨 Component Library
-
-View our [Storybook](https://storybook.resumeaipro.com) for UI components.
+<div align="center"> <h3>Usman Murtaza</h3> <p>Full Stack Developer & UI/UX Enthusiast</p> <p> <a href="https://github.com/usmannmurtazaa"><img src="https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white" /></a> <a href="https://linkedin.com/in/usmanmurtaza01"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white" /></a> <a href="https://usmanmurtaza.netlify.app"><img src="https://img.shields.io/badge/Portfolio-6366f1?logo=vercel&logoColor=white" /></a> <a href="https://twitter.com/usmannmurtazaa"><img src="https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white" /></a> </p> </div>
 
 ---
 
-## 🤝 Contributing
-
-We ❤️ contributions! Here's how you can help:
-
-### 📋 Contribution Workflow
-
-```mermaid
-graph LR
-    A[Fork] --> B[Branch]
-    B --> C[Code]
-    C --> D[Test]
-    D --> E[Commit]
-    E --> F[Push]
-    F --> G[PR]
-```
-
-### 🚀 Getting Started
-
-1. **Fork** the repository
-2. **Clone** your fork
-3. **Create** a feature branch
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-4. **Make** your changes
-5. **Test** your changes
-   ```bash
-   npm run test
-   npm run lint
-   ```
-6. **Commit** with meaningful message
-   ```bash
-   git commit -m "✨ Add amazing feature"
-   ```
-7. **Push** to your fork
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-8. **Open** a Pull Request
-
-### 📏 Code Style
-
-- Follow [Airbnb JavaScript Style Guide](https://github.com/airbnb/javascript)
-- Use **Prettier** for formatting
-- Write **meaningful commit messages** ([Conventional Commits](https://www.conventionalcommits.org/))
-- Add **JSDoc comments** for functions
-- Update **documentation** for significant changes
-
-### 🐛 Reporting Issues
-
-Use [GitHub Issues](https://github.com/usmannmurtazaa/resumeai-pro/issues) with:
-
-- **Clear title** and description
-- **Steps to reproduce**
-- **Expected vs actual behavior**
-- **Screenshots** (if applicable)
-- **Environment** (OS, Browser, Node version)
-
-### 🎯 Good First Issues
-
-Look for [good first issue](https://github.com/usmannmurtazaa/resumeai-pro/labels/good%20first%20issue) label!
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2026 Usman Murtaza
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-## 👨‍💻 Author
-
-<div align="center">
-  <img src="https://via.placeholder.com/120/6366f1/ffffff?text=UM" alt="Usman Murtaza" width="120" style="border-radius: 50%;" />
-  
-  <h3>Usman Murtaza</h3>
-  <p>Full Stack Developer & UI/UX Enthusiast</p>
-  <p>Building tools to help people succeed in their careers.</p>
-  
-  <p>
-    <a href="https://github.com/usmannmurtazaa">
-      <img src="https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white" alt="GitHub" />
-    </a>
-    <a href="https://linkedin.com/in/usmanmurtaza01">
-      <img src="https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white" alt="LinkedIn" />
-    </a>
-    <a href="https://usmanmurtaza.netlify.app">
-      <img src="https://img.shields.io/badge/Portfolio-6366f1?logo=vercel&logoColor=white" alt="Portfolio" />
-    </a>
-    <a href="https://twitter.com/usmannmurtazaa">
-      <img src="https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white" alt="Twitter" />
-    </a>
-    <a href="mailto:usman@resumeaipro.com">
-      <img src="https://img.shields.io/badge/Email-EA4335?logo=gmail&logoColor=white" alt="Email" />
-    </a>
-  </p>
-</div>
-
----
-
-## 🙏 Acknowledgments
-
-### 🏗️ Built With
-- [React](https://reactjs.org/) - UI Library
-- [Firebase](https://firebase.google.com/) - Backend Platform
-- [Tailwind CSS](https://tailwindcss.com/) - Styling Framework
-- [Framer Motion](https://www.framer.com/motion/) - Animation Library
-- [React Icons](https://react-icons.github.io/react-icons/) - Icon Library
-- [Recharts](https://recharts.org/) - Charting Library
-- [React Hook Form](https://react-hook-form.com/) - Form Management
-
-### 🎨 Design Inspiration
-- [Tailwind UI](https://tailwindui.com/)
-- [shadcn/ui](https://ui.shadcn.com/)
-- [HyperUI](https://www.hyperui.dev/)
-
-### 📚 Resources
-- [Firebase Documentation](https://firebase.google.com/docs)
-- [React Documentation](https://react.dev/)
-- [Tailwind Documentation](https://tailwindcss.com/docs)
-
-### 🌟 Special Thanks
-- All our [contributors](https://github.com/usmannmurtazaa/resumeai-pro/graphs/contributors)
-- Our amazing users who provide feedback
-- The open-source community
-
----
-
-## ⭐ Support
+⭐ Support
 
 If you find this project helpful, please consider:
 
-| Action | Link |
-|--------|------|
-| ⭐ **Star** | [Star on GitHub](https://github.com/usmannmurtazaa/resumeai-pro) |
-| 🐦 **Share** | [Tweet about it](https://twitter.com/intent/tweet?text=Check%20out%20ResumeAI%20Pro%20-%20AI-powered%20ATS%20resume%20builder!&url=https://github.com/usmannmurtazaa/resumeai-pro) |
-| 💬 **Feedback** | [Open an issue](https://github.com/usmannmurtazaa/resumeai-pro/issues) |
-| ☕ **Sponsor** | [GitHub Sponsors](https://github.com/sponsors/usmannmurtazaa) |
+⭐ Starring the repository
 
----
+🐦 Sharing on social media
 
-## 📊 Project Status
+💬 Providing feedback
 
-| Metric | Status |
-|--------|--------|
-| 🏗️ **Build** | ![Build Status](https://img.shields.io/github/actions/workflow/status/usmannmurtazaa/resumeai-pro/ci.yml) |
-| 📦 **Version** | ![Version](https://img.shields.io/github/package-json/v/usmannmurtazaa/resumeai-pro) |
-| 🐛 **Issues** | ![Issues](https://img.shields.io/github/issues/usmannmurtazaa/resumeai-pro) |
-| 🔀 **PRs** | ![PRs](https://img.shields.io/github/issues-pr/usmannmurtazaa/resumeai-pro) |
-| ⭐ **Stars** | ![Stars](https://img.shields.io/github/stars/usmannmurtazaa/resumeai-pro) |
-| 📈 **Activity** | ![Activity](https://img.shields.io/github/commit-activity/m/usmannmurtazaa/resumeai-pro) |
+<div align="center"> <p>Made with ❤️ by <a href="https://usmanmurtaza.netlify.app">Usman Murtaza</a></p>
+<a href="#-resumeai-pro">Back to Top ↑</a>
 
----
 
-<div align="center">
-  <p>Made with ❤️ by <a href="https://usmanmurtaza.netlify.app">Usman Murtaza</a></p>
-  
-  <p>
-    <a href="#-resumeai-pro">Back to Top ↑</a>
-  </p>
-  
-  <br />
-  
-  <img src="public/logo.svg" alt="ResumeAI Pro" width="150" />
-  
-  <p>© 2026 ResumeAI Pro. All rights reserved.</p>
-</div>
+
+
+<img src="public/logo.svg" alt="ResumeAI Pro" width="150" /> <p>© 2026 ResumeAI Pro. All rights reserved.</p> </div> ```
+

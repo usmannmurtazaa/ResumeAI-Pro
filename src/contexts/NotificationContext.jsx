@@ -1,25 +1,30 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
+import {
+  collection,
+  query,
+  where,
   orderBy,
   limit,
-  onSnapshot, 
-  updateDoc, 
-  doc, 
+  onSnapshot,
+  updateDoc,
+  doc,
   deleteDoc,
   writeBatch,
   addDoc,
   serverTimestamp,
-  getDocs
+  getDocs,
+  startAfter,
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { useSettings } from './SettingsContext';
 import toast from 'react-hot-toast';
 
-const NotificationContext = createContext();
+// ============================================
+// CONTEXT CREATION
+// ============================================
+
+const NotificationContext = createContext(null);
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
@@ -29,18 +34,30 @@ export const useNotifications = () => {
   return context;
 };
 
-// Notification types and their configurations
+// ============================================
+// NOTIFICATION TYPES & CONFIGURATIONS
+// ============================================
+
 export const NotificationTypes = {
   SUCCESS: 'success',
   INFO: 'info',
   WARNING: 'warning',
   ERROR: 'error',
+  RESUME_CREATED: 'resume_created',
   RESUME_UPDATED: 'resume_updated',
+  RESUME_DELETED: 'resume_deleted',
   RESUME_DOWNLOADED: 'resume_downloaded',
+  RESUME_DUPLICATED: 'resume_duplicated',
   ATS_SCORE_CHANGED: 'ats_score_changed',
+  ATS_SCORE_MILESTONE: 'ats_score_milestone',
   SUBSCRIPTION_EXPIRING: 'subscription_expiring',
+  SUBSCRIPTION_RENEWED: 'subscription_renewed',
+  PAYMENT_FAILED: 'payment_failed',
   NEW_FEATURE: 'new_feature',
-  SYSTEM: 'system'
+  SYSTEM_MAINTENANCE: 'system_maintenance',
+  SYSTEM: 'system',
+  WELCOME: 'welcome',
+  TIP: 'tip',
 };
 
 // Notification icons mapping
@@ -49,13 +66,41 @@ const NotificationIcons = {
   [NotificationTypes.INFO]: 'ℹ️',
   [NotificationTypes.WARNING]: '⚠️',
   [NotificationTypes.ERROR]: '❌',
+  [NotificationTypes.RESUME_CREATED]: '📄',
   [NotificationTypes.RESUME_UPDATED]: '📝',
+  [NotificationTypes.RESUME_DELETED]: '🗑️',
   [NotificationTypes.RESUME_DOWNLOADED]: '📥',
+  [NotificationTypes.RESUME_DUPLICATED]: '📋',
   [NotificationTypes.ATS_SCORE_CHANGED]: '📊',
+  [NotificationTypes.ATS_SCORE_MILESTONE]: '🏆',
   [NotificationTypes.SUBSCRIPTION_EXPIRING]: '💳',
+  [NotificationTypes.SUBSCRIPTION_RENEWED]: '✅',
+  [NotificationTypes.PAYMENT_FAILED]: '❌',
   [NotificationTypes.NEW_FEATURE]: '🎉',
-  [NotificationTypes.SYSTEM]: '🔔'
+  [NotificationTypes.SYSTEM_MAINTENANCE]: '🔧',
+  [NotificationTypes.SYSTEM]: '🔔',
+  [NotificationTypes.WELCOME]: '👋',
+  [NotificationTypes.TIP]: '💡',
 };
+
+// Notification colors for UI
+const NotificationColors = {
+  [NotificationTypes.SUCCESS]: 'bg-green-50 border-green-200 text-green-800',
+  [NotificationTypes.INFO]: 'bg-blue-50 border-blue-200 text-blue-800',
+  [NotificationTypes.WARNING]: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+  [NotificationTypes.ERROR]: 'bg-red-50 border-red-200 text-red-800',
+};
+
+// Default notification settings
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  maxNotifications: 100,
+  autoDeleteReadAfterDays: 30,
+  groupSimilar: true,
+};
+
+// ============================================
+// PROVIDER COMPONENT
+// ============================================
 
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
@@ -65,8 +110,14 @@ export const NotificationProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastSynced, setLastSynced] = useState(null);
+  const [lastVisible, setLastVisible] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Real-time notifications subscription
+  // ============================================
+  // REAL-TIME NOTIFICATIONS SUBSCRIPTION
+  // ============================================
+
   useEffect(() => {
     if (!user) {
       setNotifications([]);
@@ -85,22 +136,28 @@ export const NotificationProvider = ({ children }) => {
       limit(50)
     );
 
-    const unsubscribe = onSnapshot(q, 
+    const unsubscribe = onSnapshot(
+      q,
       (snapshot) => {
-        const notificationData = snapshot.docs.map(doc => ({
+        const notificationData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate?.() || new Date()
+          createdAt: doc.data().createdAt?.toDate?.() || new Date(),
         }));
-        
+
+        // Group similar notifications if enabled
+        const grouped = groupSimilarNotifications(notificationData);
+
         // Sort by created date and read status
-        const sorted = notificationData.sort((a, b) => {
+        const sorted = grouped.sort((a, b) => {
           if (a.read !== b.read) return a.read ? 1 : -1;
           return b.createdAt - a.createdAt;
         });
-        
+
         setNotifications(sorted);
-        setUnreadCount(notificationData.filter(n => !n.read).length);
+        setUnreadCount(notificationData.filter((n) => !n.read).length);
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+        setHasMore(snapshot.docs.length === 50);
         setLastSynced(new Date());
         setLoading(false);
       },
@@ -115,7 +172,73 @@ export const NotificationProvider = ({ children }) => {
     return () => unsubscribe();
   }, [user]);
 
-  // Request browser notification permission
+  // ============================================
+  // LOAD MORE NOTIFICATIONS (PAGINATION)
+  // ============================================
+
+  const loadMore = useCallback(async () => {
+    if (!user || !lastVisible || !hasMore || loading) return;
+
+    try {
+      const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc'),
+        startAfter(lastVisible),
+        limit(50)
+      );
+
+      const snapshot = await getDocs(q);
+      const newNotifications = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+      }));
+
+      setNotifications((prev) => {
+        const allNotifications = [...prev, ...newNotifications];
+        return groupSimilarNotifications(allNotifications);
+      });
+      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMore(snapshot.docs.length === 50);
+    } catch (error) {
+      console.error('Error loading more notifications:', error);
+    }
+  }, [user, lastVisible, hasMore, loading]);
+
+  // ============================================
+  // GROUP SIMILAR NOTIFICATIONS
+  // ============================================
+
+  const groupSimilarNotifications = useCallback((notifs) => {
+    if (!settings?.groupSimilar) return notifs;
+
+    const grouped = [];
+    const groupMap = new Map();
+
+    notifs.forEach((notif) => {
+      const key = `${notif.type}-${notif.title}`;
+      const existing = groupMap.get(key);
+
+      if (existing && !existing.read && !notif.read) {
+        existing.count = (existing.count || 1) + 1;
+        existing.message = `${existing.count} similar notifications`;
+        if (notif.createdAt > existing.createdAt) {
+          existing.createdAt = notif.createdAt;
+        }
+      } else {
+        groupMap.set(key, { ...notif, count: 1 });
+        grouped.push({ ...notif, count: 1 });
+      }
+    });
+
+    return grouped;
+  }, [settings?.groupSimilar]);
+
+  // ============================================
+  // BROWSER NOTIFICATIONS
+  // ============================================
+
   const requestBrowserPermission = useCallback(async () => {
     if (!('Notification' in window)) {
       console.warn('Browser notifications not supported');
@@ -134,76 +257,117 @@ export const NotificationProvider = ({ children }) => {
     return false;
   }, []);
 
-  // Show browser notification
-  const showBrowserNotification = useCallback((title, options = {}) => {
-    if (!settings?.desktopNotifications) return;
-    
-    if (Notification.permission === 'granted') {
-      new Notification(title, {
-        icon: '/logo192.png',
-        badge: '/favicon.ico',
-        ...options
-      });
-    }
-  }, [settings?.desktopNotifications]);
+  const showBrowserNotification = useCallback(
+    (title, options = {}) => {
+      if (!settings?.desktopNotifications) return;
 
-  // Create a new notification
-  const createNotification = useCallback(async ({
-    type = NotificationTypes.INFO,
-    title,
-    message,
-    link = null,
-    metadata = {},
-    showToast = true,
-    showBrowser = true
-  }) => {
-    if (!user) return null;
+      if (Notification.permission === 'granted') {
+        const notification = new Notification(title, {
+          icon: '/logo192.png',
+          badge: '/favicon.ico',
+          silent: !settings?.soundEnabled,
+          ...options,
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          if (options.link) {
+            window.location.href = options.link;
+          }
+          notification.close();
+        };
+
+        // Auto close after 5 seconds
+        setTimeout(() => notification.close(), 5000);
+      }
+    },
+    [settings?.desktopNotifications, settings?.soundEnabled]
+  );
+
+  // Play notification sound
+  const playNotificationSound = useCallback(() => {
+    if (!settings?.soundEnabled) return;
 
     try {
-      const notificationData = {
-        userId: user.uid,
-        type,
-        title,
-        message,
-        link,
-        metadata,
-        read: false,
-        createdAt: serverTimestamp(),
-        icon: NotificationIcons[type] || '🔔'
-      };
-
-      const docRef = await addDoc(collection(db, 'notifications'), notificationData);
-      
-      // Show toast notification
-      if (showToast) {
-        toast(message, {
-          icon: NotificationIcons[type] || '🔔',
-          duration: 5000
-        });
-      }
-
-      // Show browser notification
-      if (showBrowser) {
-        showBrowserNotification(title, {
-          body: message,
-          tag: type
-        });
-      }
-
-      return docRef.id;
+      const audio = new Audio('/sounds/notification.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(() => {});
     } catch (error) {
-      console.error('Error creating notification:', error);
-      return null;
+      // Ignore audio errors
     }
-  }, [user, showBrowserNotification]);
+  }, [settings?.soundEnabled]);
 
-  // Mark single notification as read
+  // ============================================
+  // CREATE NOTIFICATION
+  // ============================================
+
+  const createNotification = useCallback(
+    async ({
+      type = NotificationTypes.INFO,
+      title,
+      message,
+      link = null,
+      metadata = {},
+      showToast = true,
+      showBrowser = true,
+      playSound = true,
+    }) => {
+      if (!user) return null;
+
+      try {
+        const notificationData = {
+          userId: user.uid,
+          type,
+          title,
+          message,
+          link,
+          metadata,
+          read: false,
+          createdAt: serverTimestamp(),
+          icon: NotificationIcons[type] || '🔔',
+          color: NotificationColors[type] || null,
+        };
+
+        const docRef = await addDoc(collection(db, 'notifications'), notificationData);
+
+        if (showToast) {
+          toast(message, {
+            icon: NotificationIcons[type] || '🔔',
+            duration: 5000,
+          });
+        }
+
+        if (showBrowser) {
+          showBrowserNotification(title, {
+            body: message,
+            tag: type,
+            link,
+          });
+        }
+
+        if (playSound) {
+          playNotificationSound();
+        }
+
+        return docRef.id;
+      } catch (error) {
+        console.error('Error creating notification:', error);
+        return null;
+      }
+    },
+    [user, showBrowserNotification, playNotificationSound]
+  );
+
+  // ============================================
+  // MARK AS READ
+  // ============================================
+
   const markAsRead = useCallback(async (notificationId) => {
     try {
       const notificationRef = doc(db, 'notifications', notificationId);
-      await updateDoc(notificationRef, { 
+      await updateDoc(notificationRef, {
         read: true,
-        readAt: serverTimestamp()
+        readAt: serverTimestamp(),
       });
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -211,17 +375,16 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // Mark multiple notifications as read
   const markMultipleAsRead = useCallback(async (notificationIds) => {
     if (!notificationIds.length) return;
 
     try {
       const batch = writeBatch(db);
-      notificationIds.forEach(id => {
+      notificationIds.forEach((id) => {
         const notificationRef = doc(db, 'notifications', id);
-        batch.update(notificationRef, { 
+        batch.update(notificationRef, {
           read: true,
-          readAt: serverTimestamp()
+          readAt: serverTimestamp(),
         });
       });
       await batch.commit();
@@ -231,9 +394,8 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
-    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
     if (!unreadIds.length) {
       toast('No unread notifications');
       return;
@@ -243,7 +405,10 @@ export const NotificationProvider = ({ children }) => {
     toast.success(`Marked ${unreadIds.length} notifications as read`);
   }, [notifications, markMultipleAsRead]);
 
-  // Delete a single notification
+  // ============================================
+  // DELETE NOTIFICATIONS
+  // ============================================
+
   const deleteNotification = useCallback(async (notificationId) => {
     try {
       await deleteDoc(doc(db, 'notifications', notificationId));
@@ -254,13 +419,12 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // Delete multiple notifications
   const deleteMultiple = useCallback(async (notificationIds) => {
     if (!notificationIds.length) return;
 
     try {
       const batch = writeBatch(db);
-      notificationIds.forEach(id => {
+      notificationIds.forEach((id) => {
         const notificationRef = doc(db, 'notifications', id);
         batch.delete(notificationRef);
       });
@@ -272,7 +436,6 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // Clear all notifications
   const clearAll = useCallback(async () => {
     if (!notifications.length) {
       toast('No notifications to clear');
@@ -282,12 +445,11 @@ export const NotificationProvider = ({ children }) => {
     const confirmed = window.confirm('Are you sure you want to clear all notifications?');
     if (!confirmed) return;
 
-    await deleteMultiple(notifications.map(n => n.id));
+    await deleteMultiple(notifications.map((n) => n.id));
   }, [notifications, deleteMultiple]);
 
-  // Clear read notifications
   const clearRead = useCallback(async () => {
-    const readIds = notifications.filter(n => n.read).map(n => n.id);
+    const readIds = notifications.filter((n) => n.read).map((n) => n.id);
     if (!readIds.length) {
       toast('No read notifications to clear');
       return;
@@ -296,79 +458,129 @@ export const NotificationProvider = ({ children }) => {
     await deleteMultiple(readIds);
   }, [notifications, deleteMultiple]);
 
-  // Get notifications by type
-  const getNotificationsByType = useCallback((type) => {
-    return notifications.filter(n => n.type === type);
-  }, [notifications]);
+  // ============================================
+  // HELPER FUNCTIONS
+  // ============================================
 
-  // Get unread notifications
+  const getNotificationsByType = useCallback(
+    (type) => {
+      return notifications.filter((n) => n.type === type);
+    },
+    [notifications]
+  );
+
   const getUnreadNotifications = useMemo(() => {
-    return notifications.filter(n => !n.read);
+    return notifications.filter((n) => !n.read);
   }, [notifications]);
 
-  // Get recent notifications
-  const getRecentNotifications = useCallback((count = 5) => {
-    return notifications.slice(0, count);
-  }, [notifications]);
+  const getRecentNotifications = useCallback(
+    (count = 5) => {
+      return notifications.slice(0, count);
+    },
+    [notifications]
+  );
 
-  // Check if user has unread notifications of specific type
-  const hasUnreadOfType = useCallback((type) => {
-    return notifications.some(n => n.type === type && !n.read);
-  }, [notifications]);
+  const hasUnreadOfType = useCallback(
+    (type) => {
+      return notifications.some((n) => n.type === type && !n.read);
+    },
+    [notifications]
+  );
 
-  // Refresh notifications manually
   const refresh = useCallback(() => {
-    // The onSnapshot listener handles real-time updates
-    // This is just a placeholder for manual refresh if needed
     setLastSynced(new Date());
   }, []);
 
-  // Predefined notification creators
+  // ============================================
+  // PREDEFINED NOTIFICATION CREATORS
+  // ============================================
+
   const notify = {
-    success: (title, message, options = {}) => 
+    success: (title, message, options = {}) =>
       createNotification({ type: NotificationTypes.SUCCESS, title, message, ...options }),
-    info: (title, message, options = {}) => 
+    info: (title, message, options = {}) =>
       createNotification({ type: NotificationTypes.INFO, title, message, ...options }),
-    warning: (title, message, options = {}) => 
+    warning: (title, message, options = {}) =>
       createNotification({ type: NotificationTypes.WARNING, title, message, ...options }),
-    error: (title, message, options = {}) => 
+    error: (title, message, options = {}) =>
       createNotification({ type: NotificationTypes.ERROR, title, message, ...options }),
-    resumeUpdated: (resumeName, options = {}) => 
+    
+    welcome: (userName, options = {}) =>
+      createNotification({
+        type: NotificationTypes.WELCOME,
+        title: 'Welcome to ResumeAI Pro! 🎉',
+        message: `Hi ${userName}! Let's create your first professional resume.`,
+        ...options,
+      }),
+    
+    resumeCreated: (resumeName, options = {}) =>
+      createNotification({
+        type: NotificationTypes.RESUME_CREATED,
+        title: 'Resume Created',
+        message: `"${resumeName}" has been created successfully.`,
+        ...options,
+      }),
+    
+    resumeUpdated: (resumeName, options = {}) =>
       createNotification({
         type: NotificationTypes.RESUME_UPDATED,
         title: 'Resume Updated',
         message: `"${resumeName}" has been updated successfully.`,
-        ...options
+        ...options,
       }),
-    resumeDownloaded: (resumeName, options = {}) => 
+    
+    resumeDownloaded: (resumeName, options = {}) =>
       createNotification({
         type: NotificationTypes.RESUME_DOWNLOADED,
         title: 'Resume Downloaded',
         message: `"${resumeName}" has been downloaded.`,
-        ...options
+        ...options,
       }),
-    atsScoreChanged: (resumeName, oldScore, newScore, options = {}) => 
+    
+    atsScoreChanged: (resumeName, oldScore, newScore, options = {}) =>
       createNotification({
         type: NotificationTypes.ATS_SCORE_CHANGED,
         title: 'ATS Score Updated',
         message: `"${resumeName}" score changed from ${oldScore}% to ${newScore}%.`,
-        ...options
+        ...options,
       }),
-    subscriptionExpiring: (daysLeft, options = {}) => 
+    
+    atsScoreMilestone: (resumeName, score, options = {}) =>
+      createNotification({
+        type: NotificationTypes.ATS_SCORE_MILESTONE,
+        title: '🏆 ATS Score Milestone!',
+        message: `Congratulations! "${resumeName}" reached ${score}% ATS score!`,
+        ...options,
+      }),
+    
+    subscriptionExpiring: (daysLeft, options = {}) =>
       createNotification({
         type: NotificationTypes.SUBSCRIPTION_EXPIRING,
         title: 'Subscription Expiring Soon',
         message: `Your subscription expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`,
-        ...options
+        ...options,
       }),
-    newFeature: (featureName, options = {}) => 
+    
+    newFeature: (featureName, options = {}) =>
       createNotification({
         type: NotificationTypes.NEW_FEATURE,
         title: 'New Feature Available',
         message: `Check out the new "${featureName}" feature!`,
-        ...options
-      })
+        ...options,
+      }),
+    
+    tip: (tip, options = {}) =>
+      createNotification({
+        type: NotificationTypes.TIP,
+        title: '💡 Pro Tip',
+        message: tip,
+        ...options,
+      }),
   };
+
+  // ============================================
+  // CONTEXT VALUE
+  // ============================================
 
   const value = {
     // State
@@ -378,7 +590,10 @@ export const NotificationProvider = ({ children }) => {
     error,
     lastSynced,
     unreadNotifications: getUnreadNotifications,
-    
+    hasMore,
+    soundEnabled,
+    setSoundEnabled,
+
     // Actions
     markAsRead,
     markMultipleAsRead,
@@ -389,25 +604,24 @@ export const NotificationProvider = ({ children }) => {
     clearRead,
     createNotification,
     refresh,
+    loadMore,
     requestBrowserPermission,
-    
+
     // Helpers
     getNotificationsByType,
     getRecentNotifications,
     hasUnreadOfType,
-    
+
     // Predefined notifications
     notify,
-    
+
     // Constants
-    NotificationTypes
+    NotificationTypes,
+    NotificationIcons,
+    NotificationColors,
   };
 
-  return (
-    <NotificationContext.Provider value={value}>
-      {children}
-    </NotificationContext.Provider>
-  );
+  return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 };
 
 export default NotificationContext;
