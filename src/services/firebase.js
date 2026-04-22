@@ -124,9 +124,7 @@ export const firebaseUIConfig = {
     {
       provider: GoogleAuthProvider.PROVIDER_ID,
       scopes: ['profile', 'email'],
-      customParameters: {
-        prompt: 'select_account'
-      }
+      customParameters: { prompt: 'select_account' }
     },
     {
       provider: GithubAuthProvider.PROVIDER_ID,
@@ -232,23 +230,16 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 });
 
 // ============================================
-// FIRESTORE WITH NEW CACHE API (NO DEPRECATION WARNING)
+// FIRESTORE WITH NEW CACHE API (NO WARNINGS)
 // ============================================
 
-export const db = process.env.NODE_ENV === 'production' 
-  ? initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      }),
-      cacheSizeBytes: CACHE_SIZE_UNLIMITED
-    })
-  : initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      }),
-      cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-      experimentalForceLongPolling: true
-    });
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED
+  }),
+  ...(process.env.NODE_ENV !== 'production' && { experimentalForceLongPolling: true })
+});
 
 export const storage = getStorage(app);
 
@@ -270,13 +261,11 @@ if (typeof window !== 'undefined') {
     if (supported) {
       analytics = getAnalytics(app);
       setAnalyticsCollectionEnabled(analytics, process.env.NODE_ENV === 'production');
-      
       setUserProperties(analytics, {
         app_version: process.env.REACT_APP_VERSION || '2.5.0',
         environment: process.env.NODE_ENV,
         platform: 'web'
       });
-      
       console.log('📊 Analytics initialized');
     }
   });
@@ -284,7 +273,6 @@ if (typeof window !== 'undefined') {
   try {
     performance = getPerformance(app);
     console.log('⚡ Performance monitoring initialized');
-    
     if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_LOG_WEB_VITALS === 'true') {
       onCLS(metric => console.log('CLS:', metric.value));
       onFID(metric => console.log('FID:', metric.value));
@@ -302,7 +290,6 @@ if (typeof window !== 'undefined') {
       minimumFetchIntervalMillis: process.env.NODE_ENV === 'production' ? 3600000 : 60000,
       fetchTimeoutMillis: 60000
     };
-    
     remoteConfig.defaultConfig = {
       enable_new_features: false,
       maintenance_mode: false,
@@ -315,7 +302,6 @@ if (typeof window !== 'undefined') {
       enable_beta_features: false,
       enable_chat_support: true
     };
-    
     console.log('🎛️ Remote Config initialized');
   } catch (error) {
     console.warn('Remote Config not supported:', error);
@@ -341,7 +327,7 @@ if (typeof window !== 'undefined') {
 }
 
 // ============================================
-// OFFLINE PERSISTENCE (LEGACY - KEPT FOR COMPATIBILITY)
+// OFFLINE PERSISTENCE (FALLBACK - KEPT FOR COMPATIBILITY)
 // ============================================
 
 export const enableOfflinePersistence = async () => {
@@ -406,7 +392,6 @@ if (useEmulators) {
 
 export const fetchRemoteConfig = async () => {
   if (!remoteConfig) return null;
-  
   try {
     await fetchAndActivate(remoteConfig);
     console.log('✅ Remote config fetched and activated');
@@ -444,13 +429,10 @@ export const getRemoteConfigNumber = (key) => {
 
 export const requestNotificationPermission = async () => {
   if (!messaging) return null;
-  
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      const token = await getToken(messaging, {
-        vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY
-      });
+      const token = await getToken(messaging, { vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY });
       console.log('🔔 Notification permission granted');
       return token;
     }
@@ -495,7 +477,6 @@ export const setUserAnalyticsProperties = (properties) => {
 
 export const startTrace = async (traceName) => {
   if (!performance) return null;
-  
   try {
     const perfTrace = trace(performance, traceName);
     await perfTrace.start();
@@ -530,7 +511,6 @@ export const getGenerativeModelInstance = (modelName = 'gemini-pro') => {
 export const generateAIContent = async (prompt) => {
   const model = getGenerativeModelInstance();
   if (!model) return null;
-  
   try {
     const result = await model.generateContent(prompt);
     return result.response.text();
@@ -540,25 +520,32 @@ export const generateAIContent = async (prompt) => {
   }
 };
 
-export const isFirebaseInitialized = () => {
-  return getApps().length > 0;
+export const callFunction = async (functionName, data = {}) => {
+  try {
+    const callable = httpsCallable(functions, functionName);
+    const result = await callable(data);
+    return result.data;
+  } catch (error) {
+    console.error(`Error calling function ${functionName}:`, error);
+    throw error;
+  }
 };
 
-export const getFirebaseEnvironment = () => {
-  return {
-    appName: app.name,
-    projectId: app.options.projectId,
-    environment: process.env.NODE_ENV,
-    emulatorsEnabled: useEmulators,
-    offlinePersistenceEnabled: true,
-    analyticsEnabled: !!analytics,
-    performanceEnabled: !!performance,
-    remoteConfigEnabled: !!remoteConfig,
-    messagingEnabled: !!messaging,
-    vertexAIEnabled: !!vertexAI,
-    appCheckEnabled: !!appCheck
-  };
-};
+export const isFirebaseInitialized = () => getApps().length > 0;
+
+export const getFirebaseEnvironment = () => ({
+  appName: app.name,
+  projectId: app.options.projectId,
+  environment: process.env.NODE_ENV,
+  emulatorsEnabled: useEmulators,
+  offlinePersistenceEnabled: true,
+  analyticsEnabled: !!analytics,
+  performanceEnabled: !!performance,
+  remoteConfigEnabled: !!remoteConfig,
+  messagingEnabled: !!messaging,
+  vertexAIEnabled: !!vertexAI,
+  appCheckEnabled: !!appCheck
+});
 
 export const checkFirebaseHealth = async () => {
   const health = {
@@ -574,7 +561,6 @@ export const checkFirebaseHealth = async () => {
     vertexAI: !!vertexAI,
     appCheck: !!appCheck
   };
-
   console.log('🏥 Firebase Health Check:', health);
   return health;
 };
@@ -617,10 +603,7 @@ export const listFiles = async (path) => {
   try {
     const storageRef = ref(storage, path);
     const result = await listAll(storageRef);
-    return {
-      items: result.items,
-      prefixes: result.prefixes
-    };
+    return { items: result.items, prefixes: result.prefixes };
   } catch (error) {
     console.error('Error listing files:', error);
     return { items: [], prefixes: [] };
