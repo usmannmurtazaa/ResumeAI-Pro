@@ -4,7 +4,7 @@ const urlsToCache = [
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
-  '/logo.svg',
+  '/favicon.svg',
 ];
 
 // Install event
