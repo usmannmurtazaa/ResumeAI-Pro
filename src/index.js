@@ -16,10 +16,8 @@ if (process.env.REACT_APP_SENTRY_DSN) {
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     integrations: [
-      new Sentry.BrowserTracing({
-        tracePropagationTargets: ['localhost', 'resumeaixpro.netlify.app', 'api.resumeaixpro.netlify.app'],
-      }),
-      new Sentry.Replay(),
+      Sentry.browserTracingIntegration(), 
+      Sentry.replayIntegration(),
     ],
   });
 }
@@ -43,7 +41,7 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       .register('/sw.js')
       .then((registration) => {
         console.log('✅ Service Worker registered:', registration.scope);
-        
+
         // Check for updates
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
