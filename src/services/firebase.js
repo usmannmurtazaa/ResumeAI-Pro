@@ -17,7 +17,6 @@ import {
 import { 
   getFirestore, 
   enableIndexedDbPersistence,
-  enableMultiTabIndexedDbPersistence,
   initializeFirestore,
   CACHE_SIZE_UNLIMITED,
   connectFirestoreEmulator,
@@ -162,10 +161,8 @@ export const firebaseUIConfig = {
 // ============================================
 
 const initializeFirebase = () => {
-  // Validate configuration first
   validateConfig();
   
-  // Check if Firebase is already initialized
   if (getApps().length > 0) {
     console.log('📱 Firebase already initialized, returning existing app');
     return getApp();
@@ -183,7 +180,6 @@ const initializeFirebase = () => {
   }
 };
 
-// Initialize Firebase app
 export const app = initializeFirebase();
 
 // ============================================
@@ -208,10 +204,8 @@ if (process.env.NODE_ENV === 'production' && process.env.REACT_APP_RECAPTCHA_SIT
 // INITIALIZE SERVICES
 // ============================================
 
-// Auth
 export const auth = getAuth(app);
 
-// Auth Providers
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 googleProvider.addScope('profile');
@@ -233,23 +227,31 @@ microsoftProvider.addScope('email');
 
 export const phoneProvider = new PhoneAuthProvider(auth);
 
-// Set auth persistence
 setPersistence(auth, browserLocalPersistence).catch(error => {
   console.warn('Failed to set auth persistence:', error);
 });
 
-// Firestore with settings
+// ============================================
+// FIRESTORE WITH NEW CACHE API (NO DEPRECATION WARNING)
+// ============================================
+
 export const db = process.env.NODE_ENV === 'production' 
-  ? getFirestore(app)
+  ? initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      }),
+      cacheSizeBytes: CACHE_SIZE_UNLIMITED
+    })
   : initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      }),
       cacheSizeBytes: CACHE_SIZE_UNLIMITED,
       experimentalForceLongPolling: true
     });
 
-// Storage
 export const storage = getStorage(app);
 
-// Functions
 export const functions = getFunctions(app);
 functions.region = 'us-central1';
 
@@ -264,13 +266,11 @@ export let messaging = null;
 export let vertexAI = null;
 
 if (typeof window !== 'undefined') {
-  // Analytics
   isAnalyticsSupported().then(supported => {
     if (supported) {
       analytics = getAnalytics(app);
       setAnalyticsCollectionEnabled(analytics, process.env.NODE_ENV === 'production');
       
-      // Set default user properties
       setUserProperties(analytics, {
         app_version: process.env.REACT_APP_VERSION || '2.5.0',
         environment: process.env.NODE_ENV,
@@ -281,12 +281,10 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  // Performance Monitoring
   try {
     performance = getPerformance(app);
     console.log('⚡ Performance monitoring initialized');
     
-    // Log Core Web Vitals in development only if enabled
     if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_LOG_WEB_VITALS === 'true') {
       onCLS(metric => console.log('CLS:', metric.value));
       onFID(metric => console.log('FID:', metric.value));
@@ -298,7 +296,6 @@ if (typeof window !== 'undefined') {
     console.warn('Performance monitoring not supported:', error);
   }
 
-  // Remote Config
   try {
     remoteConfig = getRemoteConfig(app);
     remoteConfig.settings = {
@@ -306,7 +303,6 @@ if (typeof window !== 'undefined') {
       fetchTimeoutMillis: 60000
     };
     
-    // Set default values
     remoteConfig.defaultConfig = {
       enable_new_features: false,
       maintenance_mode: false,
@@ -325,7 +321,6 @@ if (typeof window !== 'undefined') {
     console.warn('Remote Config not supported:', error);
   }
 
-  // Messaging
   isMessagingSupported().then(supported => {
     if (supported && 'serviceWorker' in navigator && 'Notification' in window) {
       try {
@@ -337,7 +332,6 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  // Vertex AI (Gemini)
   try {
     vertexAI = getVertexAI(app);
     console.log('🤖 Vertex AI initialized');
@@ -347,39 +341,19 @@ if (typeof window !== 'undefined') {
 }
 
 // ============================================
-// OFFLINE PERSISTENCE
+// OFFLINE PERSISTENCE (LEGACY - KEPT FOR COMPATIBILITY)
 // ============================================
 
 export const enableOfflinePersistence = async () => {
   try {
-    await enableMultiTabIndexedDbPersistence(db);
-    console.log('💾 Offline persistence enabled (multi-tab)');
+    await enableIndexedDbPersistence(db);
+    console.log('💾 Offline persistence enabled');
     return true;
   } catch (error) {
-    if (error.code === 'failed-precondition') {
-      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-    } else if (error.code === 'unimplemented') {
-      console.warn('The current browser does not support offline persistence.');
-    } else {
-      console.error('Error enabling offline persistence:', error);
-    }
-    
-    // Fallback to single-tab persistence
-    try {
-      await enableIndexedDbPersistence(db);
-      console.log('💾 Offline persistence enabled (single-tab)');
-      return true;
-    } catch (fallbackError) {
-      console.error('Error enabling fallback persistence:', fallbackError);
-      return false;
-    }
+    console.error('Error enabling offline persistence:', error);
+    return false;
   }
 };
-
-// Enable offline persistence in production
-if (process.env.NODE_ENV === 'production') {
-  enableOfflinePersistence();
-}
 
 // ============================================
 // NETWORK MANAGEMENT
@@ -416,18 +390,10 @@ const useEmulators = process.env.NODE_ENV === 'development' && process.env.REACT
 
 if (useEmulators) {
   try {
-    // Auth emulator
     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-    
-    // Firestore emulator
     connectFirestoreEmulator(db, 'localhost', 8080);
-    
-    // Storage emulator
     connectStorageEmulator(storage, 'localhost', 9199);
-    
-    // Functions emulator
     connectFunctionsEmulator(functions, 'localhost', 5001);
-    
     console.log('🔧 Connected to Firebase emulators');
   } catch (error) {
     console.warn('Failed to connect to emulators:', error);
@@ -438,7 +404,6 @@ if (useEmulators) {
 // HELPER FUNCTIONS
 // ============================================
 
-// Remote Config helpers
 export const fetchRemoteConfig = async () => {
   if (!remoteConfig) return null;
   
@@ -477,7 +442,6 @@ export const getRemoteConfigNumber = (key) => {
   return value?.asNumber() || 0;
 };
 
-// Messaging helpers
 export const requestNotificationPermission = async () => {
   if (!messaging) return null;
   
@@ -513,7 +477,6 @@ export const deleteNotificationToken = async () => {
   }
 };
 
-// Analytics helpers
 export const logAnalyticsEvent = (eventName, eventParams = {}) => {
   if (analytics) {
     logEvent(analytics, eventName, {
@@ -530,7 +493,6 @@ export const setUserAnalyticsProperties = (properties) => {
   }
 };
 
-// Performance helpers
 export const startTrace = async (traceName) => {
   if (!performance) return null;
   
@@ -560,7 +522,6 @@ export const incrementMetric = async (perfTrace, metricName, value = 1) => {
   }
 };
 
-// Vertex AI helpers
 export const getGenerativeModelInstance = (modelName = 'gemini-pro') => {
   if (!vertexAI) return null;
   return getGenerativeModel(vertexAI, { model: modelName });
@@ -579,7 +540,6 @@ export const generateAIContent = async (prompt) => {
   }
 };
 
-// Utility functions
 export const isFirebaseInitialized = () => {
   return getApps().length > 0;
 };
@@ -693,7 +653,6 @@ const firebaseServices = {
   }
 };
 
-// Log initialization summary
 if (process.env.NODE_ENV === 'development') {
   console.log('📦 Firebase Services:', Object.keys(firebaseServices).filter(k => firebaseServices[k]));
 }
