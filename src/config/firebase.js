@@ -6,42 +6,75 @@ import {
   TwitterAuthProvider,
   PhoneAuthProvider,
   EmailAuthProvider,
+  FacebookAuthProvider,
+  OAuthProvider,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
-  inMemoryPersistence
+  inMemoryPersistence,
+  connectAuthEmulator
 } from 'firebase/auth';
 import { 
   getFirestore, 
   enableIndexedDbPersistence,
-  enableMultiTabIndexedDbPersistence,
   initializeFirestore,
   CACHE_SIZE_UNLIMITED,
-  connectFirestoreEmulator
+  connectFirestoreEmulator,
+  enableNetwork,
+  disableNetwork,
+  waitForPendingWrites,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import { 
   getStorage, 
-  connectStorageEmulator 
+  connectStorageEmulator,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+  listAll
 } from 'firebase/storage';
 import { 
   getAnalytics, 
-  isSupported,
+  isSupported as isAnalyticsSupported,
   logEvent,
-  setUserProperties
+  setUserProperties,
+  setAnalyticsCollectionEnabled
 } from 'firebase/analytics';
 import { 
   getPerformance,
-  trace
+  trace,
+  onCLS,
+  onFID,
+  onLCP,
+  onFCP,
+  onTTFB
 } from 'firebase/performance';
 import { 
   getFunctions, 
   connectFunctionsEmulator,
   httpsCallable
 } from 'firebase/functions';
-import { getRemoteConfig, fetchAndActivate } from 'firebase/remote-config';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { 
+  getRemoteConfig, 
+  fetchAndActivate,
+  getValue,
+  getAll
+} from 'firebase/remote-config';
+import { 
+  getMessaging, 
+  getToken, 
+  onMessage,
+  isSupported as isMessagingSupported,
+  deleteToken
+} from 'firebase/messaging';
+import { getAppCheck, initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
-// Validate environment variables
+// ============================================
+// CONFIGURATION VALIDATION
+// ============================================
+
 const validateConfig = () => {
   const requiredVars = [
     'REACT_APP_FIREBASE_API_KEY',
@@ -55,17 +88,21 @@ const validateConfig = () => {
   const missing = requiredVars.filter(varName => !process.env[varName]);
   
   if (missing.length > 0) {
-    console.error('Missing required Firebase environment variables:', missing);
+    console.error('❌ Missing required Firebase environment variables:', missing);
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Firebase configuration is incomplete');
     }
     return false;
   }
   
+  console.log('✅ Firebase configuration validated');
   return true;
 };
 
-// Firebase configuration
+// ============================================
+// FIREBASE CONFIGURATION
+// ============================================
+
 export const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -76,7 +113,10 @@ export const firebaseConfig = {
   measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
-// Firebase UI configuration
+// ============================================
+// FIREBASE UI CONFIGURATION
+// ============================================
+
 export const firebaseUIConfig = {
   signInFlow: 'popup',
   signInOptions: [
@@ -95,6 +135,10 @@ export const firebaseUIConfig = {
       provider: TwitterAuthProvider.PROVIDER_ID
     },
     {
+      provider: FacebookAuthProvider.PROVIDER_ID,
+      scopes: ['email', 'public_profile']
+    },
+    {
       provider: EmailAuthProvider.PROVIDER_ID,
       requireDisplayName: true,
       signInMethod: 'password'
@@ -102,192 +146,261 @@ export const firebaseUIConfig = {
     {
       provider: PhoneAuthProvider.PROVIDER_ID,
       defaultCountry: 'US',
-      whitelistedCountries: ['US', 'CA', 'GB', 'AU', 'IN']
+      whitelistedCountries: ['US', 'CA', 'GB', 'AU', 'IN', 'DE', 'FR', 'JP', 'PK']
     }
   ],
   tosUrl: '/terms-of-service',
   privacyPolicyUrl: '/privacy-policy',
-  siteName: 'ATS Resume Builder',
+  siteName: 'ResumeAI Pro',
   popupMode: true
 };
 
-// Initialize Firebase (singleton pattern)
+// ============================================
+// INITIALIZE FIREBASE
+// ============================================
+
 const initializeFirebase = () => {
-  // Check if Firebase is already initialized
+  validateConfig();
+  
   if (getApps().length > 0) {
+    console.log('📱 Firebase already initialized, returning existing app');
     return getApp();
   }
 
-  // Validate configuration
-  const isValid = validateConfig();
-  if (!isValid && process.env.NODE_ENV === 'development') {
-    console.warn('Firebase configuration is incomplete. Some features may not work.');
-  }
-
-  // Initialize the app
-  const app = initializeApp(firebaseConfig);
+  console.log('🔥 Initializing Firebase...');
   
-  return app;
+  try {
+    const app = initializeApp(firebaseConfig);
+    console.log('✅ Firebase initialized successfully');
+    return app;
+  } catch (error) {
+    console.error('❌ Failed to initialize Firebase:', error);
+    throw error;
+  }
 };
 
-// Initialize Firebase app
 export const app = initializeFirebase();
 
-// Initialize services
+// ============================================
+// APP CHECK (Production Security)
+// ============================================
+
+export let appCheck = null;
+
+if (process.env.NODE_ENV === 'production' && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
+  try {
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(process.env.REACT_APP_RECAPTCHA_SITE_KEY),
+      isTokenAutoRefreshEnabled: true
+    });
+    console.log('🛡️ App Check initialized');
+  } catch (error) {
+    console.warn('App Check initialization failed:', error);
+  }
+}
+
+// ============================================
+// INITIALIZE SERVICES
+// ============================================
+
 export const auth = getAuth(app);
+
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+googleProvider.addScope('profile');
+googleProvider.addScope('email');
+
+export const githubProvider = new GithubAuthProvider();
+githubProvider.addScope('user:email');
+githubProvider.addScope('read:user');
+
+export const twitterProvider = new TwitterAuthProvider();
+
+export const facebookProvider = new FacebookAuthProvider();
+facebookProvider.addScope('email');
+facebookProvider.addScope('public_profile');
+
+export const microsoftProvider = new OAuthProvider('microsoft.com');
+microsoftProvider.addScope('user.read');
+microsoftProvider.addScope('email');
+
+export const phoneProvider = new PhoneAuthProvider(auth);
+
+setPersistence(auth, browserLocalPersistence).catch(error => {
+  console.warn('Failed to set auth persistence:', error);
+});
+
+// ============================================
+// FIRESTORE WITH NEW CACHE API (NO DEPRECATION WARNING)
+// ============================================
+
 export const db = process.env.NODE_ENV === 'production' 
-  ? getFirestore(app)
+  ? initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+        cacheSizeBytes: CACHE_SIZE_UNLIMITED
+      })
+    })
   : initializeFirestore(app, {
-      cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+        cacheSizeBytes: CACHE_SIZE_UNLIMITED
+      }),
       experimentalForceLongPolling: true
     });
 
 export const storage = getStorage(app);
-export const functions = getFunctions(app);
 
-// Initialize optional services
+export const functions = getFunctions(app);
+functions.region = 'us-central1';
+
+// ============================================
+// OPTIONAL SERVICES (BROWSER ONLY)
+// ============================================
+
 export let analytics = null;
 export let performance = null;
 export let remoteConfig = null;
 export let messaging = null;
 
-// Initialize analytics (browser only)
 if (typeof window !== 'undefined') {
-  isSupported().then(supported => {
+  isAnalyticsSupported().then(supported => {
     if (supported) {
       analytics = getAnalytics(app);
+      setAnalyticsCollectionEnabled(analytics, process.env.NODE_ENV === 'production');
       
-      // Set default user properties
       setUserProperties(analytics, {
-        app_version: process.env.REACT_APP_VERSION || '1.0.0',
-        environment: process.env.NODE_ENV
+        app_version: process.env.REACT_APP_VERSION || '2.5.0',
+        environment: process.env.NODE_ENV,
+        platform: 'web'
       });
+      
+      console.log('📊 Analytics initialized');
     }
   });
 
-  // Initialize performance monitoring
   try {
     performance = getPerformance(app);
+    console.log('⚡ Performance monitoring initialized');
+    
+    if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_LOG_WEB_VITALS === 'true') {
+      onCLS(metric => console.log('CLS:', metric.value));
+      onFID(metric => console.log('FID:', metric.value));
+      onLCP(metric => console.log('LCP:', metric.value));
+      onFCP(metric => console.log('FCP:', metric.value));
+      onTTFB(metric => console.log('TTFB:', metric.value));
+    }
   } catch (error) {
     console.warn('Performance monitoring not supported:', error);
   }
 
-  // Initialize Remote Config
   try {
     remoteConfig = getRemoteConfig(app);
     remoteConfig.settings = {
-      minimumFetchIntervalMillis: 3600000, // 1 hour
-      fetchTimeoutMillis: 60000 // 1 minute
+      minimumFetchIntervalMillis: process.env.NODE_ENV === 'production' ? 3600000 : 60000,
+      fetchTimeoutMillis: 60000
     };
     
-    // Set default values
     remoteConfig.defaultConfig = {
       enable_new_features: false,
       maintenance_mode: false,
       min_app_version: '1.0.0',
       max_resumes_free: 5,
-      enable_ai_suggestions: true
+      enable_ai_suggestions: true,
+      enable_job_matching: true,
+      enable_collaboration: false,
+      pricing_annual_discount: 20,
+      enable_beta_features: false,
+      enable_chat_support: true
     };
+    
+    console.log('🎛️ Remote Config initialized');
   } catch (error) {
     console.warn('Remote Config not supported:', error);
   }
 
-  // Initialize messaging (if supported)
-  if ('serviceWorker' in navigator && 'Notification' in window) {
-    try {
-      messaging = getMessaging(app);
-    } catch (error) {
-      console.warn('Messaging not supported:', error);
+  isMessagingSupported().then(supported => {
+    if (supported && 'serviceWorker' in navigator && 'Notification' in window) {
+      try {
+        messaging = getMessaging(app);
+        console.log('📨 Messaging initialized');
+      } catch (error) {
+        console.warn('Messaging not supported:', error);
+      }
     }
-  }
+  });
 }
 
-// Auth providers
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({
-  prompt: 'select_account'
-});
+// ============================================
+// OFFLINE PERSISTENCE (FALLBACK)
+// ============================================
 
-export const githubProvider = new GithubAuthProvider();
-githubProvider.addScope('user:email');
-
-export const twitterProvider = new TwitterAuthProvider();
-
-export const phoneProvider = new PhoneAuthProvider(auth);
-
-// Enable offline persistence for Firestore
 export const enableOfflinePersistence = async () => {
   try {
-    await enableMultiTabIndexedDbPersistence(db);
-    console.log('Offline persistence enabled (multi-tab)');
+    await enableIndexedDbPersistence(db);
+    console.log('💾 Offline persistence enabled');
     return true;
   } catch (error) {
-    if (error.code === 'failed-precondition') {
-      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-    } else if (error.code === 'unimplemented') {
-      console.warn('The current browser does not support offline persistence.');
-    } else {
-      console.error('Error enabling offline persistence:', error);
-    }
-    
-    // Fallback to single-tab persistence
-    try {
-      await enableIndexedDbPersistence(db);
-      console.log('Offline persistence enabled (single-tab)');
-      return true;
-    } catch (fallbackError) {
-      console.error('Error enabling fallback persistence:', fallbackError);
-      return false;
-    }
-  }
-};
-
-// Enable offline persistence by default in production
-if (process.env.NODE_ENV === 'production') {
-  enableOfflinePersistence();
-}
-
-// Set auth persistence
-export const setAuthPersistence = async (rememberMe = true) => {
-  try {
-    await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-    return true;
-  } catch (error) {
-    console.error('Error setting auth persistence:', error);
+    console.error('Error enabling offline persistence:', error);
     return false;
   }
 };
 
-// Default to local persistence
-setAuthPersistence(true);
+// ============================================
+// NETWORK MANAGEMENT
+// ============================================
 
-// Connect to emulators in development
-if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATORS === 'true') {
+export const goOffline = async () => {
   try {
-    // Auth emulator
-    connectAuthEmulator(auth, 'http://localhost:9099');
-    
-    // Firestore emulator
+    await disableNetwork(db);
+    console.log('📴 Firestore offline mode enabled');
+    return true;
+  } catch (error) {
+    console.error('Failed to go offline:', error);
+    return false;
+  }
+};
+
+export const goOnline = async () => {
+  try {
+    await enableNetwork(db);
+    await waitForPendingWrites(db);
+    console.log('🌐 Firestore online mode restored');
+    return true;
+  } catch (error) {
+    console.error('Failed to go online:', error);
+    return false;
+  }
+};
+
+// ============================================
+// EMULATOR CONNECTION (DEVELOPMENT)
+// ============================================
+
+const useEmulators = process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATORS === 'true';
+
+if (useEmulators) {
+  try {
+    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
     connectFirestoreEmulator(db, 'localhost', 8080);
-    
-    // Storage emulator
     connectStorageEmulator(storage, 'localhost', 9199);
-    
-    // Functions emulator
     connectFunctionsEmulator(functions, 'localhost', 5001);
-    
-    console.log('Connected to Firebase emulators');
+    console.log('🔧 Connected to Firebase emulators');
   } catch (error) {
     console.warn('Failed to connect to emulators:', error);
   }
 }
 
-// Remote Config helpers
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
 export const fetchRemoteConfig = async () => {
   if (!remoteConfig) return null;
   
   try {
     await fetchAndActivate(remoteConfig);
+    console.log('✅ Remote config fetched and activated');
     return remoteConfig;
   } catch (error) {
     console.error('Error fetching remote config:', error);
@@ -297,10 +410,14 @@ export const fetchRemoteConfig = async () => {
 
 export const getRemoteConfigValue = (key) => {
   if (!remoteConfig) return null;
-  return remoteConfig.getValue(key);
+  return getValue(remoteConfig, key);
 };
 
-// Messaging helpers
+export const getAllRemoteConfig = () => {
+  if (!remoteConfig) return {};
+  return getAll(remoteConfig);
+};
+
 export const requestNotificationPermission = async () => {
   if (!messaging) return null;
   
@@ -310,6 +427,7 @@ export const requestNotificationPermission = async () => {
       const token = await getToken(messaging, {
         vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY
       });
+      console.log('🔔 Notification permission granted');
       return token;
     }
     return null;
@@ -324,29 +442,39 @@ export const onMessageListener = (callback) => {
   return onMessage(messaging, callback);
 };
 
-// Analytics helpers
 export const logAnalyticsEvent = (eventName, eventParams = {}) => {
   if (analytics) {
-    logEvent(analytics, eventName, eventParams);
+    logEvent(analytics, eventName, {
+      ...eventParams,
+      timestamp: new Date().toISOString(),
+      page: window.location.pathname
+    });
   }
 };
 
-// Performance monitoring helpers
 export const startTrace = async (traceName) => {
   if (!performance) return null;
   
-  const perfTrace = trace(performance, traceName);
-  await perfTrace.start();
-  return perfTrace;
+  try {
+    const perfTrace = trace(performance, traceName);
+    await perfTrace.start();
+    return perfTrace;
+  } catch (error) {
+    console.error('Error starting trace:', error);
+    return null;
+  }
 };
 
 export const stopTrace = async (perfTrace) => {
   if (perfTrace) {
-    await perfTrace.stop();
+    try {
+      await perfTrace.stop();
+    } catch (error) {
+      console.error('Error stopping trace:', error);
+    }
   }
 };
 
-// Cloud Functions helpers
 export const callFunction = async (functionName, data = {}) => {
   try {
     const callable = httpsCallable(functions, functionName);
@@ -358,59 +486,77 @@ export const callFunction = async (functionName, data = {}) => {
   }
 };
 
-// Utility function to check if Firebase is properly initialized
 export const isFirebaseInitialized = () => {
   return getApps().length > 0;
 };
 
-// Get current environment info
 export const getFirebaseEnvironment = () => {
   return {
     appName: app.name,
     projectId: app.options.projectId,
     environment: process.env.NODE_ENV,
-    emulatorsEnabled: process.env.REACT_APP_USE_EMULATORS === 'true',
+    emulatorsEnabled: useEmulators,
     offlinePersistenceEnabled: true,
     analyticsEnabled: !!analytics,
     performanceEnabled: !!performance,
     remoteConfigEnabled: !!remoteConfig,
-    messagingEnabled: !!messaging
+    messagingEnabled: !!messaging,
+    appCheckEnabled: !!appCheck
   };
 };
 
-// Export a health check function
 export const checkFirebaseHealth = async () => {
-  const health = {
-    auth: false,
-    firestore: false,
-    storage: false,
-    functions: false
+  return {
+    app: !!app,
+    auth: !!auth,
+    firestore: !!db,
+    storage: !!storage,
+    functions: !!functions,
+    analytics: !!analytics,
+    performance: !!performance,
+    remoteConfig: !!remoteConfig,
+    messaging: !!messaging,
+    appCheck: !!appCheck
   };
+};
 
+// ============================================
+// STORAGE HELPERS
+// ============================================
+
+export const uploadFile = (path, file, onProgress) => {
+  const storageRef = ref(storage, path);
+  const uploadTask = uploadBytesResumable(storageRef, file);
+  
+  return new Promise((resolve, reject) => {
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        onProgress?.(progress);
+      },
+      (error) => reject(error),
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        resolve({ downloadURL, metadata: uploadTask.snapshot.metadata });
+      }
+    );
+  });
+};
+
+export const deleteFile = async (path) => {
   try {
-    // Check auth
-    if (auth.currentUser || true) {
-      health.auth = true;
-    }
-
-    // Check firestore
-    const db = getFirestore();
-    health.firestore = !!db;
-
-    // Check storage
-    const storage = getStorage();
-    health.storage = !!storage;
-
-    // Check functions
-    const functions = getFunctions();
-    health.functions = !!functions;
-
-    return health;
+    const storageRef = ref(storage, path);
+    await deleteObject(storageRef);
+    return true;
   } catch (error) {
-    console.error('Health check failed:', error);
-    return health;
+    console.error('Error deleting file:', error);
+    return false;
   }
 };
+
+// ============================================
+// EXPORT DEFAULT
+// ============================================
 
 const firebaseServices = {
   app,
@@ -422,13 +568,19 @@ const firebaseServices = {
   performance,
   remoteConfig,
   messaging,
-  vertexAI,
+  appCheck,
   providers: {
     google: googleProvider,
     github: githubProvider,
     twitter: twitterProvider,
+    facebook: facebookProvider,
+    microsoft: microsoftProvider,
     phone: phoneProvider
   }
 };
+
+if (process.env.NODE_ENV === 'development') {
+  console.log('📦 Firebase Services:', Object.keys(firebaseServices).filter(k => firebaseServices[k]));
+}
 
 export default firebaseServices;

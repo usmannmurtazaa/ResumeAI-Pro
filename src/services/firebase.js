@@ -69,7 +69,6 @@ import {
   isSupported as isMessagingSupported,
   deleteToken
 } from 'firebase/messaging';
-import { getVertexAI, getGenerativeModel } from 'firebase/vertexai-preview';
 import { getAppCheck, initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // ============================================
@@ -124,7 +123,9 @@ export const firebaseUIConfig = {
     {
       provider: GoogleAuthProvider.PROVIDER_ID,
       scopes: ['profile', 'email'],
-      customParameters: { prompt: 'select_account' }
+      customParameters: {
+        prompt: 'select_account'
+      }
     },
     {
       provider: GithubAuthProvider.PROVIDER_ID,
@@ -230,16 +231,23 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 });
 
 // ============================================
-// FIRESTORE WITH NEW CACHE API (NO WARNINGS)
+// FIRESTORE WITH NEW CACHE API (NO DEPRECATION WARNING)
 // ============================================
 
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-    cacheSizeBytes: CACHE_SIZE_UNLIMITED
-  }),
-  ...(process.env.NODE_ENV !== 'production' && { experimentalForceLongPolling: true })
-});
+export const db = process.env.NODE_ENV === 'production' 
+  ? initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+        cacheSizeBytes: CACHE_SIZE_UNLIMITED
+      })
+    })
+  : initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+        cacheSizeBytes: CACHE_SIZE_UNLIMITED
+      }),
+      experimentalForceLongPolling: true
+    });
 
 export const storage = getStorage(app);
 
@@ -254,18 +262,19 @@ export let analytics = null;
 export let performance = null;
 export let remoteConfig = null;
 export let messaging = null;
-export let vertexAI = null;
 
 if (typeof window !== 'undefined') {
   isAnalyticsSupported().then(supported => {
     if (supported) {
       analytics = getAnalytics(app);
       setAnalyticsCollectionEnabled(analytics, process.env.NODE_ENV === 'production');
+      
       setUserProperties(analytics, {
         app_version: process.env.REACT_APP_VERSION || '2.5.0',
         environment: process.env.NODE_ENV,
         platform: 'web'
       });
+      
       console.log('📊 Analytics initialized');
     }
   });
@@ -273,6 +282,7 @@ if (typeof window !== 'undefined') {
   try {
     performance = getPerformance(app);
     console.log('⚡ Performance monitoring initialized');
+    
     if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_LOG_WEB_VITALS === 'true') {
       onCLS(metric => console.log('CLS:', metric.value));
       onFID(metric => console.log('FID:', metric.value));
@@ -290,6 +300,7 @@ if (typeof window !== 'undefined') {
       minimumFetchIntervalMillis: process.env.NODE_ENV === 'production' ? 3600000 : 60000,
       fetchTimeoutMillis: 60000
     };
+    
     remoteConfig.defaultConfig = {
       enable_new_features: false,
       maintenance_mode: false,
@@ -302,6 +313,7 @@ if (typeof window !== 'undefined') {
       enable_beta_features: false,
       enable_chat_support: true
     };
+    
     console.log('🎛️ Remote Config initialized');
   } catch (error) {
     console.warn('Remote Config not supported:', error);
@@ -317,17 +329,10 @@ if (typeof window !== 'undefined') {
       }
     }
   });
-
-  try {
-    vertexAI = getVertexAI(app);
-    console.log('🤖 Vertex AI initialized');
-  } catch (error) {
-    console.warn('Vertex AI not supported:', error);
-  }
 }
 
 // ============================================
-// OFFLINE PERSISTENCE (FALLBACK - KEPT FOR COMPATIBILITY)
+// OFFLINE PERSISTENCE (FALLBACK)
 // ============================================
 
 export const enableOfflinePersistence = async () => {
@@ -392,6 +397,7 @@ if (useEmulators) {
 
 export const fetchRemoteConfig = async () => {
   if (!remoteConfig) return null;
+  
   try {
     await fetchAndActivate(remoteConfig);
     console.log('✅ Remote config fetched and activated');
@@ -412,27 +418,15 @@ export const getAllRemoteConfig = () => {
   return getAll(remoteConfig);
 };
 
-export const getRemoteConfigBoolean = (key) => {
-  const value = getRemoteConfigValue(key);
-  return value?.asBoolean() || false;
-};
-
-export const getRemoteConfigString = (key) => {
-  const value = getRemoteConfigValue(key);
-  return value?.asString() || '';
-};
-
-export const getRemoteConfigNumber = (key) => {
-  const value = getRemoteConfigValue(key);
-  return value?.asNumber() || 0;
-};
-
 export const requestNotificationPermission = async () => {
   if (!messaging) return null;
+  
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      const token = await getToken(messaging, { vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY });
+      const token = await getToken(messaging, {
+        vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY
+      });
       console.log('🔔 Notification permission granted');
       return token;
     }
@@ -448,17 +442,6 @@ export const onMessageListener = (callback) => {
   return onMessage(messaging, callback);
 };
 
-export const deleteNotificationToken = async () => {
-  if (!messaging) return false;
-  try {
-    await deleteToken(messaging);
-    return true;
-  } catch (error) {
-    console.error('Error deleting token:', error);
-    return false;
-  }
-};
-
 export const logAnalyticsEvent = (eventName, eventParams = {}) => {
   if (analytics) {
     logEvent(analytics, eventName, {
@@ -469,14 +452,9 @@ export const logAnalyticsEvent = (eventName, eventParams = {}) => {
   }
 };
 
-export const setUserAnalyticsProperties = (properties) => {
-  if (analytics) {
-    setUserProperties(analytics, properties);
-  }
-};
-
 export const startTrace = async (traceName) => {
   if (!performance) return null;
+  
   try {
     const perfTrace = trace(performance, traceName);
     await perfTrace.start();
@@ -497,29 +475,6 @@ export const stopTrace = async (perfTrace) => {
   }
 };
 
-export const incrementMetric = async (perfTrace, metricName, value = 1) => {
-  if (perfTrace) {
-    perfTrace.incrementMetric(metricName, value);
-  }
-};
-
-export const getGenerativeModelInstance = (modelName = 'gemini-pro') => {
-  if (!vertexAI) return null;
-  return getGenerativeModel(vertexAI, { model: modelName });
-};
-
-export const generateAIContent = async (prompt) => {
-  const model = getGenerativeModelInstance();
-  if (!model) return null;
-  try {
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-  } catch (error) {
-    console.error('Error generating AI content:', error);
-    return null;
-  }
-};
-
 export const callFunction = async (functionName, data = {}) => {
   try {
     const callable = httpsCallable(functions, functionName);
@@ -531,24 +486,27 @@ export const callFunction = async (functionName, data = {}) => {
   }
 };
 
-export const isFirebaseInitialized = () => getApps().length > 0;
+export const isFirebaseInitialized = () => {
+  return getApps().length > 0;
+};
 
-export const getFirebaseEnvironment = () => ({
-  appName: app.name,
-  projectId: app.options.projectId,
-  environment: process.env.NODE_ENV,
-  emulatorsEnabled: useEmulators,
-  offlinePersistenceEnabled: true,
-  analyticsEnabled: !!analytics,
-  performanceEnabled: !!performance,
-  remoteConfigEnabled: !!remoteConfig,
-  messagingEnabled: !!messaging,
-  vertexAIEnabled: !!vertexAI,
-  appCheckEnabled: !!appCheck
-});
+export const getFirebaseEnvironment = () => {
+  return {
+    appName: app.name,
+    projectId: app.options.projectId,
+    environment: process.env.NODE_ENV,
+    emulatorsEnabled: useEmulators,
+    offlinePersistenceEnabled: true,
+    analyticsEnabled: !!analytics,
+    performanceEnabled: !!performance,
+    remoteConfigEnabled: !!remoteConfig,
+    messagingEnabled: !!messaging,
+    appCheckEnabled: !!appCheck
+  };
+};
 
 export const checkFirebaseHealth = async () => {
-  const health = {
+  return {
     app: !!app,
     auth: !!auth,
     firestore: !!db,
@@ -558,11 +516,8 @@ export const checkFirebaseHealth = async () => {
     performance: !!performance,
     remoteConfig: !!remoteConfig,
     messaging: !!messaging,
-    vertexAI: !!vertexAI,
     appCheck: !!appCheck
   };
-  console.log('🏥 Firebase Health Check:', health);
-  return health;
 };
 
 // ============================================
@@ -599,17 +554,6 @@ export const deleteFile = async (path) => {
   }
 };
 
-export const listFiles = async (path) => {
-  try {
-    const storageRef = ref(storage, path);
-    const result = await listAll(storageRef);
-    return { items: result.items, prefixes: result.prefixes };
-  } catch (error) {
-    console.error('Error listing files:', error);
-    return { items: [], prefixes: [] };
-  }
-};
-
 // ============================================
 // EXPORT DEFAULT
 // ============================================
@@ -624,7 +568,6 @@ const firebaseServices = {
   performance,
   remoteConfig,
   messaging,
-  vertexAI,
   appCheck,
   providers: {
     google: googleProvider,
