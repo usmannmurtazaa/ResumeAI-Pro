@@ -263,7 +263,7 @@ export const NotificationProvider = ({ children }) => {
 
       if (Notification.permission === 'granted') {
         const notification = new Notification(title, {
-          icon: '/logo192.png',
+          icon: '/logo.png',
           badge: '/favicon.ico',
           silent: !settings?.soundEnabled,
           ...options,

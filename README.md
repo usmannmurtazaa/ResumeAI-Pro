@@ -1,7 +1,7 @@
 # 🚀 ResumeAI Pro
 
 <div align="center">
-  <img src="public/logo.svg" alt="ResumeAI Pro Logo" width="200" />
+  <img src="public/logo.png" alt="ResumeAI Pro Logo" width="200" />
   
   <h3>AI-Powered ATS Resume Builder for Modern Job Seekers</h3>
   
@@ -281,5 +281,5 @@ If you find this project helpful, please consider:
 
 
 
-<img src="public/logo.svg" alt="ResumeAI Pro" width="150" /> <p>© 2026 ResumeAI Pro. All rights reserved.</p> </div> ```
+<img src="public/logo.png" alt="ResumeAI Pro" width="150" /> <p>© 2026 ResumeAI Pro. All rights reserved.</p> </div> ```
 

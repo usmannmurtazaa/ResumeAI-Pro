@@ -63,8 +63,8 @@ export const siteConfig = {
   ogImageAlt: 'ResumeAi Pro - AI-Powered ATS Resume Builder',
   twitterImage: '/twitter-image.png',
   favicon: '/favicon.ico',
-  logo: '/favicon.ico',
-  logoDark: '/logo-dark.svg',
+  logo: '/logo.png',
+  logoDark: '/logo.png',
   
   // Social Media Meta
   twitter: {
