@@ -307,7 +307,7 @@ const Navbar = () => {
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-accent-500 rounded-lg blur opacity-0 group-hover:opacity-50 transition-opacity" />
                   <img
-                    src="/logo.svg"
+                    src="/favicon.ico"
                     alt="ResumeAI Pro"
                     className="relative h-8 w-auto"
                   />
