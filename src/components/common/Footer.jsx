@@ -5,8 +5,8 @@ import {
   FiGithub, FiTwitter, FiLinkedin, FiGlobe, FiHeart,
   FiMail, FiSend, FiCheckCircle, FiAlertCircle, FiArrowRight,
   FiFacebook, FiInstagram, FiYoutube, FiStar, FiAward,
-  FiShield, FiCoffee, FiZap, FiChevronUp, FiDiscord,
-  FiTikTok, FiThreads, FiMapPin, FiPhone, FiClock,
+  FiShield, FiCoffee, FiZap, FiChevronUp, FiMessageCircle,
+  FiThreads, FiMapPin, FiPhone, FiClock,
 } from 'react-icons/fi';
 import { siteConfig } from '../../config/siteConfig';
 import Button from '../ui/Button';
@@ -130,8 +130,7 @@ const Footer = () => {
       { href: siteConfig.links?.facebook, icon: FiFacebook, label: 'Facebook', color: 'hover:text-blue-600' },
       { href: siteConfig.links?.instagram, icon: FiInstagram, label: 'Instagram', color: 'hover:text-pink-500' },
       { href: siteConfig.links?.youtube, icon: FiYoutube, label: 'YouTube', color: 'hover:text-red-500' },
-      { href: siteConfig.links?.discord, icon: FiDiscord, label: 'Discord', color: 'hover:text-indigo-500' },
-      { href: siteConfig.links?.tiktok, icon: FiTikTok, label: 'TikTok', color: 'hover:text-pink-500' },
+      { href: siteConfig.links?.discord, icon: FiMessageCircle, label: 'Discord', color: 'hover:text-indigo-500' },
     ].filter(link => link.href),
   };
 
