@@ -6,20 +6,6 @@
   NODE_VERSION = "20"
   NPM_VERSION = "10"
   CI = "false"
-
-[[redirects]]
-  from = "/static/*"
-  to = "/static/:splat"
-  status = 200
-
-[[redirects]][build]
-  command = "npm run build"
-  publish = "build"
-
-[build.environment]
-  NODE_VERSION = "20"
-  NPM_VERSION = "10"
-  CI = "false"
   DISABLE_ESLINT_PLUGIN = "true"
   GENERATE_SOURCEMAP = "false"
 
@@ -27,6 +13,7 @@
   from = "/*"
   to = "/index.html"
   status = 200
+  force = true
 
 [[headers]]
   for = "/static/*"
@@ -42,3 +29,9 @@
   for = "/*.css"
   [headers.values]
     Content-Type = "text/css; charset=UTF-8"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
