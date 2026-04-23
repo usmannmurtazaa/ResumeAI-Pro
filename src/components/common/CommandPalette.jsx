@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,13 +18,12 @@ import {
   FiUsers,
   FiBarChart2,
   FiShield,
-  FiChevronRight,
   FiArrowUp,
   FiArrowDown,
   FiCornerDownLeft,
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
-import { useResume } from '../../contexts/ResumeContext';
+import { useResumeContext } from '../../contexts/ResumeContext';
 import Input from '../ui/Input';
 import Badge from '../ui/Badge';
 import toast from 'react-hot-toast';
@@ -36,7 +35,7 @@ import toast from 'react-hot-toast';
 const CommandPalette = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { user, userRole, isPremium } = useAuth();
-  const { resumes, createResume } = useResume();
+  const { resumes, createResume } = useResumeContext(); // ✅ Fixed: useResumeContext instead of useResume
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -57,10 +56,11 @@ const CommandPalette = ({ isOpen, onClose }) => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
+      const filtered = getFilteredCommands();
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedIndex(prev => Math.min(prev + 1, filteredCommands.length - 1));
+          setSelectedIndex(prev => Math.min(prev + 1, filtered.length - 1));
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -68,30 +68,22 @@ const CommandPalette = ({ isOpen, onClose }) => {
           break;
         case 'Enter':
           e.preventDefault();
-          if (filteredCommands[selectedIndex]) {
-            executeCommand(filteredCommands[selectedIndex]);
+          if (filtered[selectedIndex]) {
+            executeCommand(filtered[selectedIndex]);
           }
           break;
         case 'Escape':
           e.preventDefault();
           onClose();
           break;
+        default:
+          break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedIndex, filteredCommands]);
-
-  // Scroll selected item into view
-  useEffect(() => {
-    if (listRef.current) {
-      const selectedElement = listRef.current.children[selectedIndex];
-      if (selectedElement) {
-        selectedElement.scrollIntoView({ block: 'nearest' });
-      }
-    }
-  }, [selectedIndex]);
+  }, [isOpen, selectedIndex, onClose]);
 
   const executeCommand = (command) => {
     if (command.action) {
@@ -102,129 +94,46 @@ const CommandPalette = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  const handleCreateResume = async () => {
+  const handleCreateResume = useCallback(async () => {
+    if (!createResume) {
+      toast.error('Create resume function not available');
+      return;
+    }
     try {
       const newResume = await createResume({ name: 'Quick Resume' });
       toast.success('Resume created!');
       navigate(`/builder/${newResume.id}`);
+      onClose();
     } catch (error) {
       toast.error('Failed to create resume');
     }
-    onClose();
-  };
+  }, [createResume, navigate, onClose]);
 
-  // Base commands available to everyone
+  // Base commands
   const baseCommands = useMemo(() => [
-    {
-      id: 'home',
-      label: 'Go to Home',
-      icon: FiHome,
-      path: '/',
-      shortcut: '⌘H',
-      category: 'Navigation',
-    },
-    {
-      id: 'dashboard',
-      label: 'Go to Dashboard',
-      icon: FiHome,
-      path: '/dashboard',
-      shortcut: '⌘D',
-      category: 'Navigation',
-    },
-    {
-      id: 'templates',
-      label: 'Browse Templates',
-      icon: FiLayout,
-      path: '/templates',
-      shortcut: '⌘T',
-      category: 'Navigation',
-    },
-    {
-      id: 'pricing',
-      label: 'View Pricing',
-      icon: FiCreditCard,
-      path: '/pricing',
-      category: 'Navigation',
-    },
-    {
-      id: 'help',
-      label: 'Help Center',
-      icon: FiHelpCircle,
-      path: '/help',
-      category: 'Navigation',
-    },
+    { id: 'home', label: 'Go to Home', icon: FiHome, path: '/', shortcut: '⌘H', category: 'Navigation' },
+    { id: 'dashboard', label: 'Go to Dashboard', icon: FiHome, path: '/dashboard', shortcut: '⌘D', category: 'Navigation' },
+    { id: 'templates', label: 'Browse Templates', icon: FiLayout, path: '/templates', shortcut: '⌘T', category: 'Navigation' },
+    { id: 'pricing', label: 'View Pricing', icon: FiCreditCard, path: '/pricing', category: 'Navigation' },
+    { id: 'help', label: 'Help Center', icon: FiHelpCircle, path: '/help', category: 'Navigation' },
   ], []);
 
-  // User commands (authenticated)
+  // User commands
   const userCommands = useMemo(() => user ? [
-    {
-      id: 'new-resume',
-      label: 'Create New Resume',
-      icon: FiPlus,
-      action: handleCreateResume,
-      shortcut: '⌘N',
-      category: 'Resumes',
-    },
-    {
-      id: 'builder',
-      label: 'Resume Builder',
-      icon: FiFileText,
-      path: '/builder',
-      category: 'Resumes',
-    },
-    {
-      id: 'ats-scanner',
-      label: 'ATS Scanner',
-      icon: FiTarget,
-      path: '/ats-scanner',
-      shortcut: '⌘S',
-      category: 'Tools',
-    },
-    {
-      id: 'analytics',
-      label: 'Analytics',
-      icon: FiTrendingUp,
-      path: '/analytics',
-      premium: true,
-      category: 'Tools',
-    },
-    {
-      id: 'profile',
-      label: 'Profile Settings',
-      icon: FiUser,
-      path: '/profile',
-      shortcut: '⌘P',
-      category: 'Account',
-    },
-    {
-      id: 'settings',
-      label: 'Account Settings',
-      icon: FiSettings,
-      path: '/settings',
-      shortcut: '⌘,',
-      category: 'Account',
-    },
+    { id: 'new-resume', label: 'Create New Resume', icon: FiPlus, action: handleCreateResume, shortcut: '⌘N', category: 'Resumes' },
+    { id: 'builder', label: 'Resume Builder', icon: FiFileText, path: '/builder', category: 'Resumes' },
+    { id: 'ats-scanner', label: 'ATS Scanner', icon: FiTarget, path: '/ats-scanner', shortcut: '⌘S', category: 'Tools' },
+    { id: 'analytics', label: 'Analytics', icon: FiTrendingUp, path: '/analytics', premium: true, category: 'Tools' },
+    { id: 'profile', label: 'Profile Settings', icon: FiUser, path: '/profile', shortcut: '⌘P', category: 'Account' },
+    { id: 'settings', label: 'Account Settings', icon: FiSettings, path: '/settings', shortcut: '⌘,', category: 'Account' },
   ] : [
-    {
-      id: 'login',
-      label: 'Sign In',
-      icon: FiUser,
-      path: '/login',
-      category: 'Account',
-    },
-    {
-      id: 'signup',
-      label: 'Sign Up',
-      icon: FiPlus,
-      path: '/signup',
-      category: 'Account',
-    },
-  ], [user]);
+    { id: 'login', label: 'Sign In', icon: FiUser, path: '/login', category: 'Account' },
+    { id: 'signup', label: 'Sign Up', icon: FiPlus, path: '/signup', category: 'Account' },
+  ], [user, handleCreateResume]);
 
-  // Recent resumes (quick access)
+  // Recent resumes
   const recentResumeCommands = useMemo(() => {
-    if (!user || !resumes.length) return [];
-    
+    if (!user || !resumes?.length) return [];
     return resumes.slice(0, 5).map((resume, index) => ({
       id: `resume-${resume.id}`,
       label: resume.name || 'Untitled Resume',
@@ -237,38 +146,13 @@ const CommandPalette = ({ isOpen, onClose }) => {
 
   // Admin commands
   const adminCommands = useMemo(() => userRole === 'admin' ? [
-    {
-      id: 'admin',
-      label: 'Admin Dashboard',
-      icon: FiShield,
-      path: '/admin',
-      shortcut: '⌘A',
-      category: 'Admin',
-    },
-    {
-      id: 'admin-users',
-      label: 'User Management',
-      icon: FiUsers,
-      path: '/admin/users',
-      category: 'Admin',
-    },
-    {
-      id: 'admin-resumes',
-      label: 'Resume Management',
-      icon: FiFileText,
-      path: '/admin/resumes',
-      category: 'Admin',
-    },
-    {
-      id: 'admin-analytics',
-      label: 'Platform Analytics',
-      icon: FiBarChart2,
-      path: '/admin/analytics',
-      category: 'Admin',
-    },
+    { id: 'admin', label: 'Admin Dashboard', icon: FiShield, path: '/admin', shortcut: '⌘A', category: 'Admin' },
+    { id: 'admin-users', label: 'User Management', icon: FiUsers, path: '/admin/users', category: 'Admin' },
+    { id: 'admin-resumes', label: 'Resume Management', icon: FiFileText, path: '/admin/resumes', category: 'Admin' },
+    { id: 'admin-analytics', label: 'Platform Analytics', icon: FiBarChart2, path: '/admin/analytics', category: 'Admin' },
   ] : [], [userRole]);
 
-  // Combine all commands
+  // All commands
   const allCommands = useMemo(() => [
     ...baseCommands,
     ...userCommands,
@@ -276,10 +160,9 @@ const CommandPalette = ({ isOpen, onClose }) => {
     ...adminCommands,
   ], [baseCommands, userCommands, recentResumeCommands, adminCommands]);
 
-  // Filter commands based on search
-  const filteredCommands = useMemo(() => {
+  // Filter function
+  const getFilteredCommands = useCallback(() => {
     if (!searchTerm) return allCommands;
-    
     const term = searchTerm.toLowerCase();
     return allCommands.filter(cmd => 
       cmd.label.toLowerCase().includes(term) ||
@@ -287,7 +170,9 @@ const CommandPalette = ({ isOpen, onClose }) => {
     );
   }, [allCommands, searchTerm]);
 
-  // Group commands by category
+  const filteredCommands = getFilteredCommands();
+
+  // Group commands
   const groupedCommands = useMemo(() => {
     const groups = {};
     filteredCommands.forEach(cmd => {
@@ -298,11 +183,20 @@ const CommandPalette = ({ isOpen, onClose }) => {
     return groups;
   }, [filteredCommands]);
 
+  // Scroll into view
+  useEffect(() => {
+    if (listRef.current) {
+      const selectedElement = listRef.current.children[selectedIndex];
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [selectedIndex]);
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -311,7 +205,6 @@ const CommandPalette = ({ isOpen, onClose }) => {
             onClick={onClose}
           />
 
-          {/* Command Palette */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -320,7 +213,6 @@ const CommandPalette = ({ isOpen, onClose }) => {
             className="fixed inset-x-0 top-[15vh] z-[101] mx-auto max-w-xl"
           >
             <div className="glass-card p-2 shadow-2xl">
-              {/* Search Input */}
               <div className="relative">
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
@@ -338,7 +230,6 @@ const CommandPalette = ({ isOpen, onClose }) => {
                 <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">ESC</kbd>
               </div>
 
-              {/* Results */}
               <div ref={listRef} className="max-h-[400px] overflow-y-auto py-2">
                 {Object.keys(groupedCommands).length > 0 ? (
                   Object.entries(groupedCommands).map(([category, commands]) => (
@@ -346,7 +237,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
                       <p className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         {category}
                       </p>
-                      {commands.map((cmd, idx) => {
+                      {commands.map((cmd) => {
                         const globalIndex = filteredCommands.indexOf(cmd);
                         const isSelected = globalIndex === selectedIndex;
                         const isPremiumLocked = cmd.premium && !isPremium;
@@ -354,7 +245,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
                         return (
                           <button
                             key={cmd.id}
-                            onClick={() => isPremiumLocked ? toast.error('Upgrade to Pro to access this feature') : executeCommand(cmd)}
+                            onClick={() => isPremiumLocked ? toast.error('Upgrade to Pro') : executeCommand(cmd)}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
                               isSelected
                                 ? 'bg-primary-500 text-white'
@@ -365,9 +256,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
                             <span className="flex items-center gap-3">
                               <cmd.icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-gray-500'}`} />
                               <span className="text-sm">{cmd.label}</span>
-                              {cmd.premium && !isPremium && (
-                                <Badge variant="warning" size="sm">PRO</Badge>
-                              )}
+                              {cmd.premium && !isPremium && <Badge variant="warning" size="sm">PRO</Badge>}
                             </span>
                             <span className="flex items-center gap-2">
                               {cmd.shortcut && (
@@ -386,32 +275,17 @@ const CommandPalette = ({ isOpen, onClose }) => {
                   <div className="text-center py-8">
                     <FiSearch className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No commands found</p>
-                    <p className="text-xs text-gray-400 mt-1">Try a different search term</p>
                   </div>
                 )}
               </div>
 
-              {/* Footer */}
               <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400">
                 <div className="flex items-center gap-4">
-                  <span className="flex items-center gap-1">
-                    <FiArrowUp className="w-3 h-3" />
-                    <FiArrowDown className="w-3 h-3" />
-                    <span>Navigate</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <FiCornerDownLeft className="w-3 h-3" />
-                    <span>Select</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span>ESC</span>
-                    <span>Close</span>
-                  </span>
+                  <span className="flex items-center gap-1"><FiArrowUp className="w-3 h-3" /><FiArrowDown className="w-3 h-3" />Navigate</span>
+                  <span className="flex items-center gap-1"><FiCornerDownLeft className="w-3 h-3" />Select</span>
+                  <span>ESC to close</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <FiCommand className="w-3 h-3" />
-                  <span>K to open</span>
-                </div>
+                <div className="flex items-center gap-1"><FiCommand className="w-3 h-3" />K to open</div>
               </div>
             </div>
           </motion.div>

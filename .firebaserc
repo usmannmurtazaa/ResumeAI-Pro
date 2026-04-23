@@ -1,6 +1,7 @@
 {
   "projects": {
-    "prod": "ats-resume-builder-f7783"
+    "prod": "ats-resume-builder-f7783",
+    "default": "ats-resume-builder-f7783"
   },
   "targets": {},
   "etags": {}
