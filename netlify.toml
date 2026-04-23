@@ -7,7 +7,7 @@
   NPM_VERSION = "10"
   CI = "false"
   DISABLE_ESLINT_PLUGIN = "true"
-  GENERATE_SOURCEMAP = "false"
+  GENERATE_SOURCEMAP = "true"
 
 [[redirects]]
   from = "/*"
