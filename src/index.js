@@ -1,122 +1,251 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import App from './App';
 import './styles/globals.css';
 
-// Error tracking (Sentry)
-import * as Sentry from '@sentry/react';
+const APP_NAME = process.env.REACT_APP_NAME || 'ResumeAI Pro';
+const APP_VERSION = process.env.REACT_APP_VERSION || '2.5.0';
+const APP_ENVIRONMENT = process.env.REACT_APP_ENVIRONMENT || process.env.NODE_ENV || 'development';
+const SENTRY_DSN = process.env.REACT_APP_SENTRY_DSN;
+const ANALYTICS_ENABLED = process.env.REACT_APP_ENABLE_ANALYTICS === 'true';
+const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const PUBLIC_URL = process.env.PUBLIC_URL || '';
 
-// Initialize Sentry if DSN is provided
-if (process.env.REACT_APP_SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.REACT_APP_SENTRY_DSN,
-    environment: process.env.REACT_APP_ENVIRONMENT || 'development',
-    release: `resumeai-pro@${process.env.REACT_APP_VERSION || '2.5.0'}`,
-    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
-    integrations: [
-      Sentry.browserTracingIntegration(), 
-      Sentry.replayIntegration(),
-    ],
-  });
-}
+let analyticsModulePromise;
 
-// Performance monitoring
-if (process.env.NODE_ENV === 'production') {
-  // Report Web Vitals
-  import('web-vitals').then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
-    onCLS(console.log);
-    onFID(console.log);
-    onFCP(console.log);
-    onLCP(console.log);
-    onTTFB(console.log);
-  });
-}
+const parseNumberEnv = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
-// Service Worker Registration
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('✅ Service Worker registered:', registration.scope);
+const buildAssetUrl = (path) => {
+  const base = PUBLIC_URL.replace(/\/$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${normalizedPath}`;
+};
 
-        // Check for updates
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New content available, show update prompt
-                console.log('🔄 New content available, please refresh.');
-                // You can dispatch an event or show a toast here
-                window.dispatchEvent(new CustomEvent('sw-update-available'));
-              }
-            });
-          }
-        });
-      })
-      .catch((error) => {
-        console.error('❌ Service Worker registration failed:', error);
-      });
-  });
-}
-
-// Unregister service worker in development
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'development') {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    registrations.forEach((registration) => {
-      registration.unregister();
-      console.log('🗑️ Service Worker unregistered for development');
-    });
-  });
-}
-
-// Handle unhandled promise rejections
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('❌ Unhandled Promise Rejection:', event.reason);
-  if (process.env.REACT_APP_SENTRY_DSN) {
-    Sentry.captureException(event.reason);
+const captureStartupError = (error, label) => {
+  if (IS_DEVELOPMENT) {
+    console.error(label, error);
   }
-});
 
-// Handle global errors
-window.addEventListener('error', (event) => {
-  console.error('❌ Global Error:', event.error);
-  if (process.env.REACT_APP_SENTRY_DSN) {
-    Sentry.captureException(event.error);
-  }
-});
-
-// Log app version on startup
-console.log(
-  `%c ${process.env.REACT_APP_NAME || 'ResumeAI Pro'} v${process.env.REACT_APP_VERSION || '2.5.0'}`,
-  'color: #6366f1; font-weight: bold; font-size: 14px;'
-);
-console.log(
-  `%c Environment: ${process.env.REACT_APP_ENVIRONMENT || 'development'}`,
-  'color: #8b5cf6; font-size: 12px;'
-);
-
-// Initialize analytics (if using custom analytics)
-if (process.env.REACT_APP_ENABLE_ANALYTICS === 'true') {
-  import('./services/analytics').then(({ initAnalytics }) => {
-    initAnalytics();
-  });
-}
-
-// Remove initial loader if it exists
-const removeInitialLoader = () => {
-  const loader = document.getElementById('initial-loader');
-  if (loader) {
-    loader.classList.add('hidden');
-    setTimeout(() => loader.remove(), 300);
+  if (SENTRY_DSN) {
+    Sentry.captureException(error);
   }
 };
 
-// Create root and render app
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const loadAnalyticsModule = () => {
+  if (!analyticsModulePromise) {
+    analyticsModulePromise = import('./services/analytics');
+  }
+
+  return analyticsModulePromise;
+};
+
+const initializeSentry = () => {
+  if (!SENTRY_DSN) {
+    return;
+  }
+
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    environment: APP_ENVIRONMENT,
+    release: `resumeai-pro@${APP_VERSION}`,
+    enabled: true,
+    tracesSampleRate: parseNumberEnv(
+      process.env.REACT_APP_SENTRY_TRACES_SAMPLE_RATE,
+      IS_PRODUCTION ? 0.1 : 1
+    ),
+    replaysSessionSampleRate: parseNumberEnv(
+      process.env.REACT_APP_SENTRY_REPLAYS_SESSION_SAMPLE_RATE,
+      IS_PRODUCTION ? 0.1 : 0
+    ),
+    replaysOnErrorSampleRate: parseNumberEnv(
+      process.env.REACT_APP_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE,
+      1
+    ),
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+  });
+};
+
+const initializeAnalytics = async () => {
+  if (!ANALYTICS_ENABLED) {
+    return;
+  }
+
+  try {
+    const analyticsModule = await loadAnalyticsModule();
+
+    if (typeof analyticsModule.initAnalytics === 'function') {
+      analyticsModule.initAnalytics();
+    }
+  } catch (error) {
+    captureStartupError(error, 'Analytics initialization failed');
+  }
+};
+
+const reportPerformanceMetric = async (metric) => {
+  if (IS_DEVELOPMENT) {
+    console.info('[Web Vitals]', metric.name, Math.round(metric.value), metric);
+  }
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent('app:web-vital', {
+        detail: metric,
+      })
+    );
+  } catch (error) {
+    if (IS_DEVELOPMENT) {
+      console.warn('Unable to dispatch web-vital event', error);
+    }
+  }
+
+  if (!ANALYTICS_ENABLED) {
+    return;
+  }
+
+  try {
+    const analyticsModule = await loadAnalyticsModule();
+
+    if (typeof analyticsModule.trackWebVital === 'function') {
+      analyticsModule.trackWebVital(metric);
+    }
+  } catch (error) {
+    captureStartupError(error, 'Web Vitals reporting failed');
+  }
+};
+
+const initializeWebVitals = async () => {
+  if (!IS_PRODUCTION) {
+    return;
+  }
+
+  try {
+    const { onCLS, onINP, onFCP, onLCP, onTTFB } = await import('web-vitals');
+
+    onCLS(reportPerformanceMetric);
+    onINP(reportPerformanceMetric);
+    onFCP(reportPerformanceMetric);
+    onLCP(reportPerformanceMetric);
+    onTTFB(reportPerformanceMetric);
+  } catch (error) {
+    captureStartupError(error, 'Web Vitals initialization failed');
+  }
+};
+
+const registerServiceWorker = () => {
+  if (!IS_PRODUCTION || !('serviceWorker' in navigator)) {
+    return;
+  }
+
+  const serviceWorkerUrl = buildAssetUrl('/sw.js');
+
+  window.addEventListener(
+    'load',
+    async () => {
+      try {
+        const registration = await navigator.serviceWorker.register(serviceWorkerUrl);
+
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+
+          if (!newWorker) {
+            return;
+          }
+
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.dispatchEvent(new CustomEvent('sw-update-available'));
+            }
+          });
+        });
+      } catch (error) {
+        captureStartupError(error, 'Service worker registration failed');
+      }
+    },
+    { once: true }
+  );
+};
+
+const unregisterDevelopmentServiceWorkers = async () => {
+  if (!IS_DEVELOPMENT || !('serviceWorker' in navigator)) {
+    return;
+  }
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+
+    await Promise.all(
+      registrations.map((registration) => registration.unregister())
+    );
+
+    if (registrations.length > 0) {
+      console.info('[Service Worker] Cleared development registrations');
+    }
+  } catch (error) {
+    captureStartupError(error, 'Service worker cleanup failed');
+  }
+};
+
+const registerDevelopmentErrorLogging = () => {
+  if (!IS_DEVELOPMENT) {
+    return;
+  }
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled Promise Rejection:', event.reason);
+  });
+
+  window.addEventListener('error', (event) => {
+    console.error('Global Error:', event.error || event.message);
+  });
+};
+
+const logStartupInfo = () => {
+  if (!IS_DEVELOPMENT) {
+    return;
+  }
+
+  console.info(`${APP_NAME} v${APP_VERSION}`);
+  console.info(`Environment: ${APP_ENVIRONMENT}`);
+};
+
+const removeInitialLoader = () => {
+  const loader = document.getElementById('initial-loader');
+
+  if (!loader) {
+    return;
+  }
+
+  loader.setAttribute('aria-hidden', 'true');
+  loader.classList.add('hidden');
+
+  window.setTimeout(() => {
+    loader.remove();
+  }, 300);
+};
+
+initializeSentry();
+registerDevelopmentErrorLogging();
+logStartupInfo();
+void initializeAnalytics();
+void initializeWebVitals();
+void unregisterDevelopmentServiceWorkers();
+registerServiceWorker();
+
+const container = document.getElementById('root');
+
+if (!container) {
+  throw new Error('Root element "#root" was not found in the document.');
+}
+
+const root = ReactDOM.createRoot(container);
 
 root.render(
   <React.StrictMode>
@@ -124,8 +253,12 @@ root.render(
   </React.StrictMode>
 );
 
-// Remove loader after initial render
-removeInitialLoader();
+if (typeof window.requestAnimationFrame === 'function') {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(removeInitialLoader);
+  });
+} else {
+  window.setTimeout(removeInitialLoader, 0);
+}
 
-// Export for testing
 export { root };
