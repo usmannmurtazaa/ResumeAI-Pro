@@ -1,19 +1,24 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { useLocation, Link } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import {
+  AnimatePresence,
+  motion,
+  useMotionTemplate,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from 'framer-motion';
+import { Link, useLocation } from 'react-router-dom';
 import {
   FiArrowUp,
-  FiMessageCircle,
   FiHelpCircle,
-  FiX,
-  FiChevronUp,
-  FiSend,
-  FiUser,
   FiMail,
-  FiCheckCircle,
-  FiLoader,
-  FiThumbsUp,
+  FiMessageCircle,
+  FiSend,
   FiThumbsDown,
+  FiThumbsUp,
+  FiUser,
+  FiX,
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
@@ -21,12 +26,73 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '../contexts/ThemeContext';
 import toast from 'react-hot-toast';
 
-// ============================================
-// MAIN LAYOUT COMPONENT
-// ============================================
+const COOKIE_CONSENT_KEY = 'cookieConsent';
+const CHAT_NAME_INPUT_ID = 'support-chat-name';
+const CHAT_EMAIL_INPUT_ID = 'support-chat-email';
+const CHAT_INPUT_ID = 'support-chat-input';
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+const createMessageId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+};
+
+const createMessage = (type, text) => ({
+  id: createMessageId(),
+  type,
+  text,
+  timestamp: new Date().toISOString(),
+});
+
+const formatMessageTime = (timestamp) =>
+  new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+const isEmailValid = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+const isTypingTarget = (target) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName;
+  return (
+    tagName === 'INPUT' ||
+    tagName === 'TEXTAREA' ||
+    tagName === 'SELECT' ||
+    target.isContentEditable
+  );
+};
+
+const getBotResponse = (message) => {
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes('resume') || lowerMessage.includes('cv')) {
+    return 'You can create a professional resume with our builder and ATS-friendly templates. If you want, I can guide you through the best starting template.';
+  }
+
+  if (lowerMessage.includes('pricing') || lowerMessage.includes('cost')) {
+    return 'We offer a free plan for getting started, and Pro unlocks premium templates, AI features, and deeper analytics. Visit the pricing page for the latest plan details.';
+  }
+
+  if (lowerMessage.includes('ats') || lowerMessage.includes('score')) {
+    return 'Our ATS scanner checks resume structure, keywords, and formatting. A score above 80% is a strong target for most applications.';
+  }
+
+  if (lowerMessage.includes('template') || lowerMessage.includes('design')) {
+    return 'We offer multiple resume templates for different styles and industries. The best choice depends on whether you want a modern, classic, or more creative look.';
+  }
+
+  return 'Thanks for your message. Our support team will follow up soon, and you can also check the Help Center or FAQ for quick answers.';
+};
 
 const MainLayout = ({
   children,
@@ -40,8 +106,9 @@ const MainLayout = ({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showChatWidget, setShowChatWidget] = useState(false);
   const [showCookieConsent, setShowCookieConsent] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
-    { type: 'bot', text: '👋 Hi there! How can I help you today?', timestamp: new Date() },
+  const [hasScrolledPastHero, setHasScrolledPastHero] = useState(false);
+  const [chatMessages, setChatMessages] = useState(() => [
+    createMessage('bot', 'Hi there! How can I help you today?'),
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -49,251 +116,341 @@ const MainLayout = ({
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [showUserForm, setShowUserForm] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const chatEndRef = useRef(null);
+  const responseTimeoutRef = useRef(null);
 
   const location = useLocation();
   const { scrollY } = useScroll();
+  const shouldReduceMotion = useReducedMotion();
   const { user } = useAuth();
-  const { isDark } = useTheme();
 
-  // Pre-fill user info if logged in
+  const isHomePage = location.pathname === '/';
+  const isTransparentNavbar = transparentNavbar && isHomePage && !hasScrolledPastHero;
+
+  const headerOpacity = useTransform(
+    scrollY,
+    [0, 180],
+    [isTransparentNavbar ? 0.92 : 1, 1]
+  );
+  const headerBlurAmount = useTransform(scrollY, [0, 180], [0, 12]);
+  const headerBackdropFilter = useMotionTemplate`blur(${headerBlurAmount}px)`;
+
+  const resolvedTitle = useMemo(
+    () => (pageTitle ? `${pageTitle} | ResumeAI Pro` : 'ResumeAI Pro'),
+    [pageTitle]
+  );
+
   useEffect(() => {
     if (user) {
       setUserName(user.displayName || '');
       setUserEmail(user.email || '');
       setShowUserForm(false);
+      return;
     }
+
+    setUserName('');
+    setUserEmail('');
+    setShowUserForm(true);
   }, [user]);
 
-  // Parallax effect for header
-  const headerOpacity = useTransform(scrollY, [0, 300], [1, 0.95]);
-  const headerBlur = useTransform(scrollY, [0, 300], [0, 8]);
-
-  // Check for saved cookie consent
   useEffect(() => {
-    const consent = localStorage.getItem('cookieConsent');
-    if (!consent) {
+    try {
+      const consent = window.localStorage.getItem(COOKIE_CONSENT_KEY);
+      setShowCookieConsent(!consent);
+    } catch {
       setShowCookieConsent(true);
     }
   }, []);
 
-  // Scroll to top button visibility
   useEffect(() => {
-    const unsubscribe = scrollY.on('change', (value) => {
-      setShowScrollButton(value > 400);
-    });
+    const syncScrollState = (value) => {
+      setShowScrollButton((previous) => {
+        const next = value > 400;
+        return previous === next ? previous : next;
+      });
+
+      setHasScrolledPastHero((previous) => {
+        const next = value > 48;
+        return previous === next ? previous : next;
+      });
+    };
+
+    syncScrollState(scrollY.get());
+    const unsubscribe = scrollY.on('change', syncScrollState);
+
     return () => unsubscribe();
   }, [scrollY]);
 
-  // Auto-scroll chat to bottom
   useEffect(() => {
-    if (showChatWidget) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!showChatWidget) {
+      return;
     }
-  }, [chatMessages, showChatWidget]);
 
-  // Keyboard shortcuts
+    chatEndRef.current?.scrollIntoView({
+      behavior: shouldReduceMotion ? 'auto' : 'smooth',
+      block: 'end',
+    });
+  }, [chatMessages, shouldReduceMotion, showChatWidget]);
+
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ctrl/Cmd + / to focus chat
-      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-        e.preventDefault();
-        setShowChatWidget(true);
-      }
-      // Escape to close chat
-      if (e.key === 'Escape' && showChatWidget) {
+    if (!showChatWidget) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const targetId =
+        showUserForm && !user ? CHAT_NAME_INPUT_ID : CHAT_INPUT_ID;
+      document.getElementById(targetId)?.focus();
+    }, 100);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [showChatWidget, showUserForm, user]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showChatWidget) {
         setShowChatWidget(false);
+        return;
+      }
+
+      if (!showChatSupport || isTypingTarget(event.target)) {
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+        event.preventDefault();
+        setShowChatWidget(true);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showChatWidget]);
+  }, [showChatSupport, showChatWidget]);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  useEffect(() => {
+    return () => {
+      if (responseTimeoutRef.current) {
+        window.clearTimeout(responseTimeoutRef.current);
+      }
+    };
+  }, []);
 
-  const handleCookieConsent = (accepted) => {
-    localStorage.setItem('cookieConsent', accepted ? 'accepted' : 'declined');
-    setShowCookieConsent(false);
-    if (accepted) {
-      toast.success('Cookie preferences saved');
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: shouldReduceMotion ? 'auto' : 'smooth',
+    });
+  }, [shouldReduceMotion]);
+
+  const handleCookieConsent = useCallback((status) => {
+    try {
+      window.localStorage.setItem(COOKIE_CONSENT_KEY, status);
+    } catch {
+      // Ignore storage errors and just hide the banner.
     }
-  };
 
-  const handleUserFormSubmit = (e) => {
-    e.preventDefault();
-    if (!userName.trim() || !userEmail.trim()) {
-      toast.error('Please enter your name and email');
+    setShowCookieConsent(false);
+
+    if (status !== 'dismissed') {
+      toast.success('Cookie preferences saved.');
+    }
+  }, []);
+
+  const handleUserFormSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+
+      if (!userName.trim()) {
+        toast.error('Please enter your name.');
+        return;
+      }
+
+      if (!isEmailValid(userEmail)) {
+        toast.error('Please enter a valid email address.');
+        return;
+      }
+
+      setShowUserForm(false);
+      toast.success('Thanks. How can we help you?');
+    },
+    [userEmail, userName]
+  );
+
+  const handleChatSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+
+      if (showUserForm || isTyping) {
+        return;
+      }
+
+      const message = chatInput.trim();
+
+      if (!message) {
+        return;
+      }
+
+      setChatFeedback(null);
+      setChatMessages((previous) => [...previous, createMessage('user', message)]);
+      setChatInput('');
+      setIsTyping(true);
+
+      if (responseTimeoutRef.current) {
+        window.clearTimeout(responseTimeoutRef.current);
+      }
+
+      responseTimeoutRef.current = window.setTimeout(() => {
+        setChatMessages((previous) => [
+          ...previous,
+          createMessage('bot', getBotResponse(message)),
+        ]);
+        setIsTyping(false);
+        responseTimeoutRef.current = null;
+      }, 900);
+    },
+    [chatInput, isTyping, showUserForm]
+  );
+
+  const handleChatFeedback = useCallback((helpful) => {
+    if (chatFeedback !== null) {
       return;
     }
-    setShowUserForm(false);
-    toast.success('Thanks! How can we help you?');
-  };
 
-  const handleChatSubmit = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-
-    const userMessage = chatInput.trim();
-    setChatMessages((prev) => [
-      ...prev,
-      { type: 'user', text: userMessage, timestamp: new Date() },
-    ]);
-    setChatInput('');
-    setIsTyping(true);
-
-    // Simulate bot response with delay
-    setTimeout(() => {
-      setIsTyping(false);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          type: 'bot',
-          text: getBotResponse(userMessage),
-          timestamp: new Date(),
-        },
-      ]);
-    }, 1500);
-  };
-
-  const getBotResponse = (message) => {
-    const lowerMessage = message.toLowerCase();
-    if (lowerMessage.includes('resume') || lowerMessage.includes('cv')) {
-      return 'You can create a professional resume using our builder! Choose from 25+ ATS-optimized templates. Would you like me to guide you through it?';
-    }
-    if (lowerMessage.includes('pricing') || lowerMessage.includes('cost')) {
-      return 'We offer a free plan with 5 resumes, and Pro plans start at $19/month with unlimited resumes and AI features. Check out our pricing page for details!';
-    }
-    if (lowerMessage.includes('ats') || lowerMessage.includes('score')) {
-      return 'Our ATS scanner analyzes your resume and gives you a compatibility score. Aim for 80% or higher for best results!';
-    }
-    return "Thanks for your message! Our support team will get back to you soon. In the meantime, you can check our FAQ page for quick answers.";
-  };
-
-  const handleChatFeedback = (helpful) => {
     setChatFeedback(helpful);
-    toast.success(helpful ? 'Thanks for your feedback!' : 'Thanks! We\'ll improve our responses.');
-  };
-
-  const isHomePage = location.pathname === '/';
+    toast.success(helpful ? 'Thanks for your feedback.' : "Thanks. We'll keep improving.");
+  }, [chatFeedback]);
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-        {/* Animated Navbar */}
+      <Helmet>
+        <title>{resolvedTitle}</title>
+        {pageDescription ? (
+          <meta name="description" content={pageDescription} />
+        ) : null}
+      </Helmet>
+
+      <div className="flex min-h-screen flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
         <motion.div
           style={{
             opacity: headerOpacity,
-            backdropFilter: `blur(${headerBlur}px)`,
+            backdropFilter: headerBackdropFilter,
           }}
-          className={`sticky top-0 z-50 transition-all duration-300 ${
-            transparentNavbar && isHomePage && scrollY.get() < 100
-              ? 'bg-transparent'
-              : 'bg-white/80 dark:bg-gray-900/80'
-          }`}
+          className={cn(
+            'sticky top-0 z-50 transition-colors duration-300',
+            isTransparentNavbar
+              ? 'border-b border-transparent bg-transparent'
+              : 'border-b border-gray-200/60 bg-white/80 shadow-sm dark:border-gray-700/60 dark:bg-gray-900/80'
+          )}
         >
-          <Navbar transparent={transparentNavbar && isHomePage && scrollY.get() < 100} />
+          <Navbar transparent={isTransparentNavbar} />
         </motion.div>
 
-        {/* Main Content */}
-        <main className="flex-1 relative">
+        <main className="relative flex-1">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 20 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -16 }}
+              transition={{ duration: shouldReduceMotion ? 0.12 : 0.28 }}
             >
               {children}
             </motion.div>
           </AnimatePresence>
         </main>
 
-        {/* Footer */}
         <Footer />
 
-        {/* Scroll to Top Button */}
         <AnimatePresence>
           {showScrollToTop && showScrollButton && (
             <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.88 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              exit={{ opacity: 0, scale: 0.88 }}
+              whileHover={shouldReduceMotion ? undefined : { scale: 1.06 }}
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.94 }}
               onClick={scrollToTop}
-              className="fixed bottom-24 right-6 z-40 p-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
+              className={cn(
+                'fixed right-6 z-40 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 p-3 text-white shadow-lg transition-shadow hover:shadow-xl',
+                showChatSupport ? 'bottom-24' : 'bottom-6'
+              )}
               aria-label="Scroll to top"
             >
-              <FiArrowUp className="w-5 h-5" />
+              <FiArrowUp className="h-5 w-5" />
             </motion.button>
           )}
         </AnimatePresence>
 
-        {/* Chat Support Widget */}
         {showChatSupport && (
-          <div className="fixed bottom-6 right-6 z-40">
+          <div className="fixed bottom-6 right-4 z-40 sm:right-6">
             <AnimatePresence>
               {showChatWidget && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                <motion.section
+                  initial={{ opacity: 0, scale: 0.96, y: 18 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                  className="absolute bottom-20 right-0 w-80 sm:w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  exit={{ opacity: 0, scale: 0.96, y: 18 }}
+                  className="absolute bottom-20 right-0 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800"
+                  role="dialog"
+                  aria-labelledby="support-chat-title"
                 >
-                  {/* Chat Header */}
-                  <div className="p-4 bg-gradient-to-r from-primary-500 to-accent-500 text-white">
-                    <div className="flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-primary-500 to-accent-500 p-4 text-white">
+                    <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                          <FiMessageCircle className="w-5 h-5" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                          <FiMessageCircle className="h-5 w-5" />
                         </div>
                         <div>
-                          <h3 className="font-semibold">Support Chat</h3>
-                          <p className="text-xs opacity-90">We typically reply in a few minutes</p>
+                          <h2 id="support-chat-title" className="font-semibold">
+                            Support Chat
+                          </h2>
+                          <p className="text-xs opacity-90">
+                            We typically reply in a few minutes
+                          </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs opacity-70 mr-2">⌘/</span>
-                        <button
-                          onClick={() => setShowChatWidget(false)}
-                          className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
-                        >
-                          <FiX className="w-5 h-5" />
-                        </button>
-                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowChatWidget(false)}
+                        className="rounded-lg p-1.5 transition-colors hover:bg-white/20"
+                        aria-label="Close support chat"
+                      >
+                        <FiX className="h-5 w-5" />
+                      </button>
                     </div>
                   </div>
 
-                  {/* User Info Form */}
                   {showUserForm && !user && (
                     <motion.form
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       onSubmit={handleUserFormSubmit}
-                      className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+                      className="border-b border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60"
                     >
                       <Input
+                        id={CHAT_NAME_INPUT_ID}
                         icon={<FiUser />}
                         placeholder="Your name"
                         value={userName}
-                        onChange={(e) => setUserName(e.target.value)}
+                        onChange={(event) => setUserName(event.target.value)}
                         className="mb-2"
                         size="sm"
+                        autoComplete="name"
+                        aria-label="Your name"
                       />
                       <Input
+                        id={CHAT_EMAIL_INPUT_ID}
                         icon={<FiMail />}
                         type="email"
                         placeholder="Your email"
                         value={userEmail}
-                        onChange={(e) => setUserEmail(e.target.value)}
+                        onChange={(event) => setUserEmail(event.target.value)}
                         className="mb-3"
                         size="sm"
+                        autoComplete="email"
+                        aria-label="Your email"
                       />
                       <Button type="submit" size="sm" className="w-full">
                         Start Chat
@@ -301,137 +458,186 @@ const MainLayout = ({
                     </motion.form>
                   )}
 
-                  {/* Chat Messages */}
-                  <div className="h-80 overflow-y-auto p-4 space-y-4">
-                    {chatMessages.map((msg, index) => (
+                  <div
+                    className="h-80 space-y-4 overflow-y-auto p-4"
+                    role="log"
+                    aria-live="polite"
+                    aria-relevant="additions text"
+                  >
+                    {chatMessages.map((message) => (
                       <motion.div
-                        key={index}
+                        key={message.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                        className={cn(
+                          'flex',
+                          message.type === 'user' ? 'justify-end' : 'justify-start'
+                        )}
                       >
                         <div
-                          className={`max-w-[80%] p-3 rounded-2xl ${
-                            msg.type === 'user'
+                          className={cn(
+                            'max-w-[82%] rounded-2xl p-3',
+                            message.type === 'user'
                               ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                          }`}
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                          )}
                         >
-                          <p className="text-sm">{msg.text}</p>
-                          <p className="text-[10px] opacity-70 mt-1">
-                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <p className="text-sm leading-6">{message.text}</p>
+                          <p className="mt-1 text-[10px] opacity-70">
+                            {formatMessageTime(message.timestamp)}
                           </p>
                         </div>
                       </motion.div>
                     ))}
+
                     {isTyping && (
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className="flex justify-start"
+                        aria-live="polite"
                       >
-                        <div className="bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-2">
+                        <div className="rounded-2xl bg-gray-100 px-4 py-3 dark:bg-gray-700">
                           <div className="flex gap-1">
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                            <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" />
+                            <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce [animation-delay:120ms]" />
+                            <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce [animation-delay:240ms]" />
                           </div>
                         </div>
                       </motion.div>
                     )}
+
                     <div ref={chatEndRef} />
                   </div>
 
-                  {/* Feedback Buttons */}
                   {chatMessages.length > 2 && chatFeedback === null && (
-                    <div className="px-4 pb-2 flex items-center gap-2">
-                      <p className="text-xs text-gray-500">Was this helpful?</p>
+                    <div className="flex items-center gap-2 px-4 pb-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Was this helpful?
+                      </p>
                       <button
+                        type="button"
                         onClick={() => handleChatFeedback(true)}
-                        className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                        className="rounded-lg p-1 transition-colors hover:bg-green-100 dark:hover:bg-green-900/30"
+                        aria-label="This response was helpful"
                       >
-                        <FiThumbsUp className="w-4 h-4 text-green-500" />
+                        <FiThumbsUp className="h-4 w-4 text-green-500" />
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleChatFeedback(false)}
-                        className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                        className="rounded-lg p-1 transition-colors hover:bg-red-100 dark:hover:bg-red-900/30"
+                        aria-label="This response was not helpful"
                       >
-                        <FiThumbsDown className="w-4 h-4 text-red-500" />
+                        <FiThumbsDown className="h-4 w-4 text-red-500" />
                       </button>
                     </div>
                   )}
 
-                  {/* Chat Input */}
-                  <form onSubmit={handleChatSubmit} className="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <form
+                    onSubmit={handleChatSubmit}
+                    className="border-t border-gray-200 p-4 dark:border-gray-700"
+                  >
                     <div className="flex gap-2">
                       <input
+                        id={CHAT_INPUT_ID}
                         type="text"
                         value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="Type your message..."
-                        className="flex-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 outline-none"
+                        onChange={(event) => setChatInput(event.target.value)}
+                        placeholder={
+                          showUserForm
+                            ? 'Enter your name and email first...'
+                            : 'Type your message...'
+                        }
+                        className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2 outline-none transition-all focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-800"
                         disabled={showUserForm}
+                        maxLength={400}
+                        aria-label="Type your support message"
                       />
-                      <Button type="submit" size="sm" disabled={showUserForm} icon={<FiSend />}>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={showUserForm || !chatInput.trim() || isTyping}
+                        icon={<FiSend />}
+                      >
                         Send
                       </Button>
                     </div>
                   </form>
-                </motion.div>
+                </motion.section>
               )}
             </AnimatePresence>
 
-            {/* Chat Toggle Button */}
             <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowChatWidget(!showChatWidget)}
-              className="p-4 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow relative"
-              aria-label="Open chat support"
+              whileHover={shouldReduceMotion ? undefined : { scale: 1.08 }}
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.94 }}
+              onClick={() => setShowChatWidget((previous) => !previous)}
+              className="relative rounded-full bg-gradient-to-r from-primary-500 to-accent-500 p-4 text-white shadow-lg transition-shadow hover:shadow-xl"
+              aria-label={showChatWidget ? 'Close chat support' : 'Open chat support'}
             >
-              {showChatWidget ? <FiX className="w-6 h-6" /> : <FiMessageCircle className="w-6 h-6" />}
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900" />
+              {showChatWidget ? (
+                <FiX className="h-6 w-6" />
+              ) : (
+                <FiMessageCircle className="h-6 w-6" />
+              )}
+              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-green-500 dark:border-gray-900" />
             </motion.button>
           </div>
         )}
 
-        {/* Cookie Consent Banner */}
         <AnimatePresence>
           {showCookieConsent && (
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md z-50"
+              exit={{ opacity: 0, y: 40 }}
+              className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:max-w-md"
             >
-              <div className="glass-card p-4 sm:p-5 shadow-xl border border-gray-200 dark:border-gray-700">
+              <div className="glass-card rounded-2xl border border-gray-200 p-4 shadow-xl dark:border-gray-700 sm:p-5">
                 <div className="flex items-start gap-3">
-                  <div className="hidden sm:block p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-                    <span className="text-2xl">🍪</span>
+                  <div className="hidden rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30 sm:block">
+                    <span className="text-2xl" aria-hidden="true">
+                      🍪
+                    </span>
                   </div>
+
                   <div className="flex-1">
-                    <h4 className="font-semibold mb-1">Cookie Consent</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      We use cookies to enhance your experience. By continuing, you agree to our use of cookies.
+                    <h4 className="mb-1 font-semibold">Cookie Preferences</h4>
+                    <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+                      We use cookies to improve performance, understand product usage,
+                      and provide a better experience.
                     </p>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleCookieConsent(true)}>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      <Button
+                        size="sm"
+                        onClick={() => handleCookieConsent('accepted')}
+                      >
                         Accept All
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleCookieConsent(false)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleCookieConsent('declined')}
+                      >
                         Essential Only
                       </Button>
-                      <Link to="/privacy" className="text-xs text-primary-500 hover:text-primary-600 px-3 py-2">
+                      <Link
+                        to="/privacy"
+                        className="inline-flex items-center px-1 py-2 text-xs text-primary-500 transition-colors hover:text-primary-600"
+                      >
                         Learn More
                       </Link>
                     </div>
                   </div>
+
                   <button
-                    onClick={() => setShowCookieConsent(false)}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    type="button"
+                    onClick={() => handleCookieConsent('dismissed')}
+                    className="rounded-lg p-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                    aria-label="Dismiss cookie banner"
                   >
-                    <FiX className="w-4 h-4" />
+                    <FiX className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -439,28 +645,29 @@ const MainLayout = ({
           )}
         </AnimatePresence>
 
-        {/* Help Widget */}
         {showHelpWidget && (
           <div className="fixed bottom-6 left-6 z-40">
-            <motion.a
-              href="/help"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-shadow border border-gray-200 dark:border-gray-700"
+            <motion.div
+              whileHover={shouldReduceMotion ? undefined : { scale: 1.06 }}
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
             >
-              <FiHelpCircle className="w-5 h-5 text-primary-500" />
-              <span className="hidden sm:inline text-sm font-medium">Help Center</span>
-              <span className="hidden lg:inline text-xs text-gray-400 ml-1">⌘?</span>
-            </motion.a>
+              <Link
+                to="/help"
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                aria-label="Open Help Center"
+              >
+                <FiHelpCircle className="h-5 w-5 text-primary-500" />
+                <span className="hidden text-sm font-medium sm:inline">Help Center</span>
+              </Link>
+            </motion.div>
           </div>
         )}
 
-        {/* Back to Top Keyboard Shortcut */}
         <button
           onClick={scrollToTop}
-          className="sr-only focus:not-sr-only focus:fixed focus:bottom-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-500 focus:text-white focus:rounded-lg"
+          className="sr-only focus:not-sr-only focus:fixed focus:bottom-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-primary-500 focus:px-4 focus:py-2 focus:text-white"
         >
-          Back to top (⌃⌘↑)
+          Back to top
         </button>
       </div>
     </ErrorBoundary>

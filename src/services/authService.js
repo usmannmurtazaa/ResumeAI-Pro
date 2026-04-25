@@ -1,71 +1,108 @@
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  signOut,
-  sendPasswordResetEmail,
-  confirmPasswordReset,
-  updateProfile,
-  updateEmail,
-  updatePassword,
-  deleteUser,
-  sendEmailVerification,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  GoogleAuthProvider,
-  GithubAuthProvider,
-  TwitterAuthProvider,
-  PhoneAuthProvider,
-  signInWithPhoneNumber,
-  FacebookAuthProvider,
-  OAuthProvider,
-  linkWithCredential,
-  unlink,
-  getIdToken,
-  getIdTokenResult,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence,
-  getMultiFactorResolver,
-  PhoneAuthProvider as MFAPhoneAuthProvider,
-  PhoneMultiFactorGenerator,
   applyActionCode,
   checkActionCode,
-  verifyPasswordResetCode,
+  confirmPasswordReset as firebaseConfirmPasswordReset,
+  createUserWithEmailAndPassword,
+  deleteUser as firebaseDeleteUser,
+  EmailAuthProvider,
+  FacebookAuthProvider,
+  getAdditionalUserInfo,
+  getIdToken as firebaseGetIdToken,
+  getIdTokenResult as firebaseGetIdTokenResult,
+  GithubAuthProvider,
+  GoogleAuthProvider,
+  linkWithPopup,
+  OAuthProvider,
+  onAuthStateChanged,
+  PhoneAuthProvider,
+  PhoneMultiFactorGenerator,
+  reauthenticateWithCredential,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signInWithPhoneNumber,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  TwitterAuthProvider,
+  unlink,
+  updateEmail,
+  updatePassword,
+  updateProfile,
+  verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
 } from 'firebase/auth';
 import {
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
   collection,
-  query,
-  where,
+  deleteDoc,
+  doc,
+  getDoc,
   getDocs,
-  writeBatch,
-  increment,
   limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+  writeBatch,
 } from 'firebase/firestore';
-import { auth, db, storage, logAnalyticsEvent } from './firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from 'firebase/auth';
+import {
+  deleteObject,
+  getDownloadURL,
+  ref,
+  uploadBytesResumable,
+} from 'firebase/storage';
 import toast from 'react-hot-toast';
+import { auth, db, storage, logAnalyticsEvent } from './firebase';
 
-// ============================================
-// ERROR MESSAGE MAPPING
-// ============================================
+const COLLECTIONS = {
+  users: 'users',
+  resumes: 'resumes',
+  notifications: 'notifications',
+  settings: 'settings',
+  subscriptions: 'subscriptions',
+  deletedAccounts: 'deletedAccounts',
+  sessions: 'sessions',
+};
+
+const CURRENT_SESSION_STORAGE_KEY = 'resumeai-pro.current-session-id';
+
+const RESTRICTED_PROFILE_FIELDS = new Set([
+  'role',
+  'status',
+  'emailVerified',
+  'authProvider',
+  'createdAt',
+  'updatedAt',
+  'lastLogin',
+  'lastLogout',
+  'metadata',
+  'linkedProviders',
+  'providerData',
+  'userId',
+  'uid',
+]);
+
+const ALLOWED_ROLES = new Set(['user', 'premium', 'admin']);
 
 const getErrorMessage = (error) => {
+  const code = typeof error === 'string' ? error : error?.code;
+  const fallbackMessage =
+    typeof error === 'object' && error?.message
+      ? error.message
+      : 'An unexpected error occurred. Please try again.';
+
   const errorMessages = {
     'auth/email-already-in-use': 'This email is already registered. Please sign in instead.',
     'auth/invalid-email': 'Please enter a valid email address.',
     'auth/weak-password': 'Password should be at least 8 characters with letters and numbers.',
     'auth/user-not-found': 'No account found with this email.',
     'auth/wrong-password': 'Incorrect password. Please try again.',
+    'auth/invalid-credential': 'Invalid credentials. Please try again.',
     'auth/too-many-requests': 'Too many attempts. Please try again later.',
     'auth/network-request-failed': 'Network error. Please check your connection.',
     'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
@@ -83,64 +120,350 @@ const getErrorMessage = (error) => {
     'auth/invalid-action-code': 'The action code is invalid or expired.',
     'auth/user-token-expired': 'Your session has expired. Please sign in again.',
     'auth/web-storage-unsupported': 'Web storage is not supported or disabled.',
-    'auth/missing-android-pkg-name': 'Android package name is required.',
-    'auth/missing-ios-bundle-id': 'iOS bundle ID is required.',
     'auth/unauthorized-domain': 'This domain is not authorized for OAuth operations.',
     'auth/cancelled-popup-request': 'Another popup is already open.',
     'auth/internal-error': 'An internal error occurred. Please try again.',
+    'auth/no-current-user': 'No user is currently signed in.',
+    'auth/no-password-provider':
+      'This account does not support password-based reauthentication.',
+    'auth/missing-password': 'Please enter your password to continue.',
+    'auth/missing-recaptcha': 'Phone verification is not ready. Please refresh and try again.',
+    'auth/provider-not-linked': 'This sign-in method is not linked to your account.',
+    'auth/cannot-unlink-last-provider': 'You must keep at least one sign-in method linked.',
+    'auth/unsupported-provider': 'This sign-in provider is not supported.',
   };
 
-  return errorMessages[error.code] || error.message || 'An unexpected error occurred';
+  return errorMessages[code] || fallbackMessage;
 };
 
-// ============================================
-// AUTHENTICATION SERVICE
-// ============================================
+const safeTrackEvent = (eventName, params = {}) => {
+  try {
+    logAnalyticsEvent(eventName, params);
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`Analytics event "${eventName}" failed`, error);
+    }
+  }
+};
+
+const buildActionUrl = (path) => {
+  if (typeof window === 'undefined') {
+    return path;
+  }
+
+  return `${window.location.origin}${path}`;
+};
+
+const normalizeEmail = (email = '') => email.trim().toLowerCase();
+
+const getCurrentUserOrThrow = () => {
+  const user = auth.currentUser;
+
+  if (!user) {
+    const error = new Error('No user logged in');
+    error.code = 'auth/no-current-user';
+    throw error;
+  }
+
+  return user;
+};
+
+const hasPasswordProvider = (user) =>
+  user?.providerData?.some((provider) => provider.providerId === 'password');
+
+const getProviderIds = (user) =>
+  user?.providerData?.map((provider) => provider.providerId).filter(Boolean) || [];
+
+const buildLinkedProviderMap = (providerIds = []) =>
+  providerIds.reduce((accumulator, providerId) => {
+    accumulator[providerId] = true;
+    return accumulator;
+  }, {});
+
+const sanitizeProfileData = (data = {}) =>
+  Object.fromEntries(
+    Object.entries(data).filter(
+      ([key, value]) => !RESTRICTED_PROFILE_FIELDS.has(key) && value !== undefined
+    )
+  );
+
+const getSessionStorage = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+const getStoredCurrentSessionId = () => {
+  const storageRef = getSessionStorage();
+  return storageRef?.getItem(CURRENT_SESSION_STORAGE_KEY) || null;
+};
+
+const storeCurrentSessionId = (sessionId) => {
+  const storageRef = getSessionStorage();
+  if (!storageRef || !sessionId) {
+    return;
+  }
+
+  storageRef.setItem(CURRENT_SESSION_STORAGE_KEY, sessionId);
+};
+
+const clearStoredCurrentSessionId = () => {
+  const storageRef = getSessionStorage();
+  storageRef?.removeItem(CURRENT_SESSION_STORAGE_KEY);
+};
+
+const createProvider = (providerName) => {
+  const normalizedProvider = providerName.toLowerCase();
+
+  switch (normalizedProvider) {
+    case 'google': {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      provider.addScope('profile');
+      provider.addScope('email');
+      return provider;
+    }
+    case 'github': {
+      const provider = new GithubAuthProvider();
+      provider.addScope('user:email');
+      provider.addScope('read:user');
+      return provider;
+    }
+    case 'facebook': {
+      const provider = new FacebookAuthProvider();
+      provider.addScope('email');
+      provider.addScope('public_profile');
+      return provider;
+    }
+    case 'microsoft': {
+      const provider = new OAuthProvider('microsoft.com');
+      provider.addScope('User.Read');
+      provider.addScope('email');
+      provider.setCustomParameters({ prompt: 'select_account' });
+      return provider;
+    }
+    case 'twitter':
+      return new TwitterAuthProvider();
+    case 'apple': {
+      const provider = new OAuthProvider('apple.com');
+      provider.addScope('email');
+      provider.addScope('name');
+      return provider;
+    }
+    default: {
+      const error = new Error(`Unsupported provider: ${providerName}`);
+      error.code = 'auth/unsupported-provider';
+      throw error;
+    }
+  }
+};
+
+const deleteInBatches = async (refs, chunkSize = 400) => {
+  const uniqueRefs = Array.from(
+    new Map(refs.filter(Boolean).map((refItem) => [refItem.path, refItem])).values()
+  );
+
+  for (let index = 0; index < uniqueRefs.length; index += chunkSize) {
+    const batch = writeBatch(db);
+
+    uniqueRefs.slice(index, index + chunkSize).forEach((refItem) => {
+      batch.delete(refItem);
+    });
+
+    await batch.commit();
+  }
+};
+
+const createSessionRecord = async (userId) => {
+  try {
+    const sessionRef = doc(collection(db, COLLECTIONS.users, userId, COLLECTIONS.sessions));
+
+    await setDoc(sessionRef, {
+      userId,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      platform: typeof navigator !== 'undefined' ? navigator.platform : null,
+      language: typeof navigator !== 'undefined' ? navigator.language : null,
+      createdAt: serverTimestamp(),
+      lastActive: serverTimestamp(),
+      ip: null,
+    });
+
+    storeCurrentSessionId(sessionRef.id);
+    return sessionRef.id;
+  } catch (error) {
+    console.error('Create session error:', error);
+    return null;
+  }
+};
+
+const getActiveSessions = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      return [];
+    }
+
+    const sessionsRef = collection(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions);
+    const sessionsQuery = query(sessionsRef, orderBy('createdAt', 'desc'), limit(10));
+    const snapshot = await getDocs(sessionsQuery);
+
+    return snapshot.docs.map((sessionDoc) => ({
+      id: sessionDoc.id,
+      ...sessionDoc.data(),
+    }));
+  } catch (error) {
+    console.error('Get sessions error:', error);
+    return [];
+  }
+};
+
+const deleteCurrentSessionRecord = async (userId) => {
+  const currentSessionId = getStoredCurrentSessionId();
+
+  if (!currentSessionId) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.users, userId, COLLECTIONS.sessions, currentSessionId));
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Failed to delete current session record', error);
+    }
+  } finally {
+    clearStoredCurrentSessionId();
+  }
+};
+
+const reauthenticateWithPassword = async (password) => {
+  const user = getCurrentUserOrThrow();
+
+  if (!hasPasswordProvider(user) || !user.email) {
+    const error = new Error('Password reauthentication is not available for this account.');
+    error.code = 'auth/no-password-provider';
+    throw error;
+  }
+
+  if (!password) {
+    const error = new Error('Password is required.');
+    error.code = 'auth/missing-password';
+    throw error;
+  }
+
+  const credential = EmailAuthProvider.credential(user.email, password);
+  await reauthenticateWithCredential(user, credential);
+  return user;
+};
+
+const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
+  const userRef = doc(db, COLLECTIONS.users, user.uid);
+  const existingDoc = await getDoc(userRef);
+
+  const baseData = {
+    email: user.email || null,
+    displayName: user.displayName || user.email?.split('@')[0] || 'User',
+    photoURL: user.photoURL || null,
+    status: 'active',
+    emailVerified: Boolean(user.emailVerified),
+    authProvider: providerName.toLowerCase(),
+    providerData: {
+      providerId: user.providerData?.[0]?.providerId || providerName.toLowerCase(),
+      uid: user.providerData?.[0]?.uid || user.uid,
+    },
+    linkedProviders: buildLinkedProviderMap(getProviderIds(user)),
+    lastLogin: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  if (!existingDoc.exists()) {
+    await setDoc(
+      userRef,
+      {
+        ...baseData,
+        role: 'user',
+        createdAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return { isNewUser: true };
+  }
+
+  await updateDoc(userRef, baseData);
+  return { isNewUser };
+};
+
+const updateLinkedProvidersInFirestore = async (user) => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.users, user.uid), {
+      linkedProviders: buildLinkedProviderMap(getProviderIds(user)),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Failed to sync linked providers', error);
+    }
+  }
+};
 
 export const authService = {
-  // ============================================
-  // EMAIL/PASSWORD AUTHENTICATION
-  // ============================================
-
   async signUp(email, password, displayName, options = {}) {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const normalizedEmail = normalizeEmail(email);
+      const normalizedDisplayName = displayName?.trim() || normalizedEmail.split('@')[0];
+
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        normalizedEmail,
+        password
+      );
       const user = userCredential.user;
 
-      // Update profile with display name
-      await updateProfile(user, { displayName });
+      await updateProfile(user, {
+        displayName: normalizedDisplayName,
+        photoURL: options.photoURL || null,
+      });
 
-      // Send email verification
       if (options.sendVerification !== false) {
         await sendEmailVerification(user, {
-          url: `${window.location.origin}/verify-email`,
+          url: buildActionUrl('/verify-email'),
           handleCodeInApp: true,
         });
       }
 
-      // Create user document in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        email,
-        displayName,
-        photoURL: options.photoURL || null,
-        phoneNumber: options.phoneNumber || null,
-        role: options.role || 'user',
-        status: 'active',
-        emailVerified: user.emailVerified,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-        authProvider: 'password',
-        metadata: {
-          signUpMethod: 'email',
-          referrer: options.referrer || null,
-          utmSource: options.utmSource || null,
-          signUpSource: options.signUpSource || 'web',
+      await setDoc(
+        doc(db, COLLECTIONS.users, user.uid),
+        {
+          email: normalizedEmail,
+          displayName: normalizedDisplayName,
+          photoURL: options.photoURL || null,
+          phoneNumber: options.phoneNumber || null,
+          role: 'user',
+          status: 'active',
+          emailVerified: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          authProvider: 'password',
+          linkedProviders: { password: true },
+          metadata: {
+            signUpMethod: 'email',
+            referrer: options.referrer || null,
+            utmSource: options.utmSource || null,
+            signUpSource: options.signUpSource || 'web',
+          },
         },
-      });
+        { merge: true }
+      );
 
-      // Log analytics event
-      logAnalyticsEvent('sign_up', {
+      await createSessionRecord(user.uid);
+
+      safeTrackEvent('sign_up', {
         method: 'email',
         userId: user.uid,
       });
@@ -159,24 +482,27 @@ export const authService = {
 
   async signIn(email, password, rememberMe = true) {
     try {
-      // Set persistence
-      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      await setPersistence(
+        auth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
 
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        normalizeEmail(email),
+        password
+      );
       const user = userCredential.user;
 
-      // Update last login
-      await updateDoc(doc(db, 'users', user.uid), {
+      await updateDoc(doc(db, COLLECTIONS.users, user.uid), {
         lastLogin: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        'metadata.lastLoginIp': null, // Would be set server-side
+        'metadata.lastLoginIp': null,
       });
 
-      // Create session record
-      await this.createSessionRecord(user.uid);
+      await createSessionRecord(user.uid);
 
-      // Log analytics event
-      logAnalyticsEvent('login', {
+      safeTrackEvent('login', {
         method: 'email',
         userId: user.uid,
       });
@@ -193,100 +519,29 @@ export const authService = {
     }
   },
 
-  // ============================================
-  // SOCIAL AUTHENTICATION
-  // ============================================
-
   async signInWithProvider(providerName) {
     try {
-      let provider;
-
-      switch (providerName.toLowerCase()) {
-        case 'google':
-          provider = new GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: 'select_account' });
-          provider.addScope('profile');
-          provider.addScope('email');
-          break;
-        case 'github':
-          provider = new GithubAuthProvider();
-          provider.addScope('user:email');
-          provider.addScope('read:user');
-          break;
-        case 'facebook':
-          provider = new FacebookAuthProvider();
-          provider.addScope('email');
-          provider.addScope('public_profile');
-          break;
-        case 'microsoft':
-          provider = new OAuthProvider('microsoft.com');
-          provider.addScope('user.read');
-          provider.addScope('email');
-          provider.setCustomParameters({
-            prompt: 'select_account',
-          });
-          break;
-        case 'twitter':
-          provider = new TwitterAuthProvider();
-          break;
-        case 'apple':
-          provider = new OAuthProvider('apple.com');
-          provider.addScope('email');
-          provider.addScope('name');
-          break;
-        default:
-          throw new Error(`Unsupported provider: ${providerName}`);
-      }
-
+      const normalizedProvider = providerName.toLowerCase();
+      const provider = createProvider(normalizedProvider);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      const isNewUser = result._tokenResponse?.isNewUser || false;
+      const authInfo = getAdditionalUserInfo(result);
 
-      // Check if user exists in Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      await syncUserDocAfterProviderAuth(user, normalizedProvider, Boolean(authInfo?.isNewUser));
+      await createSessionRecord(user.uid);
 
-      if (!userDoc.exists()) {
-        // Create new user document
-        await setDoc(doc(db, 'users', user.uid), {
-          email: user.email,
-          displayName: user.displayName || user.email?.split('@')[0] || 'User',
-          photoURL: user.photoURL,
-          role: 'user',
-          status: 'active',
-          emailVerified: user.emailVerified,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-          authProvider: providerName.toLowerCase(),
-          providerData: {
-            providerId: user.providerData[0]?.providerId,
-            uid: user.providerData[0]?.uid,
-          },
-        });
-
-        if (isNewUser) {
-          toast.success('Account created successfully! Welcome aboard!');
-        }
-      } else {
-        // Update existing user
-        await updateDoc(doc(db, 'users', user.uid), {
-          lastLogin: serverTimestamp(),
-          photoURL: user.photoURL || userDoc.data().photoURL,
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      // Create session record
-      await this.createSessionRecord(user.uid);
-
-      // Log analytics event
-      logAnalyticsEvent(isNewUser ? 'sign_up' : 'login', {
-        method: providerName,
+      safeTrackEvent(authInfo?.isNewUser ? 'sign_up' : 'login', {
+        method: normalizedProvider,
         userId: user.uid,
       });
 
-      toast.success(`Successfully signed in with ${providerName}!`);
-      return { success: true, user, isNewUser };
+      toast.success(
+        authInfo?.isNewUser
+          ? 'Account created successfully! Welcome aboard!'
+          : `Successfully signed in with ${normalizedProvider}!`
+      );
+
+      return { success: true, user, isNewUser: Boolean(authInfo?.isNewUser) };
     } catch (error) {
       console.error(`${providerName} sign in error:`, error);
       return {
@@ -297,17 +552,20 @@ export const authService = {
     }
   },
 
-  // ============================================
-  // PHONE AUTHENTICATION
-  // ============================================
-
   async signInWithPhone(phoneNumber, recaptchaVerifier) {
     try {
+      if (!recaptchaVerifier) {
+        const error = new Error('Recaptcha verifier is required.');
+        error.code = 'auth/missing-recaptcha';
+        throw error;
+      }
+
       const confirmationResult = await signInWithPhoneNumber(
         auth,
-        phoneNumber,
+        phoneNumber.trim(),
         recaptchaVerifier
       );
+
       toast.success('Verification code sent!');
       return { success: true, confirmationResult };
     } catch (error) {
@@ -324,36 +582,45 @@ export const authService = {
     try {
       const result = await confirmationResult.confirm(code);
       const user = result.user;
-      const isNewUser = result._tokenResponse?.isNewUser || false;
-
-      // Check if user exists
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const authInfo = getAdditionalUserInfo(result);
+      const userRef = doc(db, COLLECTIONS.users, user.uid);
+      const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
-        await setDoc(doc(db, 'users', user.uid), {
-          phoneNumber: user.phoneNumber,
-          displayName: `User${user.uid.slice(0, 6)}`,
-          role: 'user',
-          status: 'active',
+        await setDoc(
+          userRef,
+          {
+            phoneNumber: user.phoneNumber || null,
+            displayName: `User${user.uid.slice(0, 6)}`,
+            role: 'user',
+            status: 'active',
+            phoneVerified: true,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastLogin: serverTimestamp(),
+            authProvider: 'phone',
+            linkedProviders: { phone: true },
+          },
+          { merge: true }
+        );
+      } else {
+        await updateDoc(userRef, {
+          phoneNumber: user.phoneNumber || userDoc.data()?.phoneNumber || null,
           phoneVerified: true,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
-          authProvider: 'phone',
+          updatedAt: serverTimestamp(),
         });
       }
 
-      // Create session record
-      await this.createSessionRecord(user.uid);
+      await createSessionRecord(user.uid);
 
-      // Log analytics event
-      logAnalyticsEvent(isNewUser ? 'sign_up' : 'login', {
+      safeTrackEvent(authInfo?.isNewUser ? 'sign_up' : 'login', {
         method: 'phone',
         userId: user.uid,
       });
 
-      toast.success(isNewUser ? 'Account created!' : 'Phone verified!');
-      return { success: true, user, isNewUser };
+      toast.success(authInfo?.isNewUser ? 'Account created!' : 'Phone verified!');
+      return { success: true, user, isNewUser: Boolean(authInfo?.isNewUser) };
     } catch (error) {
       console.error('Phone confirmation error:', error);
       return {
@@ -364,328 +631,308 @@ export const authService = {
     }
   },
 
-  // ============================================
-  // MFA (Multi-Factor Authentication)
-  // ============================================
-
-  async enrollMFA(phoneNumber) {
+  async enrollMFA(phoneNumber, recaptchaVerifier = window?.recaptchaVerifier) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
-
+      const user = getCurrentUserOrThrow();
       const session = await user.multiFactor.getSession();
-      const phoneOpts = {
-        phoneNumber,
+
+      if (!recaptchaVerifier) {
+        const error = new Error('Recaptcha verifier is required.');
+        error.code = 'auth/missing-recaptcha';
+        throw error;
+      }
+
+      const phoneOptions = {
+        phoneNumber: phoneNumber.trim(),
         session,
       };
 
       const mfaProvider = new PhoneAuthProvider(auth);
       const verificationId = await mfaProvider.verifyPhoneNumber(
-        phoneOpts,
-        window.recaptchaVerifier
+        phoneOptions,
+        recaptchaVerifier
       );
 
       return { success: true, verificationId };
     } catch (error) {
       console.error('MFA enrollment error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async verifyMFAEnrollment(verificationId, verificationCode) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
-
-      const cred = PhoneAuthProvider.credential(verificationId, verificationCode);
-      const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(cred);
+      const user = getCurrentUserOrThrow();
+      const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
+      const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(credential);
 
       await user.multiFactor.enroll(multiFactorAssertion, 'Phone Number');
-      
+
       toast.success('Two-factor authentication enabled!');
       return { success: true };
     } catch (error) {
       console.error('MFA verification error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async unenrollMFA(enrollmentId) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
-
+      const user = getCurrentUserOrThrow();
       await user.multiFactor.unenroll(enrollmentId);
+
       toast.success('Two-factor authentication disabled');
       return { success: true };
     } catch (error) {
       console.error('MFA unenroll error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async getMFAEnrollments() {
     try {
       const user = auth.currentUser;
-      if (!user) return [];
-
-      return user.multiFactor.enrolledFactors || [];
+      return user?.multiFactor?.enrolledFactors || [];
     } catch (error) {
       console.error('Get MFA enrollments error:', error);
       return [];
     }
   },
 
-  // ============================================
-  // SESSION MANAGEMENT
-  // ============================================
-
   async createSessionRecord(userId) {
-    try {
-      const sessionData = {
-        userId,
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        language: navigator.language,
-        createdAt: serverTimestamp(),
-        lastActive: serverTimestamp(),
-        ip: null, // Would be set server-side
-      };
-
-      await setDoc(doc(collection(db, 'users', userId, 'sessions')), sessionData);
-    } catch (error) {
-      console.error('Create session error:', error);
-    }
+    const sessionId = await createSessionRecord(userId);
+    return { success: Boolean(sessionId), sessionId };
   },
 
   async getActiveSessions() {
-    try {
-      const user = auth.currentUser;
-      if (!user) return [];
-
-      const sessionsRef = collection(db, 'users', user.uid, 'sessions');
-      const q = query(sessionsRef, orderBy('createdAt', 'desc'), limit(10));
-      const snapshot = await getDocs(q);
-      
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-    } catch (error) {
-      console.error('Get sessions error:', error);
-      return [];
-    }
+    return await getActiveSessions();
   },
 
   async revokeSession(sessionId) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
+      const user = getCurrentUserOrThrow();
 
-      await deleteDoc(doc(db, 'users', user.uid, 'sessions', sessionId));
+      await deleteDoc(doc(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions, sessionId));
+
+      if (sessionId === getStoredCurrentSessionId()) {
+        clearStoredCurrentSessionId();
+      }
+
       toast.success('Session revoked');
       return { success: true };
     } catch (error) {
       console.error('Revoke session error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async revokeAllOtherSessions() {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
+      const user = getCurrentUserOrThrow();
+      const sessions = await getActiveSessions();
+      const currentSessionId = getStoredCurrentSessionId();
+      const refsToDelete = sessions
+        .filter((session) => session.id !== currentSessionId)
+        .map((session) => doc(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions, session.id));
 
-      const sessions = await this.getActiveSessions();
-      const batch = writeBatch(db);
-      
-      // Delete all sessions except the current one (most recent)
-      sessions.slice(1).forEach((session) => {
-        batch.delete(doc(db, 'users', user.uid, 'sessions', session.id));
-      });
+      if (refsToDelete.length > 0) {
+        await deleteInBatches(refsToDelete);
+      }
 
-      await batch.commit();
       toast.success('All other sessions signed out');
       return { success: true };
     } catch (error) {
       console.error('Revoke all sessions error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
-
-  // ============================================
-  // ACCOUNT MANAGEMENT
-  // ============================================
 
   async signOut() {
     try {
       const user = auth.currentUser;
-      if (user) {
-        // Delete current session
-        const sessions = await this.getActiveSessions();
-        if (sessions.length > 0) {
-          await deleteDoc(doc(db, 'users', user.uid, 'sessions', sessions[0].id));
-        }
 
-        await updateDoc(doc(db, 'users', user.uid), {
+      if (user) {
+        await deleteCurrentSessionRecord(user.uid);
+
+        await updateDoc(doc(db, COLLECTIONS.users, user.uid), {
           lastLogout: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }).catch((error) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Failed to update logout timestamp', error);
+          }
         });
       }
 
-      await signOut(auth);
+      await firebaseSignOut(auth);
+      clearStoredCurrentSessionId();
       toast.success('Logged out successfully');
       return { success: true };
     } catch (error) {
       console.error('Sign out error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async resetPassword(email) {
     try {
-      await sendPasswordResetEmail(auth, email, {
-        url: `${window.location.origin}/login`,
+      await sendPasswordResetEmail(auth, normalizeEmail(email), {
+        url: buildActionUrl('/login'),
         handleCodeInApp: false,
       });
-      // Always return success to prevent email enumeration
-      toast.success('If an account exists, a reset email has been sent.');
-      return { success: true };
     } catch (error) {
       console.error('Password reset error:', error);
-      // Still return success to prevent email enumeration
-      toast.success('If an account exists, a reset email has been sent.');
-      return { success: true };
     }
+
+    toast.success('If an account exists, a reset email has been sent.');
+    return { success: true };
   },
 
   async confirmPasswordReset(oobCode, newPassword) {
     try {
-      await confirmPasswordReset(auth, oobCode, newPassword);
+      await firebaseConfirmPasswordReset(auth, oobCode, newPassword);
       toast.success('Password reset successfully! You can now sign in.');
       return { success: true };
     } catch (error) {
       console.error('Confirm password reset error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async verifyPasswordResetCode(oobCode) {
     try {
-      const email = await verifyPasswordResetCode(auth, oobCode);
+      const email = await firebaseVerifyPasswordResetCode(auth, oobCode);
       return { success: true, email };
     } catch (error) {
       console.error('Verify reset code error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async sendVerificationEmail() {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
+      const user = getCurrentUserOrThrow();
 
       await sendEmailVerification(user, {
-        url: `${window.location.origin}/verify-email`,
+        url: buildActionUrl('/verify-email'),
         handleCodeInApp: true,
       });
+
       toast.success('Verification email sent! Check your inbox.');
       return { success: true };
     } catch (error) {
       console.error('Send verification error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async verifyEmail(oobCode) {
     try {
+      const actionInfo = await checkActionCode(auth, oobCode);
       await applyActionCode(auth, oobCode);
-      
-      const user = auth.currentUser;
-      if (user) {
-        await updateDoc(doc(db, 'users', user.uid), {
+
+      const verifiedEmail = actionInfo?.data?.email || actionInfo?.data?.previousEmail || null;
+
+      if (verifiedEmail) {
+        const usersQuery = query(
+          collection(db, COLLECTIONS.users),
+          where('email', '==', verifiedEmail)
+        );
+        const snapshot = await getDocs(usersQuery);
+
+        if (!snapshot.empty) {
+          const batch = writeBatch(db);
+          snapshot.docs.forEach((userDoc) => {
+            batch.update(userDoc.ref, {
+              emailVerified: true,
+              updatedAt: serverTimestamp(),
+            });
+          });
+          await batch.commit();
+        }
+      } else if (auth.currentUser) {
+        await updateDoc(doc(db, COLLECTIONS.users, auth.currentUser.uid), {
           emailVerified: true,
           updatedAt: serverTimestamp(),
         });
       }
-      
+
       toast.success('Email verified successfully!');
       return { success: true };
     } catch (error) {
       console.error('Verify email error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async checkActionCodeValidity(oobCode) {
     try {
       const info = await checkActionCode(auth, oobCode);
+
       return {
         success: true,
         operation: info.operation,
-        email: info.data.email,
-        fromEmail: info.data.fromEmail,
+        email: info.data?.email || null,
+        fromEmail: info.data?.fromEmail || null,
       };
     } catch (error) {
       console.error('Check action code error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
-  // ============================================
-  // PROFILE MANAGEMENT
-  // ============================================
-
   async updateUserProfile(userId, data) {
     try {
-      const user = auth.currentUser;
-      const updates = {};
+      const currentUser = auth.currentUser;
+      const sanitizedData = sanitizeProfileData(data);
+      const authUpdates = {};
 
-      if (user) {
-        if (data.displayName && data.displayName !== user.displayName) {
-          await updateProfile(user, { displayName: data.displayName });
-          updates.displayName = data.displayName;
+      if (currentUser && currentUser.uid === userId) {
+        if (
+          Object.prototype.hasOwnProperty.call(sanitizedData, 'displayName') &&
+          sanitizedData.displayName !== currentUser.displayName
+        ) {
+          authUpdates.displayName = sanitizedData.displayName;
         }
 
-        if (data.photoURL && data.photoURL !== user.photoURL) {
-          await updateProfile(user, { photoURL: data.photoURL });
-          updates.photoURL = data.photoURL;
+        if (
+          Object.prototype.hasOwnProperty.call(sanitizedData, 'photoURL') &&
+          sanitizedData.photoURL !== currentUser.photoURL
+        ) {
+          authUpdates.photoURL = sanitizedData.photoURL;
+        }
+
+        if (Object.keys(authUpdates).length > 0) {
+          await updateProfile(currentUser, authUpdates);
         }
       }
 
-      // Update Firestore document
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, {
-        ...data,
-        ...updates,
+      await updateDoc(doc(db, COLLECTIONS.users, userId), {
+        ...sanitizedData,
+        ...authUpdates,
         updatedAt: serverTimestamp(),
       });
 
       return { success: true };
     } catch (error) {
       console.error('Update profile error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async updateUserEmail(newEmail, password) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
+      const user = await reauthenticateWithPassword(password);
+      const normalizedEmail = normalizeEmail(newEmail);
 
-      // Re-authenticate
-      const credential = EmailAuthProvider.credential(user.email, password);
-      await reauthenticateWithCredential(user, credential);
-
-      // Update email
-      await updateEmail(user, newEmail);
+      await updateEmail(user, normalizedEmail);
       await sendEmailVerification(user, {
-        url: `${window.location.origin}/verify-email`,
+        url: buildActionUrl('/verify-email'),
         handleCodeInApp: true,
       });
 
-      // Update Firestore
-      await updateDoc(doc(db, 'users', user.uid), {
-        email: newEmail,
+      await updateDoc(doc(db, COLLECTIONS.users, user.uid), {
+        email: normalizedEmail,
         emailVerified: false,
         updatedAt: serverTimestamp(),
       });
@@ -694,250 +941,239 @@ export const authService = {
       return { success: true };
     } catch (error) {
       console.error('Update email error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async updateUserPassword(currentPassword, newPassword) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
-
-      // Re-authenticate
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
-      await reauthenticateWithCredential(user, credential);
-
-      // Update password
+      const user = await reauthenticateWithPassword(currentPassword);
       await updatePassword(user, newPassword);
 
       toast.success('Password updated successfully');
       return { success: true };
     } catch (error) {
       console.error('Update password error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async reauthenticate(password) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
-
-      const credential = EmailAuthProvider.credential(user.email, password);
-      await reauthenticateWithCredential(user, credential);
-
+      await reauthenticateWithPassword(password);
       return { success: true };
     } catch (error) {
       console.error('Reauthentication error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
-  // ============================================
-  // PROFILE IMAGE MANAGEMENT
-  // ============================================
-
   async uploadProfileImage(userId, file, onProgress) {
     try {
-      // Compress image if needed (client-side would use browser-image-compression)
       const storageRef = ref(storage, `avatars/${userId}/${Date.now()}-${file.name}`);
-      const uploadTask = await uploadBytes(storageRef, file);
+      const uploadTask = uploadBytesResumable(storageRef, file, {
+        contentType: file.type || undefined,
+      });
 
-      if (onProgress) {
-        onProgress(100);
+      await new Promise((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            if (!onProgress) {
+              return;
+            }
+
+            const progress =
+              snapshot.totalBytes > 0
+                ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+                : 0;
+
+            onProgress(progress);
+          },
+          reject,
+          resolve
+        );
+      });
+
+      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+      const updateResult = await this.updateUserProfile(userId, { photoURL: downloadURL });
+
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || 'Failed to update profile image URL.');
       }
-
-      const downloadURL = await getDownloadURL(uploadTask.ref);
-
-      // Update user profile with new photo URL
-      await this.updateUserProfile(userId, { photoURL: downloadURL });
 
       toast.success('Profile picture updated!');
       return { success: true, url: downloadURL };
     } catch (error) {
       console.error('Upload profile image error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async deleteProfileImage(userId, photoURL) {
     try {
-      if (photoURL && photoURL.includes('firebasestorage')) {
+      if (
+        photoURL &&
+        (photoURL.includes('firebasestorage.googleapis.com') ||
+          photoURL.includes('storage.googleapis.com'))
+      ) {
         const fileRef = ref(storage, photoURL);
-        await deleteObject(fileRef);
+        await deleteObject(fileRef).catch((error) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Profile image delete skipped', error);
+          }
+        });
       }
 
-      await this.updateUserProfile(userId, { photoURL: null });
+      const updateResult = await this.updateUserProfile(userId, { photoURL: null });
+
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || 'Failed to remove profile image.');
+      }
 
       toast.success('Profile picture removed');
       return { success: true };
     } catch (error) {
       console.error('Delete profile image error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
-  // ============================================
-  // ACCOUNT LINKING
-  // ============================================
-
   async linkProvider(providerName) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
+      const user = getCurrentUserOrThrow();
+      const provider = createProvider(providerName.toLowerCase());
+      const result = await linkWithPopup(user, provider);
 
-      let provider;
-      switch (providerName.toLowerCase()) {
-        case 'google':
-          provider = new GoogleAuthProvider();
-          break;
-        case 'github':
-          provider = new GithubAuthProvider();
-          break;
-        case 'facebook':
-          provider = new FacebookAuthProvider();
-          break;
-        case 'microsoft':
-          provider = new OAuthProvider('microsoft.com');
-          break;
-        case 'twitter':
-          provider = new TwitterAuthProvider();
-          break;
-        case 'apple':
-          provider = new OAuthProvider('apple.com');
-          break;
-        default:
-          throw new Error(`Unsupported provider: ${providerName}`);
-      }
-
-      const result = await linkWithCredential(user, provider);
-
-      // Update user document
-      await updateDoc(doc(db, 'users', user.uid), {
-        [`linkedProviders.${providerName}`]: true,
-        updatedAt: serverTimestamp(),
-      });
+      await updateLinkedProvidersInFirestore(result.user);
 
       toast.success(`${providerName} account linked successfully`);
       return { success: true, user: result.user };
     } catch (error) {
       console.error('Link provider error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async unlinkProvider(providerId) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
+      const user = getCurrentUserOrThrow();
+      const linkedProviders = getProviderIds(user);
 
-      await unlink(user, providerId);
+      if (!linkedProviders.includes(providerId)) {
+        const error = new Error('Provider not linked.');
+        error.code = 'auth/provider-not-linked';
+        throw error;
+      }
+
+      if (linkedProviders.length <= 1) {
+        const error = new Error('Cannot unlink the last provider.');
+        error.code = 'auth/cannot-unlink-last-provider';
+        throw error;
+      }
+
+      const updatedUser = await unlink(user, providerId);
+      await updateLinkedProvidersInFirestore(updatedUser);
 
       toast.success('Account unlinked successfully');
-      return { success: true };
+      return { success: true, user: updatedUser };
     } catch (error) {
       console.error('Unlink provider error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async getLinkedProviders() {
     try {
       const user = auth.currentUser;
-      if (!user) return [];
-
-      return user.providerData.map((p) => p.providerId);
+      return getProviderIds(user);
     } catch (error) {
       console.error('Get linked providers error:', error);
       return [];
     }
   },
 
-  // ============================================
-  // ACCOUNT DELETION
-  // ============================================
-
   async deleteUserAccount(userId, password) {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No user logged in');
+      const user = getCurrentUserOrThrow();
+      const effectiveUserId = user.uid;
 
-      // Re-authenticate if password provided (for email/password users)
-      if (password && user.email) {
-        const credential = EmailAuthProvider.credential(user.email, password);
-        await reauthenticateWithCredential(user, credential);
+      if (userId && userId !== effectiveUserId && process.env.NODE_ENV === 'development') {
+        console.warn('deleteUserAccount ignored mismatched userId and used current auth user.');
       }
 
-      // Delete user's resumes
-      const resumesQuery = query(collection(db, 'resumes'), where('userId', '==', userId));
-      const resumesSnapshot = await getDocs(resumesQuery);
+      if (hasPasswordProvider(user)) {
+        await reauthenticateWithPassword(password);
+      }
 
-      const batch = writeBatch(db);
-      resumesSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
+      const [resumesSnapshot, notificationsSnapshot, sessionsSnapshot] = await Promise.all([
+        getDocs(query(collection(db, COLLECTIONS.resumes), where('userId', '==', effectiveUserId))),
+        getDocs(
+          query(collection(db, COLLECTIONS.notifications), where('userId', '==', effectiveUserId))
+        ),
+        getDocs(collection(db, COLLECTIONS.users, effectiveUserId, COLLECTIONS.sessions)),
+      ]);
 
-      // Delete user's notifications
-      const notificationsQuery = query(
-        collection(db, 'notifications'),
-        where('userId', '==', userId)
-      );
-      const notificationsSnapshot = await getDocs(notificationsQuery);
-      notificationsSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
+      try {
+        await setDoc(
+          doc(db, COLLECTIONS.deletedAccounts, effectiveUserId),
+          {
+            userId: effectiveUserId,
+            email: user.email || null,
+            deletedAt: serverTimestamp(),
+            reason: 'user_requested',
+            provider: user.providerData?.[0]?.providerId || 'password',
+          },
+          { merge: true }
+        );
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Failed to archive deleted account record', error);
+        }
+      }
 
-      // Delete user's sessions
-      const sessionsQuery = query(collection(db, 'users', userId, 'sessions'));
-      const sessionsSnapshot = await getDocs(sessionsQuery);
-      sessionsSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
+      const refsToDelete = [
+        ...resumesSnapshot.docs.map((item) => item.ref),
+        ...notificationsSnapshot.docs.map((item) => item.ref),
+        ...sessionsSnapshot.docs.map((item) => item.ref),
+        doc(db, COLLECTIONS.settings, effectiveUserId),
+        doc(db, COLLECTIONS.subscriptions, effectiveUserId),
+        doc(db, COLLECTIONS.users, effectiveUserId),
+      ];
 
-      // Delete user's settings
-      const settingsRef = doc(db, 'settings', userId);
-      batch.delete(settingsRef);
+      await deleteInBatches(refsToDelete);
 
-      // Delete user document
-      batch.delete(doc(db, 'users', userId));
+      safeTrackEvent('account_deleted', { userId: effectiveUserId });
 
-      await batch.commit();
+      clearStoredCurrentSessionId();
+      await firebaseDeleteUser(user);
 
-      // Delete Firebase Auth user
-      await deleteUser(user);
-
-      // Log deletion
-      await setDoc(doc(db, 'deletedAccounts', userId), {
-        userId,
-        email: user.email,
-        deletedAt: serverTimestamp(),
-        reason: 'user_requested',
-        provider: user.providerData[0]?.providerId || 'password',
-      });
-
-      logAnalyticsEvent('account_deleted', { userId });
       toast.success('Account deleted successfully');
       return { success: true };
     } catch (error) {
       console.error('Delete account error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
-  // ============================================
-  // USER DATA & ROLES
-  // ============================================
-
   async getUserData(userId) {
     try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      if (userDoc.exists()) {
-        return { success: true, data: userDoc.data() };
+      const userDoc = await getDoc(doc(db, COLLECTIONS.users, userId));
+
+      if (!userDoc.exists()) {
+        return { success: false, error: 'User not found' };
       }
-      return { success: false, error: 'User not found' };
+
+      return { success: true, data: userDoc.data() };
     } catch (error) {
       console.error('Get user data error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
   async getUserRole(userId) {
     try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
+      const userDoc = await getDoc(doc(db, COLLECTIONS.users, userId));
       return userDoc.data()?.role || 'user';
     } catch (error) {
       console.error('Get user role error:', error);
@@ -947,36 +1183,48 @@ export const authService = {
 
   async isUserPremium(userId) {
     try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      const userData = userDoc.data();
-      return userData?.role === 'premium' || userData?.role === 'admin';
-    } catch (error) {
+      const [userDoc, subscriptionDoc] = await Promise.all([
+        getDoc(doc(db, COLLECTIONS.users, userId)),
+        getDoc(doc(db, COLLECTIONS.subscriptions, userId)),
+      ]);
+
+      const role = userDoc.data()?.role;
+      const subscription = subscriptionDoc.exists() ? subscriptionDoc.data() : null;
+
+      return (
+        role === 'premium' ||
+        role === 'admin' ||
+        (subscription?.status === 'active' && subscription?.plan === 'premium')
+      );
+    } catch {
       return false;
     }
   },
 
   async updateUserRole(userId, role) {
     try {
-      await updateDoc(doc(db, 'users', userId), {
-        role,
+      const normalizedRole = ALLOWED_ROLES.has(role) ? role : 'user';
+
+      await updateDoc(doc(db, COLLECTIONS.users, userId), {
+        role: normalizedRole,
         updatedAt: serverTimestamp(),
       });
+
       return { success: true };
     } catch (error) {
       console.error('Update user role error:', error);
-      return { success: false, error: getErrorMessage(error) };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
-
-  // ============================================
-  // TOKEN MANAGEMENT
-  // ============================================
 
   async getIdToken(forceRefresh = false) {
     try {
       const user = auth.currentUser;
-      if (!user) return null;
-      return await getIdToken(user, forceRefresh);
+      if (!user) {
+        return null;
+      }
+
+      return await firebaseGetIdToken(user, forceRefresh);
     } catch (error) {
       console.error('Get ID token error:', error);
       return null;
@@ -986,17 +1234,16 @@ export const authService = {
   async getIdTokenResult(forceRefresh = false) {
     try {
       const user = auth.currentUser;
-      if (!user) return null;
-      return await getIdTokenResult(user, forceRefresh);
+      if (!user) {
+        return null;
+      }
+
+      return await firebaseGetIdTokenResult(user, forceRefresh);
     } catch (error) {
       console.error('Get token result error:', error);
       return null;
     }
   },
-
-  // ============================================
-  // UTILITIES
-  // ============================================
 
   onAuthStateChange(callback) {
     return onAuthStateChanged(auth, callback);
@@ -1007,15 +1254,17 @@ export const authService = {
   },
 
   isAuthenticated() {
-    return !!auth.currentUser;
+    return Boolean(auth.currentUser);
   },
 
   async refreshUserClaims() {
     try {
       const user = auth.currentUser;
-      if (!user) return false;
-      
-      await user.getIdToken(true);
+      if (!user) {
+        return false;
+      }
+
+      await firebaseGetIdToken(user, true);
       return true;
     } catch (error) {
       console.error('Refresh claims error:', error);
