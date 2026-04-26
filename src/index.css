@@ -1,24 +1,64 @@
+/* ── Font Import ──────────────────────────────────────────────────────────── */
+/*
+ * NOTE: In production, move font loading to index.html using <link> tags
+ * for non-blocking font loading. Keep @import only as a fallback for
+ * environments where HTML cannot be modified (e.g., some CMS setups).
+ *
+ * Recommended index.html additions:
+ * <link rel="preconnect" href="https://fonts.googleapis.com">
+ * <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ * <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
+ */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ── Tailwind Directives ──────────────────────────────────────────────────── */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ── Base Layer ───────────────────────────────────────────────────────────── */
 @layer base {
   :root {
     --color-primary: #6366f1;
     --color-accent: #8b5cf6;
   }
 
-  * {
-    @apply transition-colors duration-200;
+  /*
+   * Theme transition: only on properties that cause repaints, not layout.
+   * Reduced from universal `*` selector to specific properties on root elements
+   * to avoid performance issues with large DOM trees.
+   */
+  body,
+  body * {
+    transition-property: color, background-color, border-color, box-shadow, opacity;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
+  }
+
+  /* Remove transitions for users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0s !important;
+      animation-duration: 0s !important;
+      animation-iteration-count: 1 !important;
+    }
   }
 
   html {
     @apply scroll-smooth;
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.gray.300') transparent;
+  }
+
+  .dark html {
+    scrollbar-color: theme('colors.gray.600') transparent;
   }
 
   body {
-    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white;
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white antialiased;
     font-family:
       'Inter',
       -apple-system,
@@ -36,7 +76,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Dark mode text colors */
+  /* ── Typography ─────────────────────────────────────────────── */
   h1,
   h2,
   h3,
@@ -54,6 +94,7 @@
     @apply text-gray-700 dark:text-gray-300;
   }
 
+  /* ── Form Elements ──────────────────────────────────────────── */
   input,
   textarea,
   select {
@@ -65,6 +106,28 @@
     @apply text-gray-400 dark:text-gray-500;
   }
 
+  /* ── Focus Styles ───────────────────────────────────────────── */
+  /*
+   * Use :focus-visible for keyboard users, with :focus as fallback
+   * for older browsers. Modern browsers show :focus-visible only
+   * when navigating via keyboard, not mouse clicks.
+   */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+  }
+
+  /* Fallback: remove focus ring for mouse users in supporting browsers */
+  @supports selector(:focus-visible) {
+    :focus {
+      @apply outline-none ring-0 ring-offset-0;
+    }
+
+    :focus-visible {
+      @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+    }
+  }
+
+  /* ── Scrollbar (WebKit) ─────────────────────────────────────── */
   ::-webkit-scrollbar {
     @apply w-2 h-2;
   }
@@ -80,60 +143,132 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-400 dark:bg-gray-500;
   }
+
+  /* ── Accessibility: Forced Colors ───────────────────────────── */
+  @media (forced-colors: active) {
+    .gradient-text,
+    .gradient-bg {
+      /* Strip gradients in forced-color mode — they become invisible */
+      background: none;
+    }
+
+    .btn-primary {
+      border: 2px solid ButtonText;
+    }
+
+    .glass,
+    .glass-card {
+      backdrop-filter: none;
+      background: Canvas;
+    }
+  }
 }
 
+/* ── Components Layer ─────────────────────────────────────────────────────── */
 @layer components {
+  /* Glass morphism effect */
   .glass {
+    /* Solid fallback for browsers without backdrop-filter support */
+    background-color: rgba(255, 255, 255, 0.85);
     @apply backdrop-blur-md bg-white/70 dark:bg-gray-800/70 border border-white/20 dark:border-gray-700/20 shadow-xl;
   }
 
   .glass-card {
-    @apply glass rounded-2xl p-6 hover:shadow-2xl transition-all duration-300;
+    @apply glass rounded-2xl p-6 hover:shadow-2xl transition-shadow duration-300;
+    /* Transform removed from glass-card — hover states should not shift layout */
   }
 
+  /* Gradient utilities */
   .gradient-text {
     @apply bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent;
+    /* Prevent text clipping issues in some browsers */
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
   .gradient-bg {
     @apply bg-gradient-to-r from-primary-500 to-accent-500;
   }
 
+  /* ── Form Input ────────────────────────────────────────────── */
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 backdrop-blur-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500;
+    @apply w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 backdrop-blur-sm outline-none transition duration-200 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500;
   }
 
+  .input-field:focus {
+    @apply ring-2 ring-primary-500 border-transparent;
+  }
+
+  @supports selector(:focus-visible) {
+    .input-field:focus {
+      @apply ring-0 border-gray-200 dark:border-gray-700;
+    }
+    .input-field:focus-visible {
+      @apply ring-2 ring-primary-500 border-transparent;
+    }
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────── */
   .btn-primary {
-    @apply px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    /* Isolate paint layer for smoother hover transforms */
+    will-change: transform;
   }
 
   .btn-secondary {
-    @apply px-6 py-3 border-2 border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 rounded-xl font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400;
+    @apply inline-flex items-center justify-center px-6 py-3 border-2 border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 rounded-xl font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl font-medium transition-all duration-200 text-gray-700 dark:text-gray-300;
+    @apply inline-flex items-center justify-center px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
+  /* ── Interactive Effects ───────────────────────────────────── */
   .hover-lift {
-    @apply transition-transform duration-200 hover:-translate-y-1;
+    @apply transition-transform duration-200;
+    will-change: transform;
   }
 
-  /* Card styles */
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Disable hover lift on touch devices (sticky hover issue) */
+  @media (hover: none) {
+    .hover-lift:hover {
+      transform: none;
+    }
+  }
+
+  /* ── Card ──────────────────────────────────────────────────── */
   .card {
     @apply bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700;
   }
 
-  /* Link styles */
+  /* ── Links ─────────────────────────────────────────────────── */
   a {
-    @apply text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300;
+    @apply text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors duration-200;
+  }
+
+  /* Skip link for keyboard navigation (render this in your layout) */
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[10000] focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-lg focus:shadow-lg;
   }
 }
 
+/* ── Utilities Layer ──────────────────────────────────────────────────────── */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+    /* Safari 17+ support */
+    -webkit-text-wrap: balance;
   }
+
+  /*
+   * NOTE: text-wrap: balance has a performance cost.
+   * Chrome limits it to 6 lines. Use only on headings (h1-h3).
+   * Do not apply to body text or paragraphs.
+   */
 
   .text-muted {
     @apply text-gray-500 dark:text-gray-400;
@@ -141,5 +276,12 @@
 
   .border-default {
     @apply border-gray-200 dark:border-gray-700;
+  }
+
+  /* Useful for stopping body scroll when modals/overlays are open */
+  .no-scroll {
+    overflow: hidden;
+    /* Prevent layout shift from scrollbar disappearing */
+    padding-right: var(--scrollbar-width, 0px);
   }
 }

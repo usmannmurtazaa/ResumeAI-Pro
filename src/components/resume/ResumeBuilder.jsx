@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useResume } from '../../hooks/useResume';
-import { useDebounce } from '../../hooks/useDebounce';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import {
+  FiAlertCircle,
+  FiCheckCircle,
+  FiChevronLeft,
+  FiChevronRight,
+  FiEye,
+  FiMinimize2,
+} from 'react-icons/fi';
 import PersonalInfo from './sections/PersonalInfo';
 import Education from './sections/Education';
 import Experience from './sections/Experience';
@@ -12,534 +16,512 @@ import Projects from './sections/Projects';
 import Certifications from './sections/Certifications';
 import ResumePreview from './ResumePreview';
 import TemplateSelector from './TemplateSelector';
-import { calculateATSScore } from '../../utils/atsKeywords';
-import { 
-  FiSave, 
-  FiEye, 
-  FiChevronRight, 
-  FiChevronLeft,
-  FiAlertCircle,
-  FiCheckCircle,
-  FiLoader
-} from 'react-icons/fi';
 import Button from '../ui/Button';
-import toast from 'react-hot-toast';
 
-// Section configuration with validation rules
-const sections = [
-  { 
-    id: 'personal', 
-    name: 'Personal Info', 
+const SECTION_CONFIG = [
+  {
+    id: 'personal',
+    name: 'Personal Info',
     component: PersonalInfo,
     required: true,
-    validate: (data) => data?.fullName && data?.email
+    validate: (data) => Boolean(data?.fullName?.trim() && data?.email?.trim()),
   },
-  { 
-    id: 'education', 
-    name: 'Education', 
+  {
+    id: 'education',
+    name: 'Education',
     component: Education,
     required: true,
-    validate: (data) => data && data.length > 0
+    validate: (data) => Array.isArray(data) && data.length > 0,
   },
-  { 
-    id: 'experience', 
-    name: 'Experience', 
+  {
+    id: 'experience',
+    name: 'Experience',
     component: Experience,
     required: true,
-    validate: (data) => data && data.length > 0
+    validate: (data) => Array.isArray(data) && data.length > 0,
   },
-  { 
-    id: 'skills', 
-    name: 'Skills', 
+  {
+    id: 'skills',
+    name: 'Skills',
     component: Skills,
     required: true,
-    validate: (data) => data?.technical && data.technical.length > 0
+    validate: (data) => Array.isArray(data?.technical) && data.technical.length > 0,
   },
-  { 
-    id: 'projects', 
-    name: 'Projects', 
+  {
+    id: 'projects',
+    name: 'Projects',
     component: Projects,
     required: false,
-    validate: () => true
+    validate: (data) => Array.isArray(data) && data.length > 0,
   },
-  { 
-    id: 'certifications', 
-    name: 'Certifications', 
+  {
+    id: 'certifications',
+    name: 'Certifications',
     component: Certifications,
     required: false,
-    validate: () => true
+    validate: (data) => Array.isArray(data) && data.length > 0,
   },
 ];
 
-const ResumeBuilder = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { resume, saveResume, loading, error } = useResume(id);
-  
-  // State management
-  const [currentSection, setCurrentSection] = useState(0);
-  const [formData, setFormData] = useState({});
-  const [selectedTemplate, setSelectedTemplate] = useState('modern');
-  const [showPreview, setShowPreview] = useState(() => {
-    // Check if there's a saved preference
-    const saved = localStorage.getItem('resumeBuilder_showPreview');
-    return saved ? JSON.parse(saved) : window.innerWidth >= 1024;
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+const getEmptySectionData = (sectionId) => {
+  switch (sectionId) {
+    case 'education':
+    case 'experience':
+    case 'projects':
+    case 'certifications':
+      return [];
+    case 'skills':
+      return {
+        technical: [],
+        soft: [],
+        tools: [],
+        languages: [],
+      };
+    case 'personal':
+    default:
+      return {};
+  }
+};
+
+const getSectionData = (formData, sectionId) =>
+  formData?.[sectionId] ?? getEmptySectionData(sectionId);
+
+const isTypingTarget = (target) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName;
+  return (
+    tagName === 'INPUT' ||
+    tagName === 'TEXTAREA' ||
+    tagName === 'SELECT' ||
+    target.isContentEditable
+  );
+};
+
+const scrollToTop = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth',
   });
-  const [atsScore, setAtsScore] = useState(0);
-  const [autoSaveStatus, setAutoSaveStatus] = useState('idle'); // 'idle', 'saving', 'saved', 'error'
+};
+
+const ResumeBuilder = ({
+  resumeId,
+  initialData = {},
+  template = 'modern',
+  showPreview = true,
+  fullscreenPreview = false,
+  onChange,
+  onTemplateChange,
+  onFullscreenPreviewChange,
+  showTemplateSelector = false,
+}) => {
+  const [currentSection, setCurrentSection] = useState(0);
+  const [draftData, setDraftData] = useState(() => initialData || {});
   const [sectionErrors, setSectionErrors] = useState({});
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const debouncedFormData = useDebounce(formData, 1500);
 
-  // Load saved data when resume changes
-  useEffect(() => {
-    if (resume) {
-      setFormData(resume.data || {});
-      setSelectedTemplate(resume.template || 'modern');
-    } else if (id && !loading && !error) {
-      // Handle invalid resume ID
-      toast.error('Resume not found');
-      navigate('/dashboard');
-    }
-  }, [resume, id, loading, error, navigate]);
+  const shouldReduceMotion = useReducedMotion();
 
-  // Save show preview preference
   useEffect(() => {
-    localStorage.setItem('resumeBuilder_showPreview', JSON.stringify(showPreview));
-  }, [showPreview]);
+    setDraftData(initialData || {});
+  }, [initialData, resumeId]);
 
-  // Handle keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ctrl/Cmd + S for save
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        handleManualSave();
-      }
-      // Arrow keys for navigation
-      if (e.altKey) {
-        if (e.key === 'ArrowRight' && currentSection < sections.length - 1) {
-          e.preventDefault();
-          handleNext();
-        } else if (e.key === 'ArrowLeft' && currentSection > 0) {
-          e.preventDefault();
-          handlePrevious();
+    setCurrentSection(0);
+    setSectionErrors({});
+    setIsMobileMenuOpen(false);
+  }, [resumeId]);
+
+  const formData = draftData || {};
+  const currentSectionConfig = SECTION_CONFIG[currentSection];
+  const CurrentSectionComponent = currentSectionConfig.component;
+  const currentSectionData = useMemo(
+    () => getSectionData(formData, currentSectionConfig.id),
+    [formData, currentSectionConfig.id]
+  );
+
+  const completedSectionCount = useMemo(
+    () =>
+      SECTION_CONFIG.filter((section) =>
+        section.validate(getSectionData(formData, section.id))
+      ).length,
+    [formData]
+  );
+
+  const completionPercentage = useMemo(
+    () => (completedSectionCount / SECTION_CONFIG.length) * 100,
+    [completedSectionCount]
+  );
+
+  const hasCurrentSectionError = Boolean(sectionErrors[currentSectionConfig.id]);
+  const shouldRenderPreview = Boolean(showPreview || fullscreenPreview);
+
+  const validateSection = useCallback(
+    (sectionIndex = currentSection) => {
+      const section = SECTION_CONFIG[sectionIndex];
+      const isValid = section.validate(getSectionData(formData, section.id));
+      const showError = section.required && !isValid;
+
+      setSectionErrors((previous) => {
+        if (previous[section.id] === showError) {
+          return previous;
         }
+
+        return {
+          ...previous,
+          [section.id]: showError,
+        };
+      });
+
+      return isValid;
+    },
+    [currentSection, formData]
+  );
+
+  const handleSectionChange = useCallback(
+    (sectionData) => {
+      const sectionId = currentSectionConfig.id;
+      const nextData = {
+        ...formData,
+        [sectionId]: sectionData,
+      };
+
+      setDraftData(nextData);
+      onChange?.(nextData);
+
+      if (sectionErrors[sectionId] && currentSectionConfig.validate(sectionData)) {
+        setSectionErrors((previous) => ({
+          ...previous,
+          [sectionId]: false,
+        }));
+      }
+    },
+    [currentSectionConfig, formData, onChange, sectionErrors]
+  );
+
+  const handleNext = useCallback(() => {
+    const isValid = validateSection(currentSection);
+
+    if (!isValid && currentSectionConfig.required) {
+      return;
+    }
+
+    if (currentSection < SECTION_CONFIG.length - 1) {
+      setCurrentSection((previous) => previous + 1);
+      setIsMobileMenuOpen(false);
+      scrollToTop();
+    }
+  }, [currentSection, currentSectionConfig.required, validateSection]);
+
+  const handlePrevious = useCallback(() => {
+    if (currentSection > 0) {
+      setCurrentSection((previous) => previous - 1);
+      setIsMobileMenuOpen(false);
+      scrollToTop();
+    }
+  }, [currentSection]);
+
+  const handleSectionSelect = useCallback(
+    (sectionIndex) => {
+      validateSection(currentSection);
+      setCurrentSection(sectionIndex);
+      setIsMobileMenuOpen(false);
+      scrollToTop();
+    },
+    [currentSection, validateSection]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (isTypingTarget(event.target) || !event.altKey) {
+        return;
+      }
+
+      if (event.key === 'ArrowRight' && currentSection < SECTION_CONFIG.length - 1) {
+        event.preventDefault();
+        handleNext();
+      }
+
+      if (event.key === 'ArrowLeft' && currentSection > 0) {
+        event.preventDefault();
+        handlePrevious();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSection, formData]);
+  }, [currentSection, handleNext, handlePrevious]);
 
-  // Auto-save functionality
-  const handleAutoSave = useCallback(async (data = formData) => {
-    if (Object.keys(data).length === 0 || !user) return;
-    
-    setAutoSaveStatus('saving');
-    
-    try {
-      const score = calculateATSScore(data);
-      setAtsScore(score);
-      
-      await saveResume({
-        data,
-        template: selectedTemplate,
-        lastModified: new Date().toISOString(),
-        atsScore: score,
-        userId: user.uid
-      });
-      
-      setAutoSaveStatus('saved');
-      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-      setAutoSaveStatus('error');
-      toast.error('Failed to auto-save. Check your connection.');
-    }
-  }, [formData, selectedTemplate, saveResume, user]);
-
-  // Manual save handler
-  const handleManualSave = async () => {
-    const validationResult = validateCurrentSection();
-    if (!validationResult.isValid) {
-      toast.error('Please complete all required fields in this section');
-      return;
-    }
-    
-    await handleAutoSave();
-    toast.success('Resume saved successfully!');
-  };
-
-  // Trigger auto-save when debounced data changes
-  useEffect(() => {
-    if (Object.keys(debouncedFormData).length > 0) {
-      handleAutoSave(debouncedFormData);
-    }
-  }, [debouncedFormData, handleAutoSave]);
-
-  // Validate current section
-  const validateCurrentSection = useCallback(() => {
-    const currentSectionData = sections[currentSection];
-    const sectionFormData = formData[currentSectionData.id];
-    const isValid = currentSectionData.validate(sectionFormData);
-    
-    setSectionErrors(prev => ({
-      ...prev,
-      [currentSectionData.id]: !isValid
-    }));
-    
-    return { isValid, sectionId: currentSectionData.id };
-  }, [currentSection, formData]);
-
-  // Handle section data changes
-  const handleSectionChange = useCallback((sectionData) => {
-    setFormData(prev => ({
-      ...prev,
-      [sections[currentSection].id]: sectionData
-    }));
-    
-    // Clear error for this section if it exists
-    if (sectionErrors[sections[currentSection].id]) {
-      setSectionErrors(prev => ({
-        ...prev,
-        [sections[currentSection].id]: false
-      }));
-    }
-  }, [currentSection, sectionErrors]);
-
-  // Navigation handlers with validation
-  const handleNext = useCallback(() => {
-    const validationResult = validateCurrentSection();
-    
-    if (!validationResult.isValid && sections[currentSection].required) {
-      toast.error('Please complete all required fields before proceeding');
-      return;
-    }
-    
-    if (currentSection < sections.length - 1) {
-      setCurrentSection(currentSection + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [currentSection, validateCurrentSection]);
-
-  const handlePrevious = useCallback(() => {
-    if (currentSection > 0) {
-      setCurrentSection(currentSection - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [currentSection]);
-
-  // Calculate completion percentage
-  const completionPercentage = useMemo(() => {
-    const completedSections = sections.filter(section => {
-      const data = formData[section.id];
-      return section.validate(data);
-    });
-    return (completedSections.length / sections.length) * 100;
-  }, [formData]);
-
-  // Check if current section has errors
-  const hasCurrentSectionError = sectionErrors[sections[currentSection].id];
-  const CurrentSectionComponent = sections[currentSection].component;
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <FiLoader className="w-12 h-12 animate-spin text-primary-500 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading resume builder...</p>
+  const renderPreviewPanel = (isFullscreen = false) => (
+    <motion.aside
+      initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
+      transition={{ duration: shouldReduceMotion ? 0.12 : 0.22 }}
+      className={cn(
+        'overflow-hidden rounded-2xl border border-gray-200/70 bg-white/90 shadow-lg backdrop-blur-sm dark:border-gray-700/70 dark:bg-gray-900/90',
+        isFullscreen
+          ? 'h-full'
+          : 'sticky top-20 h-[500px] sm:h-[600px] lg:top-24 lg:h-[calc(100vh-8rem)]'
+      )}
+    >
+      <div className="flex items-center justify-between border-b border-gray-200/70 px-4 py-3 dark:border-gray-700/70">
+        <div className="flex items-center gap-2">
+          <FiEye className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              Live Preview
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {template.charAt(0).toUpperCase() + template.slice(1)} template
+            </p>
+          </div>
         </div>
+
+        {isFullscreen ? (
+          <div className="flex items-center gap-2">
+            <span className="hidden text-xs text-gray-500 dark:text-gray-400 sm:inline">
+              Press Esc to exit
+            </span>
+            {typeof onFullscreenPreviewChange === 'function' ? (
+              <button
+                type="button"
+                onClick={() => onFullscreenPreviewChange(false)}
+                className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Exit fullscreen preview"
+              >
+                <FiMinimize2 className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-    );
-  }
+
+      <div className="h-[calc(100%-61px)] overflow-auto custom-scrollbar">
+        <ResumePreview data={formData} template={template} />
+      </div>
+    </motion.aside>
+  );
 
   return (
-    <div className="min-h-screen pt-16 sm:pt-20 pb-8 sm:pb-12">
-      <div className="container mx-auto px-3 sm:px-4 lg:px-6 max-w-7xl">
-        {/* Header Card */}
-        <motion.div 
-          className="glass-card mb-6 sm:mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-start gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl sm:text-3xl font-bold gradient-text">
-                  {id ? 'Edit Resume' : 'Create New Resume'}
-                </h1>
-                {completionPercentage === 100 && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
-                    <FiCheckCircle className="w-3 h-3 mr-1" />
-                    Complete
-                  </span>
-                )}
-              </div>
-              
-              {/* Progress and Score Section */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                {/* Progress Bar */}
-                <div className="flex items-center gap-2 flex-1">
-                  <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-primary-500 to-accent-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${completionPercentage}%` }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  </div>
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                    {Math.round(completionPercentage)}% Complete
-                  </span>
-                </div>
-
-                {/* Section Counter */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    Section {currentSection + 1}/{sections.length}
-                  </span>
-                </div>
-
-                {/* ATS Score */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs sm:text-sm font-medium">ATS Score:</span>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-sm font-bold ${
-                      atsScore >= 80 ? 'text-green-500' :
-                      atsScore >= 60 ? 'text-yellow-500' :
-                      'text-red-500'
-                    }`}>
-                      {atsScore}%
-                    </span>
-                    {atsScore < 60 && (
-                      <FiAlertCircle className="w-4 h-4 text-yellow-500" title="Add more keywords to improve score" />
-                    )}
-                  </div>
-                </div>
-              </div>
+    <div className="space-y-6 sm:space-y-8">
+      <motion.section
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: shouldReduceMotion ? 0.12 : 0.24 }}
+        className="glass-card p-4 sm:p-5"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Resume Sections
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {currentSectionConfig.name} • Section {currentSection + 1} of{' '}
+                {SECTION_CONFIG.length}
+              </p>
             </div>
-            
-            {/* Action Buttons */}
-            <div className="flex gap-2 sm:gap-3">
-              {/* Auto-save indicator */}
-              {autoSaveStatus === 'saving' && (
-                <div className="hidden sm:flex items-center text-xs text-gray-500 dark:text-gray-400">
-                  <FiLoader className="w-3 h-3 mr-1 animate-spin" />
-                  Saving...
-                </div>
-              )}
-              {autoSaveStatus === 'saved' && (
-                <div className="hidden sm:flex items-center text-xs text-green-500">
-                  <FiCheckCircle className="w-3 h-3 mr-1" />
-                  Saved
-                </div>
-              )}
-              
-              <Button
-                variant="outline"
-                onClick={() => setShowPreview(!showPreview)}
-                icon={<FiEye />}
-                className="text-xs sm:text-sm"
-                size="sm"
-              >
-                <span className="hidden sm:inline">
-                  {showPreview ? 'Hide Preview' : 'Show Preview'}
-                </span>
-                <span className="sm:hidden">
-                  {showPreview ? 'Hide' : 'Preview'}
-                </span>
-              </Button>
-              
-              <Button
-                onClick={handleManualSave}
-                loading={autoSaveStatus === 'saving'}
-                icon={<FiSave />}
-                className="text-xs sm:text-sm"
-                size="sm"
-              >
-                <span className="hidden sm:inline">Save Resume</span>
-                <span className="sm:hidden">Save</span>
-              </Button>
+
+            <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+              <span>
+                {completedSectionCount}/{SECTION_CONFIG.length} completed
+              </span>
+              <span className="hidden sm:inline">
+                {Math.round(completionPercentage)}% done
+              </span>
             </div>
           </div>
 
-          {/* Mobile Section Menu Toggle */}
-          <div className="sm:hidden mt-4">
+          <div className="sm:hidden">
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm font-medium flex items-center justify-between"
+              type="button"
+              onClick={() => setIsMobileMenuOpen((previous) => !previous)}
+              className="flex w-full items-center justify-between rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium dark:bg-gray-800"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="resume-builder-sections"
             >
-              <span>{sections[currentSection].name}</span>
-              <span className="text-gray-500">{isMobileMenuOpen ? '▲' : '▼'}</span>
+              <span>{currentSectionConfig.name}</span>
+              <span className="text-gray-500 dark:text-gray-400">
+                {isMobileMenuOpen ? '▲' : '▼'}
+              </span>
             </button>
           </div>
 
-          {/* Section Tabs */}
-          <div className={`
-            ${isMobileMenuOpen ? 'block' : 'hidden'} 
-            sm:block mt-4 sm:mt-6
-          `}>
+          <div
+            id="resume-builder-sections"
+            className={cn(isMobileMenuOpen ? 'block' : 'hidden', 'sm:block')}
+          >
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {sections.map((section, index) => {
-                const isComplete = section.validate(formData[section.id]);
-                const hasError = sectionErrors[section.id];
-                
+              {SECTION_CONFIG.map((section, index) => {
+                const isActive = currentSection === index;
+                const isComplete = section.validate(getSectionData(formData, section.id));
+                const hasError = Boolean(sectionErrors[section.id]);
+
                 return (
                   <button
                     key={section.id}
-                    onClick={() => {
-                      setCurrentSection(index);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`
-                      relative px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm
-                      transition-all duration-200 flex items-center gap-1.5 sm:gap-2
-                      ${currentSection === index
+                    type="button"
+                    onClick={() => handleSectionSelect(index)}
+                    className={cn(
+                      'relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:text-sm',
+                      isActive
                         ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg'
-                        : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }
-                    `}
-                    aria-current={currentSection === index ? 'step' : undefined}
+                        : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700'
+                    )}
+                    aria-current={isActive ? 'step' : undefined}
                   >
                     <span>{section.name}</span>
-                    
-                    {/* Section Status Indicators */}
+
                     {isComplete ? (
-                      <FiCheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+                      <FiCheckCircle
+                        className={cn(
+                          'h-3 w-3 sm:h-4 sm:w-4',
+                          isActive ? 'text-white' : 'text-green-500'
+                        )}
+                      />
                     ) : hasError ? (
-                      <FiAlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+                      <FiAlertCircle
+                        className={cn(
+                          'h-3 w-3 sm:h-4 sm:w-4',
+                          isActive ? 'text-white' : 'text-red-500'
+                        )}
+                      />
                     ) : section.required ? (
-                      <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>
+                      <span
+                        className={cn(
+                          'h-1.5 w-1.5 rounded-full',
+                          isActive ? 'bg-white' : 'bg-yellow-500'
+                        )}
+                      />
                     ) : null}
                   </button>
                 );
               })}
             </div>
           </div>
-        </motion.div>
-
-        {/* Main Content Area */}
-        <div className={`grid ${showPreview ? 'lg:grid-cols-2' : 'grid-cols-1'} gap-6 sm:gap-8`}>
-          {/* Form Section */}
-          <motion.div 
-            layout 
-            className="glass-card"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            {/* Section Error Alert */}
-            {hasCurrentSectionError && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
-                <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-800 dark:text-red-300">
-                    This section requires your attention
-                  </p>
-                  <p className="text-xs text-red-600 dark:text-red-400">
-                    Please complete all required fields before proceeding
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Form Content with Animation */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentSection}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <CurrentSectionComponent
-                  data={formData[sections[currentSection].id] || {}}
-                  onChange={handleSectionChange}
-                  errors={sectionErrors[sections[currentSection].id]}
-                />
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <Button
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentSection === 0}
-                icon={<FiChevronLeft />}
-                className="text-xs sm:text-sm"
-              >
-                Previous
-              </Button>
-              
-              <div className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                Press Alt + ←/→ to navigate
-              </div>
-              
-              <Button
-                onClick={handleNext}
-                disabled={currentSection === sections.length - 1}
-                icon={<FiChevronRight />}
-                iconPosition="right"
-                className="text-xs sm:text-sm"
-              >
-                {currentSection === sections.length - 1 ? 'Complete' : 'Next'}
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* Preview Section */}
-          <AnimatePresence>
-            {showPreview && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="glass-card sticky top-20 lg:top-24 h-[500px] sm:h-[600px] lg:h-[calc(100vh-8rem)] overflow-hidden"
-              >
-                <div className="h-full overflow-auto custom-scrollbar">
-                  <ResumePreview
-                    data={formData}
-                    template={selectedTemplate}
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
+      </motion.section>
 
-        {/* Template Selector */}
-        <motion.div 
-          className="mt-6 sm:mt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+      <div
+        className={cn(
+          'grid gap-6 sm:gap-8',
+          shouldRenderPreview && !fullscreenPreview ? 'lg:grid-cols-2' : 'grid-cols-1'
+        )}
+      >
+        <motion.section
+          layout
+          initial={shouldReduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: shouldReduceMotion ? 0.12 : 0.2 }}
+          className="glass-card p-4 sm:p-6"
         >
-          <TemplateSelector
-            selected={selectedTemplate}
-            onSelect={setSelectedTemplate}
-          />
-        </motion.div>
+          {hasCurrentSectionError ? (
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+              <FiAlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
+              <div>
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                  This section needs attention
+                </p>
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  Complete the required fields before moving forward.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentSectionConfig.id}
+              initial={shouldReduceMotion ? false : { opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: 16 }}
+              transition={{ duration: shouldReduceMotion ? 0.12 : 0.22 }}
+            >
+              <CurrentSectionComponent
+                data={currentSectionData}
+                onChange={handleSectionChange}
+                errors={hasCurrentSectionError}
+              />
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6 dark:border-gray-700">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentSection === 0}
+              icon={<FiChevronLeft />}
+              className="text-xs sm:text-sm"
+            >
+              Previous
+            </Button>
+
+            <div className="hidden text-xs text-gray-500 dark:text-gray-400 sm:block">
+              Press `Alt + Left/Right` to move between sections
+            </div>
+
+            <Button
+              onClick={handleNext}
+              disabled={currentSection >= SECTION_CONFIG.length - 1}
+              icon={<FiChevronRight />}
+              iconPosition="right"
+              className="text-xs sm:text-sm"
+            >
+              {currentSection >= SECTION_CONFIG.length - 1 ? 'Last Section' : 'Next'}
+            </Button>
+          </div>
+        </motion.section>
+
+        {shouldRenderPreview && !fullscreenPreview ? renderPreviewPanel(false) : null}
       </div>
 
-      {/* Custom Scrollbar Styles */}
-      <style jsx>{`
+      {showTemplateSelector && typeof onTemplateChange === 'function' ? (
+        <motion.div
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: shouldReduceMotion ? 0.12 : 0.24 }}
+        >
+          <TemplateSelector selected={template} onSelect={onTemplateChange} />
+        </motion.div>
+      ) : null}
+
+      <AnimatePresence>
+        {shouldRenderPreview && fullscreenPreview ? (
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/50 p-4 backdrop-blur-sm"
+          >
+            {renderPreviewPanel(true)}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background: rgba(156, 163, 175, 0.5);
-          border-radius: 3px;
+          border-radius: 9999px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(156, 163, 175, 0.7);
         }

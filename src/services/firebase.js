@@ -17,7 +17,7 @@ import {
   OAuthProvider,
   PhoneAuthProvider,
   setPersistence,
-  TwitterAuthProvider,
+  TwitterAuthProvider, // ⚠️ Deprecated: Twitter OAuth 1.0a being phased out (2024)
   browserLocalPersistence,
   connectAuthEmulator,
 } from 'firebase/auth';
@@ -27,8 +27,6 @@ import {
   disableNetwork,
   enableNetwork,
   getFirestore,
-  getValue,
-  getAll,
   initializeFirestore,
   memoryLocalCache,
   persistentLocalCache,
@@ -44,6 +42,10 @@ import { getPerformance, trace } from 'firebase/performance';
 import {
   fetchAndActivate,
   getRemoteConfig,
+  // NOTE: getValue and getAll do NOT exist as standalone exports in v9 modular.
+  // They are instance methods on the RemoteConfig object:
+  //   remoteConfig.getValue(key) → { asBoolean(), asString(), asNumber() }
+  //   remoteConfig.getAll()       → Record<string, Value>
 } from 'firebase/remote-config';
 import {
   deleteToken,
@@ -61,12 +63,16 @@ import {
   uploadBytesResumable,
 } from 'firebase/storage';
 
+// ── Environment Detection ───────────────────────────────────────────────────
 const isBrowser = typeof window !== 'undefined';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
-const analyticsEnabledByEnv = process.env.REACT_APP_ENABLE_ANALYTICS !== 'false';
 const functionsRegion = process.env.REACT_APP_FIREBASE_FUNCTIONS_REGION || 'us-central1';
 
+// Analytics is enabled by default unless explicitly set to "false"
+const analyticsEnabledByEnv = process.env.REACT_APP_ENABLE_ANALYTICS !== 'false';
+
+// ── Required Environment Variables ─────────────────────────────────────────
 const REQUIRED_FIREBASE_ENV_VARS = [
   'REACT_APP_FIREBASE_API_KEY',
   'REACT_APP_FIREBASE_AUTH_DOMAIN',
@@ -76,6 +82,7 @@ const REQUIRED_FIREBASE_ENV_VARS = [
   'REACT_APP_FIREBASE_APP_ID',
 ];
 
+// ── Remote Config Defaults ─────────────────────────────────────────────────
 const REMOTE_CONFIG_DEFAULTS = {
   enable_new_features: false,
   maintenance_mode: false,
@@ -89,37 +96,39 @@ const REMOTE_CONFIG_DEFAULTS = {
   enable_chat_support: true,
 };
 
+// ── Developer Logging ──────────────────────────────────────────────────────
 const logDev = (...args) => {
-  if (isDevelopment) {
-    console.log(...args);
-  }
+  if (isDevelopment) console.log(...args);
 };
 
 const warnDev = (...args) => {
-  if (isDevelopment) {
-    console.warn(...args);
-  }
+  if (isDevelopment) console.warn(...args);
 };
 
+const errorDev = (...args) => {
+  if (isDevelopment) console.error(...args);
+};
+
+// ── Configuration Validation ───────────────────────────────────────────────
 const getMissingFirebaseEnvVars = () =>
   REQUIRED_FIREBASE_ENV_VARS.filter((key) => !process.env[key]);
 
 const validateConfig = () => {
   const missing = getMissingFirebaseEnvVars();
 
-  if (missing.length === 0) {
-    return true;
-  }
+  if (missing.length === 0) return true;
 
-  console.error('Missing required Firebase environment variables:', missing);
+  const message = `Missing required Firebase environment variables: ${missing.join(', ')}`;
 
   if (isProduction) {
-    throw new Error('Firebase configuration is incomplete.');
+    throw new Error(message);
   }
 
+  console.error(message);
   return false;
 };
 
+// ── Firebase Config ────────────────────────────────────────────────────────
 export const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -130,6 +139,7 @@ export const firebaseConfig = {
   measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
+// ── Firebase UI Configuration ──────────────────────────────────────────────
 export const firebaseUIConfig = {
   signInFlow: 'popup',
   signInOptions: [
@@ -144,6 +154,8 @@ export const firebaseUIConfig = {
     },
     {
       provider: TwitterAuthProvider.PROVIDER_ID,
+      // ⚠️ Twitter v1.1 API / OAuth 1.0a deprecated as of 2024.
+      // Consider migrating to OAuth 2.0 via custom OAuthProvider.
     },
     {
       provider: FacebookAuthProvider.PROVIDER_ID,
@@ -164,6 +176,7 @@ export const firebaseUIConfig = {
   siteName: 'ResumeAI Pro',
 };
 
+// ── Firebase Initialization ────────────────────────────────────────────────
 const initializeFirebase = () => {
   validateConfig();
 
@@ -176,28 +189,29 @@ const initializeFirebase = () => {
 
 export const app = initializeFirebase();
 
+// ── Auth ───────────────────────────────────────────────────────────────────
 export const auth = getAuth(app);
 
 const initializeAuthPersistence = async () => {
-  if (!isBrowser) {
-    return;
-  }
+  if (!isBrowser) return;
 
   try {
     await setPersistence(auth, browserLocalPersistence);
   } catch (error) {
-    warnDev('Falling back to in-memory auth persistence.', error);
-
+    warnDev('browserLocalPersistence failed. Falling back to in-memory persistence.', error);
     try {
       await setPersistence(auth, inMemoryPersistence);
     } catch (fallbackError) {
-      warnDev('Unable to set auth persistence.', fallbackError);
+      errorDev('All auth persistence methods failed. Auth state will not persist.', fallbackError);
     }
   }
 };
 
+// Fire-and-forget: runs in background. Auth state listeners will
+// re-fire once persistence is established. This is expected Firebase behavior.
 void initializeAuthPersistence();
 
+// ── Auth Providers ─────────────────────────────────────────────────────────
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 googleProvider.addScope('profile');
@@ -219,24 +233,27 @@ microsoftProvider.addScope('email');
 
 export const phoneProvider = new PhoneAuthProvider(auth);
 
+// ── Firestore ──────────────────────────────────────────────────────────────
 let firestoreCacheMode = 'memory';
 
 const createFirestore = () => {
-  const browserCache = isBrowser
-    ? persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-        cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-      })
-    : memoryLocalCache();
+  if (!isBrowser) {
+    return initializeFirestore(app, { localCache: memoryLocalCache() });
+  }
 
   try {
-    firestoreCacheMode = isBrowser ? 'persistent' : 'memory';
-
-    return initializeFirestore(app, {
-      localCache: browserCache,
+    const browserCache = persistentLocalCache({
+      tabManager: persistentMultipleTabManager(),
+      cacheSizeBytes: CACHE_SIZE_UNLIMITED,
     });
+
+    firestoreCacheMode = 'persistent';
+    return initializeFirestore(app, { localCache: browserCache });
   } catch (error) {
-    warnDev('Persistent Firestore cache unavailable. Falling back to default Firestore.', error);
+    warnDev(
+      'Persistent Firestore cache unavailable (likely private browsing). Using default cache.',
+      error
+    );
     firestoreCacheMode = 'memory';
     return getFirestore(app);
   }
@@ -246,6 +263,7 @@ export const db = createFirestore();
 export const storage = getStorage(app);
 export const functions = getFunctions(app, functionsRegion);
 
+// ── App Check (Production Only) ────────────────────────────────────────────
 export let appCheck = null;
 
 if (isBrowser && isProduction && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
@@ -254,45 +272,50 @@ if (isBrowser && isProduction && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
       provider: new ReCaptchaV3Provider(process.env.REACT_APP_RECAPTCHA_SITE_KEY),
       isTokenAutoRefreshEnabled: true,
     });
+    logDev('Firebase App Check initialized.');
   } catch (error) {
-    warnDev('App Check initialization failed.', error);
+    warnDev('App Check initialization failed. Requests may be unverified.', error);
   }
 }
 
+// ── Optional Services (Lazy Initialized) ───────────────────────────────────
 export let analytics = null;
 export let performance = null;
 export let remoteConfig = null;
 export let messaging = null;
 
+// ── Analytics Event Queue ──────────────────────────────────────────────────
+const MAX_QUEUED_EVENTS = 50;
 const pendingAnalyticsEvents = [];
 let analyticsReadyPromise = Promise.resolve(null);
 let messagingReadyPromise = Promise.resolve(null);
 
 const flushAnalyticsQueue = () => {
-  if (!analytics || pendingAnalyticsEvents.length === 0) {
-    return;
-  }
+  if (!analytics || pendingAnalyticsEvents.length === 0) return;
+
+  logDev(`Flushing ${pendingAnalyticsEvents.length} queued analytics events.`);
 
   while (pendingAnalyticsEvents.length > 0) {
     const nextEvent = pendingAnalyticsEvents.shift();
+    if (!nextEvent) continue;
 
-    if (!nextEvent) {
-      continue;
+    try {
+      logEvent(analytics, nextEvent.name, nextEvent.params);
+    } catch (error) {
+      warnDev('Failed to send queued analytics event:', error);
     }
-
-    logEvent(analytics, nextEvent.name, nextEvent.params);
   }
 };
 
+// ── Service Initializers ───────────────────────────────────────────────────
+
 const initializeAnalytics = async () => {
-  if (!isBrowser || !analyticsEnabledByEnv) {
-    return null;
-  }
+  if (!isBrowser || !analyticsEnabledByEnv) return null;
 
   try {
     const supported = await isAnalyticsSupported();
-
     if (!supported) {
+      logDev('Analytics not supported in this browser.');
       return null;
     }
 
@@ -307,7 +330,6 @@ const initializeAnalytics = async () => {
 
     flushAnalyticsQueue();
     logDev('Firebase Analytics initialized.');
-
     return analytics;
   } catch (error) {
     warnDev('Analytics initialization failed.', error);
@@ -316,33 +338,28 @@ const initializeAnalytics = async () => {
 };
 
 const initializePerformance = () => {
-  if (!isBrowser) {
-    return null;
-  }
+  if (!isBrowser) return null;
 
   try {
     performance = getPerformance(app);
     logDev('Firebase Performance initialized.');
     return performance;
   } catch (error) {
-    warnDev('Performance monitoring not supported.', error);
+    warnDev('Performance monitoring not supported in this environment.', error);
     return null;
   }
 };
 
 const initializeRemoteConfigService = () => {
-  if (!isBrowser) {
-    return null;
-  }
+  if (!isBrowser) return null;
 
   try {
     remoteConfig = getRemoteConfig(app);
     remoteConfig.settings = {
-      minimumFetchIntervalMillis: isProduction ? 60 * 60 * 1000 : 60 * 1000,
-      fetchTimeoutMillis: 60 * 1000,
+      minimumFetchIntervalMillis: isProduction ? 3_600_000 : 60_000,
+      fetchTimeoutMillis: 60_000,
     };
     remoteConfig.defaultConfig = REMOTE_CONFIG_DEFAULTS;
-
     logDev('Firebase Remote Config initialized.');
     return remoteConfig;
   } catch (error) {
@@ -358,14 +375,13 @@ const initializeMessaging = async () => {
 
   try {
     const supported = await isMessagingSupported();
-
     if (!supported) {
+      logDev('Messaging not supported in this browser.');
       return null;
     }
 
     messaging = getMessaging(app);
     logDev('Firebase Messaging initialized.');
-
     return messaging;
   } catch (error) {
     warnDev('Messaging initialization failed.', error);
@@ -373,6 +389,7 @@ const initializeMessaging = async () => {
   }
 };
 
+// Kick off optional service initialization (non-blocking)
 if (isBrowser) {
   analyticsReadyPromise = initializeAnalytics();
   initializePerformance();
@@ -380,41 +397,47 @@ if (isBrowser) {
   messagingReadyPromise = initializeMessaging();
 }
 
-const useEmulators =
-  isDevelopment && process.env.REACT_APP_USE_EMULATORS === 'true';
+// ── Emulator Support (Development Only) ────────────────────────────────────
+const useEmulators = isDevelopment && process.env.REACT_APP_USE_EMULATORS === 'true';
 
 if (useEmulators) {
-  const authHost = process.env.REACT_APP_FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1';
+  const emulatorHost = (service) =>
+    process.env[`REACT_APP_FIREBASE_${service}_EMULATOR_HOST`] || '127.0.0.1';
+
+  const authHost = emulatorHost('AUTH');
   const authPort = Number(process.env.REACT_APP_FIREBASE_AUTH_EMULATOR_PORT || 9099);
-  const firestoreHost = process.env.REACT_APP_FIREBASE_FIRESTORE_EMULATOR_HOST || '127.0.0.1';
+  const firestoreHost = emulatorHost('FIRESTORE');
   const firestorePort = Number(process.env.REACT_APP_FIREBASE_FIRESTORE_EMULATOR_PORT || 8080);
-  const storageHost = process.env.REACT_APP_FIREBASE_STORAGE_EMULATOR_HOST || '127.0.0.1';
+  const storageHost = emulatorHost('STORAGE');
   const storagePort = Number(process.env.REACT_APP_FIREBASE_STORAGE_EMULATOR_PORT || 9199);
-  const functionsHost = process.env.REACT_APP_FIREBASE_FUNCTIONS_EMULATOR_HOST || '127.0.0.1';
+  const functionsHost = emulatorHost('FUNCTIONS');
   const functionsPort = Number(process.env.REACT_APP_FIREBASE_FUNCTIONS_EMULATOR_PORT || 5001);
 
   try {
-    connectAuthEmulator(auth, `http://${authHost}:${authPort}`, {
-      disableWarnings: true,
-    });
+    connectAuthEmulator(auth, `http://${authHost}:${authPort}`, { disableWarnings: true });
     connectFirestoreEmulator(db, firestoreHost, firestorePort);
     connectStorageEmulator(storage, storageHost, storagePort);
     connectFunctionsEmulator(functions, functionsHost, functionsPort);
 
-    logDev('Connected to Firebase emulators.');
+    console.log(
+      '%c🔧 Firebase Emulators Connected %c| %cAuth:%s %cFirestore:%s %cStorage:%s %cFunctions:%s',
+      'font-weight:bold;', '',
+      'color:#9333ea;', `${authHost}:${authPort}`,
+      'color:#2563eb;', `${firestoreHost}:${firestorePort}`,
+      'color:#059669;', `${storageHost}:${storagePort}`,
+      'color:#d97706;', `${functionsHost}:${functionsPort}`
+    );
   } catch (error) {
-    warnDev('Failed to connect to Firebase emulators.', error);
+    errorDev(
+      '⚠️ Failed to connect to Firebase emulators. Is `firebase emulators:start` running?',
+      error
+    );
   }
 }
 
-export const enableOfflinePersistence = async () => {
-  if (firestoreCacheMode === 'persistent') {
-    return true;
-  }
+// ── Public API ─────────────────────────────────────────────────────────────
 
-  warnDev('Persistent Firestore caching is not available in this environment.');
-  return false;
-};
+export const isOfflinePersistenceEnabled = () => firestoreCacheMode === 'persistent';
 
 export const goOffline = async () => {
   try {
@@ -438,9 +461,7 @@ export const goOnline = async () => {
 };
 
 export const fetchRemoteConfig = async () => {
-  if (!remoteConfig) {
-    return null;
-  }
+  if (!remoteConfig) return null;
 
   try {
     await fetchAndActivate(remoteConfig);
@@ -451,20 +472,36 @@ export const fetchRemoteConfig = async () => {
   }
 };
 
-export const getRemoteConfigValue = (key) => {
-  if (!remoteConfig) {
-    return null;
-  }
+// ── Remote Config Value Getters (v9 modular — instance methods) ────────────
 
-  return getValue(remoteConfig, key);
+/**
+ * Returns the raw Remote Config Value object.
+ * Use the typed helpers below for convenience:
+ *   getRemoteConfigBoolean(key), getRemoteConfigString(key), getRemoteConfigNumber(key)
+ */
+export const getRemoteConfigValue = (key) => {
+  if (!remoteConfig) return null;
+  return remoteConfig.getValue(key); // ✅ Instance method, not a standalone import
+};
+
+export const getRemoteConfigBoolean = (key) => {
+  const value = getRemoteConfigValue(key);
+  return value ? value.asBoolean() : null;
+};
+
+export const getRemoteConfigString = (key) => {
+  const value = getRemoteConfigValue(key);
+  return value ? value.asString() : null;
+};
+
+export const getRemoteConfigNumber = (key) => {
+  const value = getRemoteConfigValue(key);
+  return value ? value.asNumber() : null;
 };
 
 export const getAllRemoteConfig = () => {
-  if (!remoteConfig) {
-    return {};
-  }
-
-  return getAll(remoteConfig);
+  if (!remoteConfig) return {};
+  return remoteConfig.getAll(); // ✅ Instance method
 };
 
 export const requestNotificationPermission = async () => {
@@ -476,10 +513,7 @@ export const requestNotificationPermission = async () => {
 
   try {
     const permission = await Notification.requestPermission();
-
-    if (permission !== 'granted') {
-      return null;
-    }
+    if (permission !== 'granted') return null;
 
     return await getToken(messagingService, {
       vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
@@ -492,10 +526,7 @@ export const requestNotificationPermission = async () => {
 
 export const deleteNotificationToken = async () => {
   const messagingService = await messagingReadyPromise;
-
-  if (!messagingService) {
-    return false;
-  }
+  if (!messagingService) return false;
 
   try {
     await deleteToken(messagingService);
@@ -508,25 +539,30 @@ export const deleteNotificationToken = async () => {
 
 export const onMessageListener = (callback) => {
   if (!messaging) {
+    warnDev('onMessageListener: messaging not initialized.');
     return () => {};
   }
-
   return onMessage(messaging, callback);
 };
 
 export const logAnalyticsEvent = (eventName, eventParams = {}) => {
+  const hasPagePath = 'page_path' in eventParams;
+
   const params = {
     ...eventParams,
-    ...(isBrowser && !eventParams.page_path
+    ...(isBrowser && !hasPagePath
       ? { page_path: window.location.pathname }
       : {}),
   };
 
   if (!analytics) {
-    if (pendingAnalyticsEvents.length < 50) {
+    if (pendingAnalyticsEvents.length < MAX_QUEUED_EVENTS) {
       pendingAnalyticsEvents.push({ name: eventName, params });
+    } else if (isDevelopment) {
+      warnDev(
+        `Analytics queue full (${MAX_QUEUED_EVENTS} events). Dropping event: ${eventName}`
+      );
     }
-
     void analyticsReadyPromise;
     return false;
   }
@@ -536,9 +572,7 @@ export const logAnalyticsEvent = (eventName, eventParams = {}) => {
 };
 
 export const startTrace = async (traceName) => {
-  if (!performance) {
-    return null;
-  }
+  if (!performance) return null;
 
   try {
     const perfTrace = trace(performance, traceName);
@@ -551,9 +585,7 @@ export const startTrace = async (traceName) => {
 };
 
 export const stopTrace = async (perfTrace) => {
-  if (!perfTrace) {
-    return false;
-  }
+  if (!perfTrace) return false;
 
   try {
     perfTrace.stop();
@@ -570,7 +602,9 @@ export const callFunction = async (functionName, data = {}) => {
     const result = await callable(data);
     return result.data;
   } catch (error) {
-    console.error(`Error calling function "${functionName}":`, error);
+    const message =
+      error.details?.message || error.message || 'Unknown function error';
+    console.error(`Error calling function "${functionName}":`, message);
     throw error;
   }
 };
@@ -617,7 +651,6 @@ export const uploadFile = (path, file, onProgress) => {
           snapshot.totalBytes > 0
             ? (snapshot.bytesTransferred / snapshot.totalBytes) * 100
             : 0;
-
         onProgress?.(progress);
       },
       reject,
@@ -646,37 +679,18 @@ export const deleteFile = async (path) => {
   }
 };
 
+// ── Unified Services Export ────────────────────────────────────────────────
 const firebaseServices = {
-  get app() {
-    return app;
-  },
-  get auth() {
-    return auth;
-  },
-  get db() {
-    return db;
-  },
-  get storage() {
-    return storage;
-  },
-  get functions() {
-    return functions;
-  },
-  get analytics() {
-    return analytics;
-  },
-  get performance() {
-    return performance;
-  },
-  get remoteConfig() {
-    return remoteConfig;
-  },
-  get messaging() {
-    return messaging;
-  },
-  get appCheck() {
-    return appCheck;
-  },
+  get app() { return app; },
+  get auth() { return auth; },
+  get db() { return db; },
+  get storage() { return storage; },
+  get functions() { return functions; },
+  get analytics() { return analytics; },
+  get performance() { return performance; },
+  get remoteConfig() { return remoteConfig; },
+  get messaging() { return messaging; },
+  get appCheck() { return appCheck; },
   providers: {
     google: googleProvider,
     github: githubProvider,

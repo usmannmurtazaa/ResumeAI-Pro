@@ -59,6 +59,7 @@ import {
 import toast from 'react-hot-toast';
 import { auth, db, storage, logAnalyticsEvent } from './firebase';
 
+// ── Constants ──────────────────────────────────────────────────────────────
 const COLLECTIONS = {
   users: 'users',
   resumes: 'resumes',
@@ -70,7 +71,10 @@ const COLLECTIONS = {
 };
 
 const CURRENT_SESSION_STORAGE_KEY = 'resumeai-pro.current-session-id';
+const BATCH_CHUNK_SIZE = 400; // Firestore limit is 500 per batch
+const MAX_SESSIONS_DISPLAY = 25;
 
+// Fields that users MUST NOT modify directly
 const RESTRICTED_PROFILE_FIELDS = new Set([
   'role',
   'status',
@@ -89,6 +93,12 @@ const RESTRICTED_PROFILE_FIELDS = new Set([
 
 const ALLOWED_ROLES = new Set(['user', 'premium', 'admin']);
 
+// ── Error Handling ─────────────────────────────────────────────────────────
+
+/**
+ * Maps Firebase error codes to user-friendly messages.
+ * Provides consistent error messages across the entire auth flow.
+ */
 const getErrorMessage = (error) => {
   const code = typeof error === 'string' ? error : error?.code;
   const fallbackMessage =
@@ -97,45 +107,77 @@ const getErrorMessage = (error) => {
       : 'An unexpected error occurred. Please try again.';
 
   const errorMessages = {
-    'auth/email-already-in-use': 'This email is already registered. Please sign in instead.',
+    'auth/email-already-in-use':
+      'This email is already registered. Please sign in instead.',
     'auth/invalid-email': 'Please enter a valid email address.',
-    'auth/weak-password': 'Password should be at least 8 characters with letters and numbers.',
+    'auth/weak-password':
+      'Password should be at least 8 characters with letters and numbers.',
     'auth/user-not-found': 'No account found with this email.',
     'auth/wrong-password': 'Incorrect password. Please try again.',
     'auth/invalid-credential': 'Invalid credentials. Please try again.',
-    'auth/too-many-requests': 'Too many attempts. Please try again later.',
-    'auth/network-request-failed': 'Network error. Please check your connection.',
-    'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
-    'auth/popup-blocked': 'Popups are blocked. Please allow popups for this site.',
+    'auth/too-many-requests':
+      'Too many attempts. Please try again later.',
+    'auth/network-request-failed':
+      'Network error. Please check your connection.',
+    'auth/popup-closed-by-user':
+      'Sign-in popup was closed. Please try again.',
+    'auth/popup-blocked':
+      'Popups are blocked. Please allow popups for this site.',
     'auth/account-exists-with-different-credential':
       'An account already exists with this email using a different sign-in method.',
-    'auth/requires-recent-login': 'Please sign in again to continue.',
-    'auth/user-disabled': 'This account has been disabled. Please contact support.',
-    'auth/operation-not-allowed': 'This operation is not allowed.',
-    'auth/invalid-verification-code': 'Invalid verification code.',
-    'auth/code-expired': 'Verification code has expired.',
-    'auth/missing-phone-number': 'Phone number is required.',
-    'auth/invalid-phone-number': 'Invalid phone number format.',
-    'auth/quota-exceeded': 'SMS quota exceeded. Try again later.',
-    'auth/invalid-action-code': 'The action code is invalid or expired.',
-    'auth/user-token-expired': 'Your session has expired. Please sign in again.',
-    'auth/web-storage-unsupported': 'Web storage is not supported or disabled.',
-    'auth/unauthorized-domain': 'This domain is not authorized for OAuth operations.',
-    'auth/cancelled-popup-request': 'Another popup is already open.',
-    'auth/internal-error': 'An internal error occurred. Please try again.',
-    'auth/no-current-user': 'No user is currently signed in.',
+    'auth/requires-recent-login':
+      'Please sign in again to continue.',
+    'auth/user-disabled':
+      'This account has been disabled. Please contact support.',
+    'auth/operation-not-allowed':
+      'This operation is not allowed.',
+    'auth/invalid-verification-code':
+      'Invalid verification code.',
+    'auth/code-expired':
+      'Verification code has expired.',
+    'auth/missing-phone-number':
+      'Phone number is required.',
+    'auth/invalid-phone-number':
+      'Invalid phone number format.',
+    'auth/quota-exceeded':
+      'SMS quota exceeded. Try again later.',
+    'auth/invalid-action-code':
+      'The action code is invalid or expired.',
+    'auth/user-token-expired':
+      'Your session has expired. Please sign in again.',
+    'auth/web-storage-unsupported':
+      'Web storage is not supported or disabled.',
+    'auth/unauthorized-domain':
+      'This domain is not authorized for OAuth operations.',
+    'auth/cancelled-popup-request':
+      'Another popup is already open.',
+    'auth/internal-error':
+      'An internal error occurred. Please try again.',
+    'auth/no-current-user':
+      'No user is currently signed in.',
     'auth/no-password-provider':
       'This account does not support password-based reauthentication.',
-    'auth/missing-password': 'Please enter your password to continue.',
-    'auth/missing-recaptcha': 'Phone verification is not ready. Please refresh and try again.',
-    'auth/provider-not-linked': 'This sign-in method is not linked to your account.',
-    'auth/cannot-unlink-last-provider': 'You must keep at least one sign-in method linked.',
-    'auth/unsupported-provider': 'This sign-in provider is not supported.',
+    'auth/missing-password':
+      'Please enter your password to continue.',
+    'auth/missing-recaptcha':
+      'Phone verification is not ready. Please refresh and try again.',
+    'auth/provider-not-linked':
+      'This sign-in method is not linked to your account.',
+    'auth/cannot-unlink-last-provider':
+      'You must keep at least one sign-in method linked.',
+    'auth/unsupported-provider':
+      'This sign-in provider is not supported.',
   };
 
   return errorMessages[code] || fallbackMessage;
 };
 
+// ── Utilities ──────────────────────────────────────────────────────────────
+
+/**
+ * Safely logs an analytics event. Failures are silently caught
+ * to prevent analytics errors from breaking the user experience.
+ */
 const safeTrackEvent = (eventName, params = {}) => {
   try {
     logAnalyticsEvent(eventName, params);
@@ -146,40 +188,39 @@ const safeTrackEvent = (eventName, params = {}) => {
   }
 };
 
+/** Builds an absolute URL for auth action handlers. */
 const buildActionUrl = (path) => {
-  if (typeof window === 'undefined') {
-    return path;
-  }
-
+  if (typeof window === 'undefined') return path;
   return `${window.location.origin}${path}`;
 };
 
+/** Normalizes email: lowercase and trimmed. */
 const normalizeEmail = (email = '') => email.trim().toLowerCase();
 
+/** Gets the current authenticated user or throws. */
 const getCurrentUserOrThrow = () => {
   const user = auth.currentUser;
-
   if (!user) {
     const error = new Error('No user logged in');
     error.code = 'auth/no-current-user';
     throw error;
   }
-
   return user;
 };
 
+/** Checks if the user has a password provider linked. */
 const hasPasswordProvider = (user) =>
-  user?.providerData?.some((provider) => provider.providerId === 'password');
+  user?.providerData?.some((p) => p.providerId === 'password');
 
+/** Returns an array of linked provider IDs. */
 const getProviderIds = (user) =>
-  user?.providerData?.map((provider) => provider.providerId).filter(Boolean) || [];
+  user?.providerData?.map((p) => p.providerId).filter(Boolean) || [];
 
+/** Builds a lookup map from provider IDs. */
 const buildLinkedProviderMap = (providerIds = []) =>
-  providerIds.reduce((accumulator, providerId) => {
-    accumulator[providerId] = true;
-    return accumulator;
-  }, {});
+  providerIds.reduce((acc, id) => ((acc[id] = true), acc), {});
 
+/** Removes restricted fields from profile update data. */
 const sanitizeProfileData = (data = {}) =>
   Object.fromEntries(
     Object.entries(data).filter(
@@ -187,11 +228,19 @@ const sanitizeProfileData = (data = {}) =>
     )
   );
 
-const getSessionStorage = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
+/** Generates a unique filename to prevent collisions. */
+const generateUniqueFileName = (originalName) => {
+  const ext = originalName.includes('.')
+    ? originalName.substring(originalName.lastIndexOf('.'))
+    : '';
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${unique}${ext}`;
+};
 
+// ── Session Storage Helpers ────────────────────────────────────────────────
+
+const getSessionStorage = () => {
+  if (typeof window === 'undefined') return null;
   try {
     return window.sessionStorage;
   } catch {
@@ -200,28 +249,30 @@ const getSessionStorage = () => {
 };
 
 const getStoredCurrentSessionId = () => {
-  const storageRef = getSessionStorage();
-  return storageRef?.getItem(CURRENT_SESSION_STORAGE_KEY) || null;
+  return getSessionStorage()?.getItem(CURRENT_SESSION_STORAGE_KEY) || null;
 };
 
 const storeCurrentSessionId = (sessionId) => {
-  const storageRef = getSessionStorage();
-  if (!storageRef || !sessionId) {
-    return;
+  const storage = getSessionStorage();
+  if (storage && sessionId) {
+    storage.setItem(CURRENT_SESSION_STORAGE_KEY, sessionId);
   }
-
-  storageRef.setItem(CURRENT_SESSION_STORAGE_KEY, sessionId);
 };
 
 const clearStoredCurrentSessionId = () => {
-  const storageRef = getSessionStorage();
-  storageRef?.removeItem(CURRENT_SESSION_STORAGE_KEY);
+  getSessionStorage()?.removeItem(CURRENT_SESSION_STORAGE_KEY);
 };
 
-const createProvider = (providerName) => {
-  const normalizedProvider = providerName.toLowerCase();
+// ── Provider Factory ───────────────────────────────────────────────────────
 
-  switch (normalizedProvider) {
+/**
+ * Creates a configured Firebase Auth provider instance.
+ * Supports: Google, GitHub, Facebook, Microsoft, Twitter, Apple.
+ */
+const createProvider = (providerName) => {
+  const name = providerName.toLowerCase();
+
+  switch (name) {
     case 'google': {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
@@ -248,8 +299,9 @@ const createProvider = (providerName) => {
       provider.setCustomParameters({ prompt: 'select_account' });
       return provider;
     }
-    case 'twitter':
+    case 'twitter': {
       return new TwitterAuthProvider();
+    }
     case 'apple': {
       const provider = new OAuthProvider('apple.com');
       provider.addScope('email');
@@ -264,21 +316,27 @@ const createProvider = (providerName) => {
   }
 };
 
-const deleteInBatches = async (refs, chunkSize = 400) => {
+// ── Firestore Batch Operations ─────────────────────────────────────────────
+
+/**
+ * Deletes Firestore documents in batches to respect the 500-operation limit.
+ * Deduplicates refs by path to prevent duplicate delete operations.
+ */
+const deleteInBatches = async (refs, chunkSize = BATCH_CHUNK_SIZE) => {
   const uniqueRefs = Array.from(
     new Map(refs.filter(Boolean).map((refItem) => [refItem.path, refItem])).values()
   );
 
   for (let index = 0; index < uniqueRefs.length; index += chunkSize) {
     const batch = writeBatch(db);
-
     uniqueRefs.slice(index, index + chunkSize).forEach((refItem) => {
       batch.delete(refItem);
     });
-
     await batch.commit();
   }
 };
+
+// ── Session Management (Internal) ──────────────────────────────────────────
 
 const createSessionRecord = async (userId) => {
   try {
@@ -305,17 +363,15 @@ const createSessionRecord = async (userId) => {
 const getActiveSessions = async () => {
   try {
     const user = auth.currentUser;
-    if (!user) {
-      return [];
-    }
+    if (!user) return [];
 
     const sessionsRef = collection(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions);
-    const sessionsQuery = query(sessionsRef, orderBy('createdAt', 'desc'), limit(10));
+    const sessionsQuery = query(sessionsRef, orderBy('createdAt', 'desc'), limit(MAX_SESSIONS_DISPLAY));
     const snapshot = await getDocs(sessionsQuery);
 
-    return snapshot.docs.map((sessionDoc) => ({
-      id: sessionDoc.id,
-      ...sessionDoc.data(),
+    return snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
     }));
   } catch (error) {
     console.error('Get sessions error:', error);
@@ -325,10 +381,7 @@ const getActiveSessions = async () => {
 
 const deleteCurrentSessionRecord = async (userId) => {
   const currentSessionId = getStoredCurrentSessionId();
-
-  if (!currentSessionId) {
-    return;
-  }
+  if (!currentSessionId) return;
 
   try {
     await deleteDoc(doc(db, COLLECTIONS.users, userId, COLLECTIONS.sessions, currentSessionId));
@@ -340,6 +393,8 @@ const deleteCurrentSessionRecord = async (userId) => {
     clearStoredCurrentSessionId();
   }
 };
+
+// ── Reauthentication ───────────────────────────────────────────────────────
 
 const reauthenticateWithPassword = async (password) => {
   const user = getCurrentUserOrThrow();
@@ -361,6 +416,8 @@ const reauthenticateWithPassword = async (password) => {
   return user;
 };
 
+// ── User Document Sync ─────────────────────────────────────────────────────
+
 const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
   const userRef = doc(db, COLLECTIONS.users, user.uid);
   const existingDoc = await getDoc(userRef);
@@ -372,30 +429,23 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
     status: 'active',
     emailVerified: Boolean(user.emailVerified),
     authProvider: providerName.toLowerCase(),
-    providerData: {
-      providerId: user.providerData?.[0]?.providerId || providerName.toLowerCase(),
-      uid: user.providerData?.[0]?.uid || user.uid,
-    },
     linkedProviders: buildLinkedProviderMap(getProviderIds(user)),
     lastLogin: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
 
   if (!existingDoc.exists()) {
-    await setDoc(
-      userRef,
-      {
-        ...baseData,
-        role: 'user',
-        createdAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    await setDoc(userRef, {
+      ...baseData,
+      role: 'user',
+      createdAt: serverTimestamp(),
+    });
     return { isNewUser: true };
   }
 
+  // Only update specific fields for existing users — never overwrite role/status
   await updateDoc(userRef, baseData);
-  return { isNewUser };
+  return { isNewUser: false };
 };
 
 const updateLinkedProvidersInFirestore = async (user) => {
@@ -411,16 +461,17 @@ const updateLinkedProvidersInFirestore = async (user) => {
   }
 };
 
+// ── Auth Service ───────────────────────────────────────────────────────────
+
 export const authService = {
+  // ── Sign Up ────────────────────────────────────────────────────────────
   async signUp(email, password, displayName, options = {}) {
     try {
       const normalizedEmail = normalizeEmail(email);
       const normalizedDisplayName = displayName?.trim() || normalizedEmail.split('@')[0];
 
       const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        normalizedEmail,
-        password
+        auth, normalizedEmail, password
       );
       const user = userCredential.user;
 
@@ -436,50 +487,41 @@ export const authService = {
         });
       }
 
-      await setDoc(
-        doc(db, COLLECTIONS.users, user.uid),
-        {
-          email: normalizedEmail,
-          displayName: normalizedDisplayName,
-          photoURL: options.photoURL || null,
-          phoneNumber: options.phoneNumber || null,
-          role: 'user',
-          status: 'active',
-          emailVerified: false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-          authProvider: 'password',
-          linkedProviders: { password: true },
-          metadata: {
-            signUpMethod: 'email',
-            referrer: options.referrer || null,
-            utmSource: options.utmSource || null,
-            signUpSource: options.signUpSource || 'web',
-          },
+      // Use setDoc without merge for new document creation
+      await setDoc(doc(db, COLLECTIONS.users, user.uid), {
+        email: normalizedEmail,
+        displayName: normalizedDisplayName,
+        photoURL: options.photoURL || null,
+        phoneNumber: options.phoneNumber || null,
+        role: 'user',
+        status: 'active',
+        emailVerified: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        authProvider: 'password',
+        linkedProviders: { password: true },
+        metadata: {
+          signUpMethod: 'email',
+          referrer: options.referrer || null,
+          utmSource: options.utmSource || null,
+          signUpSource: options.signUpSource || 'web',
         },
-        { merge: true }
-      );
+      });
 
       await createSessionRecord(user.uid);
 
-      safeTrackEvent('sign_up', {
-        method: 'email',
-        userId: user.uid,
-      });
+      safeTrackEvent('sign_up', { method: 'email', userId: user.uid });
 
       toast.success('Account created successfully! Please verify your email.');
       return { success: true, user };
     } catch (error) {
       console.error('Sign up error:', error);
-      return {
-        success: false,
-        error: getErrorMessage(error),
-        code: error.code,
-      };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
+  // ── Sign In ────────────────────────────────────────────────────────────
   async signIn(email, password, rememberMe = true) {
     try {
       await setPersistence(
@@ -488,9 +530,7 @@ export const authService = {
       );
 
       const userCredential = await signInWithEmailAndPassword(
-        auth,
-        normalizeEmail(email),
-        password
+        auth, normalizeEmail(email), password
       );
       const user = userCredential.user;
 
@@ -502,56 +542,47 @@ export const authService = {
 
       await createSessionRecord(user.uid);
 
-      safeTrackEvent('login', {
-        method: 'email',
-        userId: user.uid,
-      });
+      safeTrackEvent('login', { method: 'email', userId: user.uid });
 
       toast.success('Welcome back!');
       return { success: true, user };
     } catch (error) {
       console.error('Sign in error:', error);
-      return {
-        success: false,
-        error: getErrorMessage(error),
-        code: error.code,
-      };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
+  // ── Social Provider Sign In ────────────────────────────────────────────
   async signInWithProvider(providerName) {
     try {
-      const normalizedProvider = providerName.toLowerCase();
-      const provider = createProvider(normalizedProvider);
+      const provider = createProvider(providerName);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       const authInfo = getAdditionalUserInfo(result);
+      const isNewUser = Boolean(authInfo?.isNewUser);
 
-      await syncUserDocAfterProviderAuth(user, normalizedProvider, Boolean(authInfo?.isNewUser));
+      await syncUserDocAfterProviderAuth(user, providerName.toLowerCase(), isNewUser);
       await createSessionRecord(user.uid);
 
-      safeTrackEvent(authInfo?.isNewUser ? 'sign_up' : 'login', {
-        method: normalizedProvider,
+      safeTrackEvent(isNewUser ? 'sign_up' : 'login', {
+        method: providerName.toLowerCase(),
         userId: user.uid,
       });
 
       toast.success(
-        authInfo?.isNewUser
+        isNewUser
           ? 'Account created successfully! Welcome aboard!'
-          : `Successfully signed in with ${normalizedProvider}!`
+          : `Successfully signed in with ${providerName}!`
       );
 
-      return { success: true, user, isNewUser: Boolean(authInfo?.isNewUser) };
+      return { success: true, user, isNewUser };
     } catch (error) {
       console.error(`${providerName} sign in error:`, error);
-      return {
-        success: false,
-        error: getErrorMessage(error),
-        code: error.code,
-      };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
+  // ── Phone Sign In ──────────────────────────────────────────────────────
   async signInWithPhone(phoneNumber, recaptchaVerifier) {
     try {
       if (!recaptchaVerifier) {
@@ -561,20 +592,14 @@ export const authService = {
       }
 
       const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        phoneNumber.trim(),
-        recaptchaVerifier
+        auth, phoneNumber.trim(), recaptchaVerifier
       );
 
       toast.success('Verification code sent!');
       return { success: true, confirmationResult };
     } catch (error) {
       console.error('Phone sign in error:', error);
-      return {
-        success: false,
-        error: getErrorMessage(error),
-        code: error.code,
-      };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
@@ -587,22 +612,18 @@ export const authService = {
       const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
-        await setDoc(
-          userRef,
-          {
-            phoneNumber: user.phoneNumber || null,
-            displayName: `User${user.uid.slice(0, 6)}`,
-            role: 'user',
-            status: 'active',
-            phoneVerified: true,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            lastLogin: serverTimestamp(),
-            authProvider: 'phone',
-            linkedProviders: { phone: true },
-          },
-          { merge: true }
-        );
+        await setDoc(userRef, {
+          phoneNumber: user.phoneNumber || null,
+          displayName: `User${user.uid.slice(0, 6)}`,
+          role: 'user',
+          status: 'active',
+          phoneVerified: true,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          authProvider: 'phone',
+          linkedProviders: { phone: true },
+        });
       } else {
         await updateDoc(userRef, {
           phoneNumber: user.phoneNumber || userDoc.data()?.phoneNumber || null,
@@ -623,18 +644,14 @@ export const authService = {
       return { success: true, user, isNewUser: Boolean(authInfo?.isNewUser) };
     } catch (error) {
       console.error('Phone confirmation error:', error);
-      return {
-        success: false,
-        error: getErrorMessage(error),
-        code: error.code,
-      };
+      return { success: false, error: getErrorMessage(error), code: error.code };
     }
   },
 
-  async enrollMFA(phoneNumber, recaptchaVerifier = window?.recaptchaVerifier) {
+  // ── MFA Management ─────────────────────────────────────────────────────
+  async enrollMFA(phoneNumber, recaptchaVerifier) {
     try {
       const user = getCurrentUserOrThrow();
-      const session = await user.multiFactor.getSession();
 
       if (!recaptchaVerifier) {
         const error = new Error('Recaptcha verifier is required.');
@@ -642,14 +659,10 @@ export const authService = {
         throw error;
       }
 
-      const phoneOptions = {
-        phoneNumber: phoneNumber.trim(),
-        session,
-      };
-
+      const session = await user.multiFactor.getSession();
       const mfaProvider = new PhoneAuthProvider(auth);
       const verificationId = await mfaProvider.verifyPhoneNumber(
-        phoneOptions,
+        { phoneNumber: phoneNumber.trim(), session },
         recaptchaVerifier
       );
 
@@ -699,6 +712,7 @@ export const authService = {
     }
   },
 
+  // ── Session Management ─────────────────────────────────────────────────
   async createSessionRecord(userId) {
     const sessionId = await createSessionRecord(userId);
     return { success: Boolean(sessionId), sessionId };
@@ -711,7 +725,6 @@ export const authService = {
   async revokeSession(sessionId) {
     try {
       const user = getCurrentUserOrThrow();
-
       await deleteDoc(doc(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions, sessionId));
 
       if (sessionId === getStoredCurrentSessionId()) {
@@ -732,8 +745,8 @@ export const authService = {
       const sessions = await getActiveSessions();
       const currentSessionId = getStoredCurrentSessionId();
       const refsToDelete = sessions
-        .filter((session) => session.id !== currentSessionId)
-        .map((session) => doc(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions, session.id));
+        .filter((s) => s.id !== currentSessionId)
+        .map((s) => doc(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions, s.id));
 
       if (refsToDelete.length > 0) {
         await deleteInBatches(refsToDelete);
@@ -747,13 +760,13 @@ export const authService = {
     }
   },
 
+  // ── Sign Out ───────────────────────────────────────────────────────────
   async signOut() {
     try {
       const user = auth.currentUser;
 
       if (user) {
         await deleteCurrentSessionRecord(user.uid);
-
         await updateDoc(doc(db, COLLECTIONS.users, user.uid), {
           lastLogout: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -774,6 +787,7 @@ export const authService = {
     }
   },
 
+  // ── Password Reset ─────────────────────────────────────────────────────
   async resetPassword(email) {
     try {
       await sendPasswordResetEmail(auth, normalizeEmail(email), {
@@ -781,9 +795,13 @@ export const authService = {
         handleCodeInApp: false,
       });
     } catch (error) {
-      console.error('Password reset error:', error);
+      // Log the error internally but DO NOT reveal whether the email exists
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Password reset attempt:', error?.code || error);
+      }
     }
 
+    // Always show the same message to prevent email enumeration
     toast.success('If an account exists, a reset email has been sent.');
     return { success: true };
   },
@@ -809,10 +827,10 @@ export const authService = {
     }
   },
 
+  // ── Email Verification ─────────────────────────────────────────────────
   async sendVerificationEmail() {
     try {
       const user = getCurrentUserOrThrow();
-
       await sendEmailVerification(user, {
         url: buildActionUrl('/verify-email'),
         handleCodeInApp: true,
@@ -834,6 +852,7 @@ export const authService = {
       const verifiedEmail = actionInfo?.data?.email || actionInfo?.data?.previousEmail || null;
 
       if (verifiedEmail) {
+        // Query by email (requires composite index on 'email' field)
         const usersQuery = query(
           collection(db, COLLECTIONS.users),
           where('email', '==', verifiedEmail)
@@ -868,7 +887,6 @@ export const authService = {
   async checkActionCodeValidity(oobCode) {
     try {
       const info = await checkActionCode(auth, oobCode);
-
       return {
         success: true,
         operation: info.operation,
@@ -881,6 +899,7 @@ export const authService = {
     }
   },
 
+  // ── Profile Management ─────────────────────────────────────────────────
   async updateUserProfile(userId, data) {
     try {
       const currentUser = auth.currentUser;
@@ -888,17 +907,12 @@ export const authService = {
       const authUpdates = {};
 
       if (currentUser && currentUser.uid === userId) {
-        if (
-          Object.prototype.hasOwnProperty.call(sanitizedData, 'displayName') &&
-          sanitizedData.displayName !== currentUser.displayName
-        ) {
+        if (sanitizedData.displayName !== undefined &&
+            sanitizedData.displayName !== currentUser.displayName) {
           authUpdates.displayName = sanitizedData.displayName;
         }
-
-        if (
-          Object.prototype.hasOwnProperty.call(sanitizedData, 'photoURL') &&
-          sanitizedData.photoURL !== currentUser.photoURL
-        ) {
+        if (sanitizedData.photoURL !== undefined &&
+            sanitizedData.photoURL !== currentUser.photoURL) {
           authUpdates.photoURL = sanitizedData.photoURL;
         }
 
@@ -968,9 +982,11 @@ export const authService = {
     }
   },
 
+  // ── Profile Image ──────────────────────────────────────────────────────
   async uploadProfileImage(userId, file, onProgress) {
     try {
-      const storageRef = ref(storage, `avatars/${userId}/${Date.now()}-${file.name}`);
+      const uniqueFileName = generateUniqueFileName(file.name);
+      const storageRef = ref(storage, `avatars/${userId}/${uniqueFileName}`);
       const uploadTask = uploadBytesResumable(storageRef, file, {
         contentType: file.type || undefined,
       });
@@ -979,15 +995,11 @@ export const authService = {
         uploadTask.on(
           'state_changed',
           (snapshot) => {
-            if (!onProgress) {
-              return;
-            }
-
+            if (!onProgress) return;
             const progress =
               snapshot.totalBytes > 0
                 ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
                 : 0;
-
             onProgress(progress);
           },
           reject,
@@ -1012,21 +1024,32 @@ export const authService = {
 
   async deleteProfileImage(userId, photoURL) {
     try {
-      if (
-        photoURL &&
-        (photoURL.includes('firebasestorage.googleapis.com') ||
-          photoURL.includes('storage.googleapis.com'))
-      ) {
-        const fileRef = ref(storage, photoURL);
-        await deleteObject(fileRef).catch((error) => {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Profile image delete skipped', error);
+      // Only attempt deletion if it's a Firebase Storage URL
+      if (photoURL) {
+        try {
+          const url = new URL(photoURL);
+          const isFirebaseStorage =
+            url.hostname.includes('firebasestorage.googleapis.com') ||
+            url.hostname.includes('storage.googleapis.com');
+
+          if (isFirebaseStorage) {
+            // Extract the path from the URL for ref()
+            const decodedPath = decodeURIComponent(url.pathname.split('/o/')[1] || '');
+            if (decodedPath) {
+              const fileRef = ref(storage, decodedPath);
+              await deleteObject(fileRef).catch((err) => {
+                if (process.env.NODE_ENV === 'development') {
+                  console.warn('Profile image file delete failed', err);
+                }
+              });
+            }
           }
-        });
+        } catch {
+          // Invalid URL — skip deletion
+        }
       }
 
       const updateResult = await this.updateUserProfile(userId, { photoURL: null });
-
       if (!updateResult.success) {
         throw new Error(updateResult.error || 'Failed to remove profile image.');
       }
@@ -1039,10 +1062,11 @@ export const authService = {
     }
   },
 
+  // ── Account Linking ────────────────────────────────────────────────────
   async linkProvider(providerName) {
     try {
       const user = getCurrentUserOrThrow();
-      const provider = createProvider(providerName.toLowerCase());
+      const provider = createProvider(providerName);
       const result = await linkWithPopup(user, provider);
 
       await updateLinkedProvidersInFirestore(result.user);
@@ -1093,39 +1117,31 @@ export const authService = {
     }
   },
 
-  async deleteUserAccount(userId, password) {
+  // ── Account Deletion ───────────────────────────────────────────────────
+  async deleteUserAccount(password) {
     try {
       const user = getCurrentUserOrThrow();
-      const effectiveUserId = user.uid;
-
-      if (userId && userId !== effectiveUserId && process.env.NODE_ENV === 'development') {
-        console.warn('deleteUserAccount ignored mismatched userId and used current auth user.');
-      }
+      const userId = user.uid;
 
       if (hasPasswordProvider(user)) {
         await reauthenticateWithPassword(password);
       }
 
       const [resumesSnapshot, notificationsSnapshot, sessionsSnapshot] = await Promise.all([
-        getDocs(query(collection(db, COLLECTIONS.resumes), where('userId', '==', effectiveUserId))),
-        getDocs(
-          query(collection(db, COLLECTIONS.notifications), where('userId', '==', effectiveUserId))
-        ),
-        getDocs(collection(db, COLLECTIONS.users, effectiveUserId, COLLECTIONS.sessions)),
+        getDocs(query(collection(db, COLLECTIONS.resumes), where('userId', '==', userId))),
+        getDocs(query(collection(db, COLLECTIONS.notifications), where('userId', '==', userId))),
+        getDocs(collection(db, COLLECTIONS.users, userId, COLLECTIONS.sessions)),
       ]);
 
+      // Archive deletion record for compliance
       try {
-        await setDoc(
-          doc(db, COLLECTIONS.deletedAccounts, effectiveUserId),
-          {
-            userId: effectiveUserId,
-            email: user.email || null,
-            deletedAt: serverTimestamp(),
-            reason: 'user_requested',
-            provider: user.providerData?.[0]?.providerId || 'password',
-          },
-          { merge: true }
-        );
+        await setDoc(doc(db, COLLECTIONS.deletedAccounts, userId), {
+          userId,
+          email: user.email || null,
+          deletedAt: serverTimestamp(),
+          reason: 'user_requested',
+          provider: user.providerData?.[0]?.providerId || 'password',
+        });
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
           console.warn('Failed to archive deleted account record', error);
@@ -1133,17 +1149,17 @@ export const authService = {
       }
 
       const refsToDelete = [
-        ...resumesSnapshot.docs.map((item) => item.ref),
-        ...notificationsSnapshot.docs.map((item) => item.ref),
-        ...sessionsSnapshot.docs.map((item) => item.ref),
-        doc(db, COLLECTIONS.settings, effectiveUserId),
-        doc(db, COLLECTIONS.subscriptions, effectiveUserId),
-        doc(db, COLLECTIONS.users, effectiveUserId),
+        ...resumesSnapshot.docs.map((d) => d.ref),
+        ...notificationsSnapshot.docs.map((d) => d.ref),
+        ...sessionsSnapshot.docs.map((d) => d.ref),
+        doc(db, COLLECTIONS.settings, userId),
+        doc(db, COLLECTIONS.subscriptions, userId),
+        doc(db, COLLECTIONS.users, userId),
       ];
 
       await deleteInBatches(refsToDelete);
 
-      safeTrackEvent('account_deleted', { userId: effectiveUserId });
+      safeTrackEvent('account_deleted', { userId });
 
       clearStoredCurrentSessionId();
       await firebaseDeleteUser(user);
@@ -1156,14 +1172,13 @@ export const authService = {
     }
   },
 
+  // ── User Data ──────────────────────────────────────────────────────────
   async getUserData(userId) {
     try {
       const userDoc = await getDoc(doc(db, COLLECTIONS.users, userId));
-
       if (!userDoc.exists()) {
         return { success: false, error: 'User not found' };
       }
-
       return { success: true, data: userDoc.data() };
     } catch (error) {
       console.error('Get user data error:', error);
@@ -1204,12 +1219,10 @@ export const authService = {
   async updateUserRole(userId, role) {
     try {
       const normalizedRole = ALLOWED_ROLES.has(role) ? role : 'user';
-
       await updateDoc(doc(db, COLLECTIONS.users, userId), {
         role: normalizedRole,
         updatedAt: serverTimestamp(),
       });
-
       return { success: true };
     } catch (error) {
       console.error('Update user role error:', error);
@@ -1217,13 +1230,11 @@ export const authService = {
     }
   },
 
+  // ── Token Management ───────────────────────────────────────────────────
   async getIdToken(forceRefresh = false) {
     try {
       const user = auth.currentUser;
-      if (!user) {
-        return null;
-      }
-
+      if (!user) return null;
       return await firebaseGetIdToken(user, forceRefresh);
     } catch (error) {
       console.error('Get ID token error:', error);
@@ -1234,10 +1245,7 @@ export const authService = {
   async getIdTokenResult(forceRefresh = false) {
     try {
       const user = auth.currentUser;
-      if (!user) {
-        return null;
-      }
-
+      if (!user) return null;
       return await firebaseGetIdTokenResult(user, forceRefresh);
     } catch (error) {
       console.error('Get token result error:', error);
@@ -1245,6 +1253,7 @@ export const authService = {
     }
   },
 
+  // ── Auth State ─────────────────────────────────────────────────────────
   onAuthStateChange(callback) {
     return onAuthStateChanged(auth, callback);
   },
@@ -1260,10 +1269,7 @@ export const authService = {
   async refreshUserClaims() {
     try {
       const user = auth.currentUser;
-      if (!user) {
-        return false;
-      }
-
+      if (!user) return false;
       await firebaseGetIdToken(user, true);
       return true;
     } catch (error) {
