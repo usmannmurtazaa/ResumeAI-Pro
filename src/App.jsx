@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { DndProvider } from 'react-dnd';
@@ -15,6 +15,7 @@ import PrivateRoute from './components/auth/PrivateRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import Loader from './components/common/Loader';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import RouteErrorBoundary from './components/common/RouteErrorBoundary';
 import { logAnalyticsEvent } from './services/firebase';
 import './styles/globals.css';
 import './styles/animations.css';
@@ -40,6 +41,7 @@ const ReactQueryDevtools = isDevelopment
 const createLazyPage = (loader) => {
   const Component = lazy(loader);
   Component.preload = loader;
+  Component.displayName = `LazyPage(${loader.name || 'Unknown'})`;
   return Component;
 };
 
@@ -78,23 +80,24 @@ const Billing = createLazyPage(() => import('./pages/Billing'));
 const NotFound = createLazyPage(() => import('./pages/NotFound'));
 
 // ── React Query Client ──────────────────────────────────────────────────────
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30,   // 30 minutes (formerly cacheTime)
-      retry: 1,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      refetchOnWindowFocus: false,
-      refetchOnMount: true,
-      refetchOnReconnect: true,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        gcTime: 1000 * 60 * 30,   // 30 minutes (formerly cacheTime)
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        refetchOnWindowFocus: false,
+        refetchOnMount: true,
+        refetchOnReconnect: true,
+      },
+      mutations: {
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      },
     },
-    mutations: {
-      retry: 1,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    },
-  },
-});
+  });
 
 // ── Route Definitions ───────────────────────────────────────────────────────
 const PUBLIC_ROUTES = [
@@ -156,9 +159,12 @@ const resolveIsDark = (savedTheme, systemPrefersDark) => {
  * Applies the correct theme class to `<html>` before React hydrates
  * to prevent a flash of incorrect theme. Syncs with localStorage and
  * system preference changes.
+ * 
+ * FIXED: Now uses useLayoutEffect to prevent FOUC (Flash of Unstyled Content)
  */
 const useInitialThemeClass = () => {
-  useEffect(() => {
+  // Use useLayoutEffect for synchronous DOM mutations before paint
+  React.useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
 
     const root = document.documentElement;
@@ -170,18 +176,27 @@ const useInitialThemeClass = () => {
     };
 
     const syncTheme = () => {
-      const savedTheme = localStorage.getItem('theme');
-      applyTheme(resolveIsDark(savedTheme, mediaQuery.matches));
+      try {
+        const savedTheme = localStorage.getItem('theme');
+        applyTheme(resolveIsDark(savedTheme, mediaQuery.matches));
+      } catch (error) {
+        // localStorage might be unavailable (private browsing in some browsers)
+        applyTheme(mediaQuery.matches);
+      }
     };
 
-    // Apply immediately on mount
+    // Apply immediately before paint
     syncTheme();
 
     // Listen for system preference changes
     const unsubscribe = subscribeToMediaQuery(mediaQuery, (event) => {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === null || savedTheme === 'system') {
-        applyTheme(event.matches);
+      try {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === null || savedTheme === 'system') {
+          applyTheme(event.matches);
+        }
+      } catch {
+        // Silently handle localStorage errors
       }
     });
 
@@ -198,20 +213,30 @@ const useChunkPrefetch = () => {
     if (typeof window === 'undefined') return;
 
     const preloadCriticalPages = () => {
-      void Dashboard.preload?.();
-      void Builder.preload?.();
-      void Templates.preload?.();
+      try {
+        void Dashboard.preload?.();
+        void Builder.preload?.();
+        void Templates.preload?.();
+      } catch (error) {
+        if (isDevelopment) {
+          console.warn('Failed to preload chunks:', error);
+        }
+      }
     };
+
+    let cleanup;
 
     if ('requestIdleCallback' in window) {
       const idleId = window.requestIdleCallback(preloadCriticalPages, {
         timeout: 1500,
       });
-      return () => window.cancelIdleCallback(idleId);
+      cleanup = () => window.cancelIdleCallback(idleId);
+    } else {
+      const timeoutId = window.setTimeout(preloadCriticalPages, 1200);
+      cleanup = () => window.clearTimeout(timeoutId);
     }
 
-    const timeoutId = window.setTimeout(preloadCriticalPages, 1200);
-    return () => window.clearTimeout(timeoutId);
+    return cleanup;
   }, []);
 };
 
@@ -219,10 +244,15 @@ const useChunkPrefetch = () => {
  * Monitors online/offline status and provides user feedback.
  * Uses a persistent error toast when offline (auto-dismisses on reconnect),
  * plus a slide-down banner for keyboard/screen-reader accessibility.
+ * 
+ * FIXED: Cleanup toast on unmount to prevent memory leaks
  */
 const useOnlineStatusFeedback = () => {
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
   const hasInitialized = useRef(false);
+  const toastIdRef = useRef('online-status');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -231,17 +261,22 @@ const useOnlineStatusFeedback = () => {
       setIsOnline(nextOnline);
       document.body.classList.toggle('offline', !nextOnline);
 
-      if (!notify) return;
+      if (!notify || !hasInitialized.current) {
+        if (!hasInitialized.current) {
+          hasInitialized.current = true;
+        }
+        return;
+      }
 
       if (nextOnline) {
-        toast.dismiss('online-status');
+        toast.dismiss(toastIdRef.current);
         toast.success('Connection restored.', {
-          id: 'online-status',
+          id: toastIdRef.current,
           duration: 2500,
         });
       } else {
         toast.error('You are offline. Some features may be unavailable.', {
-          id: 'online-status',
+          id: toastIdRef.current,
           duration: Infinity,
         });
       }
@@ -260,6 +295,8 @@ const useOnlineStatusFeedback = () => {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      // Clean up persistent toast on unmount
+      toast.dismiss(toastIdRef.current);
     };
   }, []);
 
@@ -275,6 +312,7 @@ const useOnlineStatusFeedback = () => {
 const AnalyticsTracker = () => {
   const { pathname, search, hash } = useLocation();
   const lastTrackedUrl = useRef('');
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     const currentUrl = `${pathname}${search}${hash}`;
@@ -283,7 +321,12 @@ const AnalyticsTracker = () => {
 
     lastTrackedUrl.current = currentUrl;
 
-    const timeoutId = window.setTimeout(() => {
+    // Clear previous timeout if exists
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = window.setTimeout(() => {
       try {
         logAnalyticsEvent('page_view', {
           page_path: pathname,
@@ -297,7 +340,11 @@ const AnalyticsTracker = () => {
       }
     }, 150);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+      }
+    };
   }, [pathname, search, hash]);
 
   return null;
@@ -388,6 +435,9 @@ const PageLoader = () => {
   );
 };
 
+/**
+ * FIXED: Changed min-h-[inherit] to min-h-full for proper height inheritance
+ */
 const PageTransition = ({ children }) => {
   const shouldReduceMotion = useReducedMotion();
 
@@ -397,17 +447,22 @@ const PageTransition = ({ children }) => {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="min-h-[inherit]"
+      className="min-h-full w-full"
     >
       {children}
     </motion.div>
   );
 };
 
+/**
+ * Wraps page component with error boundary and transition
+ */
 const renderPage = (Component) => (
-  <PageTransition>
-    <Component />
-  </PageTransition>
+  <RouteErrorBoundary>
+    <PageTransition>
+      <Component />
+    </PageTransition>
+  </RouteErrorBoundary>
 );
 
 // ── Animated Routes ─────────────────────────────────────────────────────────
@@ -437,13 +492,19 @@ const AnimatedRoutes = () => {
           <Route key={path} path={path} element={renderPage(Component)} />
         ))}
 
-        {/* Protected routes */}
-        {PROTECTED_ROUTES.map(({ path, component: Component, ...routeProps }) => (
+        {/* Protected routes - FIXED: PrivateRoute now properly wraps with element pattern */}
+        {PROTECTED_ROUTES.map(({ path, component: Component, requirePremium }) => (
           <Route
             key={path}
             path={path}
             element={
-              <PrivateRoute {...routeProps}>{renderPage(Component)}</PrivateRoute>
+              <PrivateRoute requirePremium={requirePremium}>
+                <RouteErrorBoundary>
+                  <PageTransition>
+                    <Component />
+                  </PageTransition>
+                </RouteErrorBoundary>
+              </PrivateRoute>
             }
           />
         ))}
@@ -451,7 +512,15 @@ const AnimatedRoutes = () => {
         {/* Admin routes */}
         <Route
           path="/admin/*"
-          element={<AdminRoute>{renderPage(Admin)}</AdminRoute>}
+          element={
+            <AdminRoute>
+              <RouteErrorBoundary>
+                <PageTransition>
+                  <Admin />
+                </PageTransition>
+              </RouteErrorBoundary>
+            </AdminRoute>
+          }
         />
 
         {/* 404 */}
@@ -475,7 +544,7 @@ const AppShell = () => {
         <AnalyticsTracker />
         <ScrollToTop />
 
-        {/* Lazy-loaded page routes */}
+        {/* Lazy-loaded page routes with error boundary */}
         <Suspense fallback={<PageLoader />}>
           <AnimatedRoutes />
         </Suspense>
@@ -546,8 +615,12 @@ const AppShell = () => {
  * ErrorBoundary > HelmetProvider > QueryClientProvider > Router >
  * ThemeProvider > AuthProvider > SettingsProvider >
  * NotificationProvider > ResumeProvider > AppShell
+ * 
+ * FIXED: QueryClient is now memoized to prevent recreation on re-renders
  */
 function App() {
+  const queryClient = useMemo(() => createQueryClient(), []);
+
   return (
     <ErrorBoundary>
       <HelmetProvider>
