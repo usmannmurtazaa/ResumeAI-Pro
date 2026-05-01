@@ -1,11 +1,29 @@
-import React, { forwardRef, useState, useId } from 'react';
+import React, { forwardRef, useState, useId, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEye, FiEyeOff, FiCheckCircle, FiAlertCircle, FiX } from 'react-icons/fi';
-import { clsx } from 'clsx';
+import { FiEye, FiEyeOff, FiCheckCircle, FiAlertCircle, FiX, FiSearch } from 'react-icons/fi';
 
-// ============================================
-// INPUT COMPONENT
-// ============================================
+// ── Utility ───────────────────────────────────────────────────────────────
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+// ── Constants ─────────────────────────────────────────────────────────────
+
+const SIZES = {
+  sm: 'px-3 py-2 text-sm rounded-lg',
+  md: 'px-4 py-3 text-base rounded-xl',
+  lg: 'px-5 py-4 text-lg rounded-xl',
+};
+
+const VARIANTS = {
+  default: 'border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent',
+  filled: 'border border-transparent bg-gray-100 dark:bg-gray-800 focus-within:bg-white dark:focus-within:bg-gray-700 focus-within:ring-2 focus-within:ring-primary-500',
+  outline: 'border-2 border-gray-300 dark:border-gray-600 bg-transparent focus-within:border-primary-500 focus-within:ring-0',
+  underlined: 'border-0 border-b-2 border-gray-200 dark:border-gray-700 bg-transparent rounded-none px-0 focus-within:border-primary-500 focus-within:ring-0',
+};
+
+const BASE_INPUT = 'w-full outline-none bg-transparent text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed read-only:bg-gray-50 dark:read-only:bg-gray-900';
+
+// ── Input Component ──────────────────────────────────────────────────────
 
 const Input = forwardRef(({ 
   label, 
@@ -33,125 +51,93 @@ const Input = forwardRef(({
   const id = providedId || generatedId;
   const [showPassword, setShowPassword] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef(null);
+
+  // FIXED: Combine external ref with internal ref
+  const combinedRef = useCallback((node) => {
+    inputRef.current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref) ref.current = node;
+  }, [ref]);
 
   const isPassword = type === 'password';
   const inputType = isPassword && showPassword ? 'text' : type;
+  const hasValue = props.value !== undefined && props.value !== '';
 
-  const handleClear = () => {
-    if (props.onChange) {
-      const event = { target: { value: '' } };
-      props.onChange(event);
+  // ── Handlers ─────────────────────────────────────────────────────────
+
+  const handleClear = useCallback(() => {
+    if (disabled || readOnly) return;
+    
+    // Create a proper synthetic event
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value'
+    )?.set;
+    
+    if (nativeInputValueSetter && inputRef.current) {
+      nativeInputValueSetter.call(inputRef.current, '');
+      inputRef.current.dispatchEvent(new Event('input', { bubbles: true }));
     }
+    
     onClear?.();
-  };
+  }, [disabled, readOnly, onClear]);
 
-  const sizes = {
-    sm: 'px-3 py-2 text-sm rounded-lg',
-    md: 'px-4 py-3 text-base rounded-xl',
-    lg: 'px-5 py-4 text-lg rounded-xl',
-  };
+  // ── Determine right element ─────────────────────────────────────────
 
-  const variants = {
-    default: `
-      border border-gray-200 dark:border-gray-700
-      bg-white dark:bg-gray-800
-      focus:ring-2 focus:ring-primary-500 focus:border-transparent
-    `,
-    filled: `
-      border border-transparent
-      bg-gray-100 dark:bg-gray-800
-      focus:bg-white dark:focus:bg-gray-700
-      focus:ring-2 focus:ring-primary-500
-    `,
-    outline: `
-      border-2 border-gray-300 dark:border-gray-600
-      bg-transparent
-      focus:border-primary-500 focus:ring-0
-    `,
-    underlined: `
-      border-0 border-b-2 border-gray-200 dark:border-gray-700
-      bg-transparent rounded-none px-0
-      focus:border-primary-500 focus:ring-0
-    `,
-  };
-
-  const passwordToggle = isPassword && (
-    <button
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none"
-      tabIndex={-1}
-      aria-label={showPassword ? 'Hide password' : 'Show password'}
-    >
-      {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
-    </button>
-  );
-
-  const clearButton = clearable && props.value && !disabled && !readOnly && (
-    <button
-      type="button"
-      onClick={handleClear}
-      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none"
-      tabIndex={-1}
-      aria-label="Clear input"
-    >
-      <FiX className="w-4 h-4" />
-    </button>
-  );
-
-  const successIcon = success && !error && (
-    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
-      <FiCheckCircle className="w-5 h-5" />
-    </div>
-  );
-
-  const errorIcon = error && (
-    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
-      <FiAlertCircle className="w-5 h-5" />
-    </div>
-  );
-
-  // Determine right icon/element priority
   const getRightElement = () => {
-    if (isPassword) return passwordToggle;
-    if (clearable && props.value) return clearButton;
-    if (success) return successIcon;
-    if (error) return errorIcon;
+    if (isPassword) return (
+      <button type="button" onClick={() => setShowPassword(!showPassword)}
+        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+        tabIndex={-1} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+        {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+      </button>
+    );
+    if (clearable && hasValue && !disabled && !readOnly) return (
+      <button type="button" onClick={handleClear}
+        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+        tabIndex={-1} aria-label="Clear input">
+        <FiX className="w-4 h-4" />
+      </button>
+    );
+    if (success && !error) return <FiCheckCircle className="w-5 h-5 text-green-500" />;
+    if (error) return <FiAlertCircle className="w-5 h-5 text-red-500" />;
     if (rightIcon) return rightIcon;
     return null;
   };
 
   const rightElement = getRightElement();
-  const hasRightElement = !!rightElement;
 
   return (
-    <div className={clsx('space-y-1', wrapperClassName)}>
+    <div className={cn('space-y-1', wrapperClassName)}>
       {/* Label */}
       {label && (
-        <label
-          htmlFor={id}
-          className={clsx(
-            'block text-sm font-medium text-gray-700 dark:text-gray-300',
-            required && 'after:content-["*"] after:ml-0.5 after:text-red-500',
-            labelClassName
-          )}
-        >
-          {label}
-        </label>
+        <label htmlFor={id} className={cn(
+          'block text-sm font-medium text-gray-700 dark:text-gray-300',
+          required && "after:content-['*'] after:ml-0.5 after:text-red-500",
+          labelClassName
+        )}>{label}</label>
       )}
 
       {/* Input Container */}
-      <div className="relative">
+      <div className={cn(
+        'relative flex items-center transition-all duration-200 rounded-xl',
+        SIZES[size] || SIZES.md,
+        error ? '!border-red-500 focus-within:!ring-red-500' : 
+        success ? '!border-green-500 focus-within:!ring-green-500' : 
+        VARIANTS[variant] || VARIANTS.default,
+        disabled && 'opacity-50',
+        className,
+      )}>
         {/* Left Icon */}
         {icon && (
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
+          <div className="flex-shrink-0 ml-3 text-gray-400 dark:text-gray-500 pointer-events-none">
             {icon}
           </div>
         )}
 
-        {/* Input Element */}
+        {/* Input */}
         <input
-          ref={ref}
+          ref={combinedRef}
           id={id}
           type={inputType}
           disabled={disabled}
@@ -159,20 +145,10 @@ const Input = forwardRef(({
           required={required}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className={clsx(
-            'w-full outline-none transition-all duration-200',
-            'text-gray-900 dark:text-white',
-            'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            'read-only:bg-gray-50 dark:read-only:bg-gray-900',
-            sizes[size],
-            variants[variant],
-            icon && 'pl-10',
-            hasRightElement && 'pr-10',
-            error && '!border-red-500 focus:!ring-red-500',
-            success && '!border-green-500 focus:!ring-green-500',
-            isFocused && !error && !success && 'ring-2 ring-primary-500/20',
-            className,
+          className={cn(
+            BASE_INPUT,
+            icon ? 'pl-3' : 'pl-4',
+            rightElement ? 'pr-3' : 'pr-4',
             inputClassName
           )}
           aria-invalid={!!error}
@@ -182,46 +158,27 @@ const Input = forwardRef(({
 
         {/* Right Element */}
         {rightElement && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+          <div className="flex-shrink-0 mr-3">
             {rightElement}
           </div>
         )}
       </div>
 
-      {/* Helper Text */}
+      {/* Helper / Error / Success */}
       {helperText && !error && (
-        <p id={`${id}-helper`} className="text-xs text-gray-500 dark:text-gray-400">
-          {helperText}
-        </p>
+        <p id={`${id}-helper`} className="text-xs text-gray-500 dark:text-gray-400 ml-1">{helperText}</p>
       )}
-
-      {/* Error Message */}
       <AnimatePresence>
         {error && (
-          <motion.p
-            id={`${id}-error`}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="text-sm text-red-500 dark:text-red-400 flex items-center gap-1"
-          >
-            <FiAlertCircle className="w-4 h-4" />
-            {error}
+          <motion.p id={`${id}-error`} initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+            className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1 ml-1">
+            <FiAlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{error}
           </motion.p>
         )}
-      </AnimatePresence>
-
-      {/* Success Message */}
-      <AnimatePresence>
         {success && typeof success === 'string' && (
-          <motion.p
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="text-sm text-green-500 dark:text-green-400 flex items-center gap-1"
-          >
-            <FiCheckCircle className="w-4 h-4" />
-            {success}
+          <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+            className="text-xs text-green-500 dark:text-green-400 flex items-center gap-1 ml-1">
+            <FiCheckCircle className="w-3.5 h-3.5 flex-shrink-0" />{success}
           </motion.p>
         )}
       </AnimatePresence>
@@ -231,119 +188,67 @@ const Input = forwardRef(({
 
 Input.displayName = 'Input';
 
-// ============================================
-// TEXTAREA COMPONENT
-// ============================================
+// ── Textarea Component ────────────────────────────────────────────────────
 
 export const Textarea = forwardRef(({ 
-  label,
-  error,
-  success,
-  className = '',
-  size = 'md',
-  variant = 'default',
-  helperText,
-  required,
-  disabled,
-  readOnly,
-  rows = 4,
-  maxLength,
-  showCount = false,
-  value,
-  id: providedId,
-  wrapperClassName = '',
-  labelClassName = '',
+  label, error, success, className = '', size = 'md', variant = 'default',
+  helperText, required, disabled, readOnly, rows = 4, maxLength, showCount = false,
+  value, id: providedId, wrapperClassName = '', labelClassName = '', autoResize = false,
   ...props 
 }, ref) => {
   const generatedId = useId();
   const id = providedId || generatedId;
-  const [isFocused, setIsFocused] = useState(false);
+  const textareaRef = useRef(null);
   const currentLength = typeof value === 'string' ? value.length : 0;
 
-  const sizes = {
-    sm: 'px-3 py-2 text-sm rounded-lg',
-    md: 'px-4 py-3 text-base rounded-xl',
-    lg: 'px-5 py-4 text-lg rounded-xl',
-  };
+  // FIXED: Combine refs
+  const combinedRef = useCallback((node) => {
+    textareaRef.current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref) ref.current = node;
+  }, [ref]);
 
-  const variants = {
-    default: `
-      border border-gray-200 dark:border-gray-700
-      bg-white dark:bg-gray-800
-      focus:ring-2 focus:ring-primary-500 focus:border-transparent
-    `,
-    filled: `
-      border border-transparent
-      bg-gray-100 dark:bg-gray-800
-      focus:bg-white dark:focus:bg-gray-700
-      focus:ring-2 focus:ring-primary-500
-    `,
-  };
+  // Auto-resize
+  useEffect(() => {
+    if (autoResize && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [value, autoResize]);
 
   return (
-    <div className={clsx('space-y-1', wrapperClassName)}>
+    <div className={cn('space-y-1', wrapperClassName)}>
       {label && (
-        <label
-          htmlFor={id}
-          className={clsx(
-            'block text-sm font-medium text-gray-700 dark:text-gray-300',
-            required && 'after:content-["*"] after:ml-0.5 after:text-red-500',
-            labelClassName
-          )}
-        >
-          {label}
-        </label>
+        <label htmlFor={id} className={cn(
+          'block text-sm font-medium text-gray-700 dark:text-gray-300',
+          required && "after:content-['*'] after:ml-0.5 after:text-red-500",
+          labelClassName
+        )}>{label}</label>
       )}
-
       <div className="relative">
-        <textarea
-          ref={ref}
-          id={id}
-          disabled={disabled}
-          readOnly={readOnly}
-          required={required}
-          rows={rows}
-          maxLength={maxLength}
-          value={value}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          className={clsx(
+        <textarea ref={combinedRef} id={id} disabled={disabled} readOnly={readOnly}
+          required={required} rows={rows} maxLength={maxLength} value={value}
+          className={cn(
             'w-full outline-none transition-all duration-200 resize-none',
-            'text-gray-900 dark:text-white',
-            'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            'read-only:bg-gray-50 dark:read-only:bg-gray-900',
-            sizes[size],
-            variants[variant],
-            error && '!border-red-500 focus:!ring-red-500',
-            success && '!border-green-500 focus:!ring-green-500',
-            isFocused && !error && !success && 'ring-2 ring-primary-500/20',
+            'text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500',
+            'disabled:opacity-50 disabled:cursor-not-allowed read-only:bg-gray-50 dark:read-only:bg-gray-900',
+            SIZES[size] || SIZES.md,
+            error ? '!border-red-500 focus:!ring-red-500' : VARIANTS[variant] || VARIANTS.default,
             className
           )}
           aria-invalid={!!error}
           {...props}
         />
-
-        {/* Character Count */}
         {showCount && maxLength && (
-          <div className="absolute bottom-2 right-3 text-xs text-gray-400">
+          <div className="absolute bottom-2 right-3 text-xs text-gray-400 bg-white dark:bg-gray-800 px-1 rounded">
             {currentLength}/{maxLength}
           </div>
         )}
       </div>
-
-      {helperText && !error && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">{helperText}</p>
-      )}
-
+      {helperText && !error && <p className="text-xs text-gray-500 dark:text-gray-400 ml-1">{helperText}</p>}
       {error && (
-        <motion.p
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-sm text-red-500 dark:text-red-400 flex items-center gap-1"
-        >
-          <FiAlertCircle className="w-4 h-4" />
-          {error}
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1 ml-1">
+          <FiAlertCircle className="w-3.5 h-3.5" />{error}
         </motion.p>
       )}
     </div>
@@ -352,44 +257,20 @@ export const Textarea = forwardRef(({
 
 Textarea.displayName = 'Textarea';
 
-// ============================================
-// INPUT GROUP COMPONENT
-// ============================================
+// ── InputGroup ────────────────────────────────────────────────────────────
 
 export const InputGroup = ({ children, className = '' }) => (
-  <div className={clsx('flex', '[&>*:first-child]:rounded-r-none [&>*:last-child]:rounded-l-none [&>*:not(:first-child):not(:last-child)]:rounded-none [&>*:not(:first-child)]:-ml-px', className)}>
+  <div className={cn('flex', '[&>*:first-child]:rounded-r-none [&>*:last-child]:rounded-l-none [&>*:not(:first-child):not(:last-child)]:rounded-none [&>*:not(:first-child)]:-ml-px', className)}>
     {children}
   </div>
 );
 
-// ============================================
-// SEARCH INPUT COMPONENT
-// ============================================
+// ── SearchInput ───────────────────────────────────────────────────────────
 
-export const SearchInput = forwardRef(({ 
-  placeholder = 'Search...',
-  onSearch,
-  className = '',
-  ...props 
-}, ref) => (
-  <Input
-    ref={ref}
-    type="search"
-    placeholder={placeholder}
-    icon={<FiSearch className="w-5 h-5" />}
-    clearable
-    className={className}
-    {...props}
-  />
+export const SearchInput = forwardRef(({ placeholder = 'Search...', onSearch, className = '', ...props }, ref) => (
+  <Input ref={ref} type="search" placeholder={placeholder} icon={<FiSearch className="w-5 h-5" />} clearable className={className} {...props} />
 ));
 
 SearchInput.displayName = 'SearchInput';
 
-// Missing icon import
-const FiSearch = (props) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-  </svg>
-);
-
-export default Input;
+export default React.memo(Input);

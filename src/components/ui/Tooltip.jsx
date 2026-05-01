@@ -1,17 +1,42 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { clsx } from 'clsx';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 
-// ============================================
-// TOOLTIP COMPONENT
-// ============================================
+// ── Utility ───────────────────────────────────────────────────────────────
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+// ── Constants ─────────────────────────────────────────────────────────────
+
+const POSITIONS = {
+  top: 'bottom-full left-1/2 -translate-x-1/2',
+  'top-start': 'bottom-full left-0',
+  'top-end': 'bottom-full right-0',
+  bottom: 'top-full left-1/2 -translate-x-1/2',
+  'bottom-start': 'top-full left-0',
+  'bottom-end': 'top-full right-0',
+  left: 'right-full top-1/2 -translate-y-1/2',
+  'left-start': 'right-full top-0',
+  'left-end': 'right-full bottom-0',
+  right: 'left-full top-1/2 -translate-y-1/2',
+  'right-start': 'left-full top-0',
+  'right-end': 'left-full bottom-0',
+};
+
+// Arrow border direction for each position
+const ARROW_DIRECTIONS = {
+  top: 'bottom', 'top-start': 'bottom', 'top-end': 'bottom',
+  bottom: 'top', 'bottom-start': 'top', 'bottom-end': 'top',
+  left: 'right', 'left-start': 'right', 'left-end': 'right',
+  right: 'left', 'right-start': 'left', 'right-end': 'left',
+};
+
+// ── Tooltip Component ─────────────────────────────────────────────────────
 
 const Tooltip = ({ 
   children, 
   content, 
   position = 'top',
-  align = 'center',
   delay = 200,
   disabled = false,
   arrow = true,
@@ -20,178 +45,153 @@ const Tooltip = ({
   tooltipClassName = '',
   trigger = 'hover', // 'hover' | 'click' | 'focus'
   interactive = false,
-  offset = 8,
   portal = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef(null);
   const tooltipRef = useRef(null);
   const timeoutRef = useRef(null);
+  const prefersReducedMotion = useReducedMotion();
+  const isTouchDevice = useRef(false);
 
-  const positions = {
-    top: 'bottom-full left-1/2 -translate-x-1/2',
-    'top-start': 'bottom-full left-0',
-    'top-end': 'bottom-full right-0',
-    bottom: 'top-full left-1/2 -translate-x-1/2',
-    'bottom-start': 'top-full left-0',
-    'bottom-end': 'top-full right-0',
-    left: 'right-full top-1/2 -translate-y-1/2',
-    'left-start': 'right-full top-0',
-    'left-end': 'right-full bottom-0',
-    right: 'left-full top-1/2 -translate-y-1/2',
-    'right-start': 'left-full top-0',
-    'right-end': 'left-full bottom-0',
-  };
+  // ── Detect touch device ────────────────────────────────────────────
 
-  const arrows = {
-    top: 'bottom-[-6px] left-1/2 -translate-x-1/2 border-t-gray-900 dark:border-t-gray-100',
-    'top-start': 'bottom-[-6px] left-4 border-t-gray-900 dark:border-t-gray-100',
-    'top-end': 'bottom-[-6px] right-4 border-t-gray-900 dark:border-t-gray-100',
-    bottom: 'top-[-6px] left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-gray-100',
-    'bottom-start': 'top-[-6px] left-4 border-b-gray-900 dark:border-b-gray-100',
-    'bottom-end': 'top-[-6px] right-4 border-b-gray-900 dark:border-b-gray-100',
-    left: 'right-[-6px] top-1/2 -translate-y-1/2 border-l-gray-900 dark:border-l-gray-100',
-    'left-start': 'right-[-6px] top-4 border-l-gray-900 dark:border-l-gray-100',
-    'left-end': 'right-[-6px] bottom-4 border-l-gray-900 dark:border-l-gray-100',
-    right: 'left-[-6px] top-1/2 -translate-y-1/2 border-r-gray-900 dark:border-r-gray-100',
-    'right-start': 'left-[-6px] top-4 border-r-gray-900 dark:border-r-gray-100',
-    'right-end': 'left-[-6px] bottom-4 border-r-gray-900 dark:border-r-gray-100',
-  };
+  useEffect(() => {
+    isTouchDevice.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }, []);
 
-  const marginClasses = {
-    top: `mb-[${offset}px]`,
-    'top-start': `mb-[${offset}px]`,
-    'top-end': `mb-[${offset}px]`,
-    bottom: `mt-[${offset}px]`,
-    'bottom-start': `mt-[${offset}px]`,
-    'bottom-end': `mt-[${offset}px]`,
-    left: `mr-[${offset}px]`,
-    'left-start': `mr-[${offset}px]`,
-    'left-end': `mr-[${offset}px]`,
-    right: `ml-[${offset}px]`,
-    'right-start': `ml-[${offset}px]`,
-    'right-end': `ml-[${offset}px]`,
-  };
+  // ── Show/Hide ──────────────────────────────────────────────────────
 
-  const showTooltip = () => {
-    if (disabled) return;
-    timeoutRef.current = setTimeout(() => {
-      setIsVisible(true);
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        setCoords({
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX,
-          width: rect.width,
-          height: rect.height,
-        });
-      }
-    }, delay);
-  };
-
-  const hideTooltip = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    setIsVisible(false);
-  };
-
-  const toggleTooltip = () => {
-    if (isVisible) {
-      hideTooltip();
+  const show = useCallback(() => {
+    if (disabled || (isTouchDevice.current && trigger === 'hover')) return;
+    
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    
+    if (delay > 0) {
+      timeoutRef.current = setTimeout(() => setIsVisible(true), delay);
     } else {
-      showTooltip();
+      setIsVisible(true);
     }
-  };
+  }, [disabled, trigger, delay]);
+
+  const hide = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsVisible(false);
+  }, []);
+
+  const toggle = useCallback(() => {
+    setIsVisible(prev => !prev);
+  }, []);
+
+  // ── Cleanup ───────────────────────────────────────────────────────
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
+  // ── Hide on scroll (unless interactive) ──────────────────────────
+
   useEffect(() => {
-    if (isVisible && !interactive) {
-      const handleScroll = () => hideTooltip();
-      window.addEventListener('scroll', handleScroll, true);
-      return () => window.removeEventListener('scroll', handleScroll, true);
-    }
-  }, [isVisible, interactive]);
+    if (!isVisible || interactive) return;
+    const handler = () => hide();
+    window.addEventListener('scroll', handler, { capture: true });
+    return () => window.removeEventListener('scroll', handler, { capture: true });
+  }, [isVisible, interactive, hide]);
+
+  // ── Trigger Props ─────────────────────────────────────────────────
 
   const getTriggerProps = () => {
     const props = { ref: triggerRef };
-    
+
     if (trigger === 'hover') {
-      props.onMouseEnter = showTooltip;
-      props.onMouseLeave = hideTooltip;
+      props.onMouseEnter = show;
+      props.onMouseLeave = hide;
+      props.onFocus = show;
+      props.onBlur = hide;
     } else if (trigger === 'click') {
-      props.onClick = toggleTooltip;
+      props.onClick = toggle;
     } else if (trigger === 'focus') {
-      props.onFocus = showTooltip;
-      props.onBlur = hideTooltip;
+      props.onFocus = show;
+      props.onBlur = hide;
     }
-    
+
     return props;
   };
+
+  // ── Arrow Component ───────────────────────────────────────────────
+
+  const Arrow = () => {
+    if (!arrow) return null;
+    const arrowDir = ARROW_DIRECTIONS[position] || 'bottom';
+    return (
+      <div 
+        className={cn(
+          'absolute w-2 h-2 rotate-45',
+          'bg-gray-900 dark:bg-gray-100',
+          arrowDir === 'top' && 'bottom-[-4px] left-1/2 -translate-x-1/2',
+          arrowDir === 'bottom' && 'top-[-4px] left-1/2 -translate-x-1/2',
+          arrowDir === 'left' && 'right-[-4px] top-1/2 -translate-y-1/2',
+          arrowDir === 'right' && 'left-[-4px] top-1/2 -translate-y-1/2',
+        )}
+      />
+    );
+  };
+
+  // ── Tooltip Content ───────────────────────────────────────────────
 
   const tooltipContent = (
     <motion.div
       ref={tooltipRef}
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      exit={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.15 }}
-      className={clsx(
+      className={cn(
         'absolute z-[9999]',
-        positions[position] || positions.top,
+        POSITIONS[position] || POSITIONS.top,
+        position.startsWith('top') ? 'mb-2' : 
+        position.startsWith('bottom') ? 'mt-2' :
+        position.startsWith('left') ? 'mr-2' : 'ml-2',
         tooltipClassName
       )}
-      style={portal ? { top: coords.top, left: coords.left } : undefined}
-      onMouseEnter={interactive ? showTooltip : undefined}
-      onMouseLeave={interactive ? hideTooltip : undefined}
+      onMouseEnter={interactive ? show : undefined}
+      onMouseLeave={interactive ? hide : undefined}
+      role="tooltip"
     >
       <div 
-        className={clsx(
+        className={cn(
           'px-3 py-1.5 text-sm text-white bg-gray-900 dark:text-gray-900 dark:bg-gray-100',
-          'rounded-lg shadow-lg whitespace-nowrap pointer-events-none',
-          interactive && 'pointer-events-auto',
+          'rounded-lg shadow-lg whitespace-nowrap',
+          interactive ? 'pointer-events-auto' : 'pointer-events-none',
           className
         )}
         style={{ maxWidth }}
       >
         {content}
       </div>
-      {arrow && (
-        <div className={clsx(
-          'absolute w-0 h-0 border-4 border-transparent',
-          arrows[position] || arrows.top
-        )} />
-      )}
+      <Arrow />
     </motion.div>
   );
 
   return (
     <>
-      <div 
-        className="relative inline-block"
-        {...getTriggerProps()}
-      >
+      <div className="relative inline-flex" {...getTriggerProps()}>
         {children}
+        <AnimatePresence>
+          {isVisible && (
+            portal 
+              ? createPortal(tooltipContent, document.body) 
+              : tooltipContent
+          )}
+        </AnimatePresence>
       </div>
-      
-      {isVisible && (
-        portal ? createPortal(tooltipContent, document.body) : tooltipContent
-      )}
     </>
   );
 };
 
-// ============================================
-// POPOVER COMPONENT (Enhanced Tooltip)
-// ============================================
+// ── Popover Component ─────────────────────────────────────────────────────
 
 export const Popover = ({ 
   children,
@@ -208,64 +208,81 @@ export const Popover = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        setIsOpen(false);
-        onClose?.();
+        close();
       }
+    };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') close();
     };
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
 
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, onClose]);
+  const toggle = useCallback(() => {
+    setIsOpen(prev => {
+      const next = !prev;
+      if (next) onOpen?.();
+      else onClose?.();
+      return next;
+    });
+  }, [onOpen, onClose]);
 
-  const handleToggle = () => {
-    setIsOpen(!isOpen);
-    if (!isOpen) {
-      onOpen?.();
-    } else {
-      onClose?.();
-    }
+  const close = useCallback(() => {
+    setIsOpen(false);
+    onClose?.();
+  }, [onClose]);
+
+  const positionClasses = {
+    bottom: 'top-full left-0 mt-2',
+    top: 'bottom-full left-0 mb-2',
+    right: 'left-full top-0 ml-2',
+    left: 'right-full top-0 mr-2',
   };
 
   return (
     <div className="relative inline-block" ref={popoverRef}>
-      <div onClick={trigger === 'click' ? handleToggle : undefined}>
+      <div onClick={trigger === 'click' ? toggle : undefined}>
         {children}
       </div>
-
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -5 }}
+            initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95, y: -5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -5 }}
+            exit={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95, y: -5 }}
             transition={{ duration: 0.15 }}
-            className={clsx(
-              'absolute z-50',
-              position === 'bottom' && 'top-full left-0 mt-2',
-              position === 'top' && 'bottom-full left-0 mb-2',
-              position === 'right' && 'left-full top-0 ml-2',
-              position === 'left' && 'right-full top-0 mr-2',
-              className
-            )}
+            className={cn('absolute z-50', positionClasses[position] || positionClasses.bottom, className)}
             style={{ width }}
+            role="dialog"
+            aria-label={title}
             {...props}
           >
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              {title && (
-                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <h4 className="font-semibold text-gray-900 dark:text-white">{title}</h4>
+              {(title || showClose) && (
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                  {title && <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{title}</h4>}
+                  {showClose && (
+                    <button onClick={close} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               )}
-              <div className="p-4">
-                {content}
-              </div>
+              <div className="p-4">{content}</div>
             </div>
           </motion.div>
         )}
@@ -274,33 +291,4 @@ export const Popover = ({
   );
 };
 
-// ============================================
-// TOOLTIP PROVIDER (For consistent styling)
-// ============================================
-
-export const TooltipProvider = ({ children }) => children;
-
-// ============================================
-// HELPER HOOKS
-// ============================================
-
-export const useTooltip = (content, options = {}) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const triggerRef = useRef(null);
-
-  const tooltipProps = {
-    ref: triggerRef,
-    onMouseEnter: () => setIsVisible(true),
-    onMouseLeave: () => setIsVisible(false),
-  };
-
-  const TooltipComponent = isVisible && (
-    <Tooltip content={content} {...options}>
-      <span ref={triggerRef} />
-    </Tooltip>
-  );
-
-  return { tooltipProps, TooltipComponent, isVisible, setIsVisible };
-};
-
-export default Tooltip;
+export default React.memo(Tooltip);
