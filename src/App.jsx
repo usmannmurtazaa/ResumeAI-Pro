@@ -15,7 +15,7 @@ import PrivateRoute from './components/auth/PrivateRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import Loader from './components/common/Loader';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import RouteErrorBoundary from './components/common/RouteErrorBoundary';
+import RouteErrorBoundary from './components/common/ErrorBoundary';
 import { logAnalyticsEvent } from './services/firebase';
 import './styles/globals.css';
 import './styles/animations.css';
