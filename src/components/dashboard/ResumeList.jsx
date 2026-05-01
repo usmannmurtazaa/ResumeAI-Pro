@@ -1,26 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiSearch, 
-  FiFilter, 
-  FiGrid, 
-  FiList, 
-  FiArrowUp, 
-  FiArrowDown,
-  FiX,
-  FiCheckCircle,
-  FiClock,
-  FiCalendar,
-  FiTrendingUp,
-  FiDownload,
-  FiEye,
-  FiMoreVertical,
-  FiChevronLeft,
-  FiChevronRight,
-  FiAlertCircle,
-  FiStar,
-  FiBookmark,
-  FiTag
+  FiSearch, FiFilter, FiGrid, FiList, FiArrowUp, FiArrowDown,
+  FiX, FiCheckCircle, FiClock, FiCalendar,
+  FiChevronLeft, FiChevronRight, FiEye, FiDownload,
+  FiAlertCircle, FiRefreshCw,
 } from 'react-icons/fi';
 import ResumeCard from './ResumeCard';
 import Button from '../ui/Button';
@@ -28,23 +12,108 @@ import Badge from '../ui/Badge';
 import Progress from '../ui/Progress';
 import Tooltip from '../ui/Tooltip';
 import { format, formatDistanceToNow } from 'date-fns';
+import toast from 'react-hot-toast';
+
+// ── Constants ───────────────────────────────────────────────────────────────
+const ITEMS_PER_PAGE = 12;
+const SORT_OPTIONS = [
+  { value: 'updatedAt', label: 'Last Modified' },
+  { value: 'createdAt', label: 'Date Created' },
+  { value: 'name', label: 'Name' },
+  { value: 'score', label: 'ATS Score' },
+  { value: 'downloads', label: 'Downloads' },
+];
+
+// ── Utility Functions ───────────────────────────────────────────────────────
+
+const getScoreVariant = (score) => {
+  if (score >= 80) return 'success';
+  if (score >= 60) return 'warning';
+  return 'danger';
+};
+
+const getStatusBadge = (resume) => {
+  const status = resume?.status || (resume?.atsScore >= 80 ? 'completed' : 'draft');
+  const map = {
+    completed: { variant: 'success', label: 'Completed', icon: <FiCheckCircle className="w-3 h-3" /> },
+    draft: { variant: 'warning', label: 'Draft', icon: <FiClock className="w-3 h-3" /> },
+  };
+  return map[status] || { variant: 'secondary', label: status, icon: null };
+};
+
+// ── Loading Skeleton ───────────────────────────────────────────────────────
+
+const ListSkeleton = () => (
+  <div className="space-y-4">
+    <div className="glass-card p-4 animate-pulse">
+      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// ── Empty State ────────────────────────────────────────────────────────────
+
+const EmptyState = ({ hasFilters, onClearFilters, onCreateResume }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    className="glass-card p-12 text-center"
+  >
+    <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+      <FiSearch className="w-8 h-8 text-gray-400" />
+    </div>
+    <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">No resumes found</h3>
+    <p className="text-gray-500 dark:text-gray-400 mb-4">
+      {hasFilters 
+        ? 'Try adjusting your filters or search terms'
+        : 'Create your first resume to get started'}
+    </p>
+    {hasFilters ? (
+      <Button variant="outline" onClick={onClearFilters}>Clear Filters</Button>
+    ) : (
+      <Button onClick={onCreateResume}>Create Resume</Button>
+    )}
+  </motion.div>
+);
+
+// ── Error State ────────────────────────────────────────────────────────────
+
+const ErrorState = ({ message, onRetry }) => (
+  <div className="glass-card p-12 text-center">
+    <FiAlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+    <h3 className="text-lg font-semibold mb-2">Failed to Load Resumes</h3>
+    <p className="text-gray-500 mb-4">{message || 'An unexpected error occurred.'}</p>
+    <Button onClick={onRetry} icon={<FiRefreshCw />}>Retry</Button>
+  </div>
+);
+
+// ── Main Component ─────────────────────────────────────────────────────────
 
 const ResumeList = ({ 
   resumes = [], 
-  onEdit, 
-  onDelete, 
-  onDuplicate, 
-  onDownload,
-  onPreview,
-  onShare,
+  onEdit, onDelete, onDuplicate, onDownload, onPreview, onShare,
   loading = false,
+  error = null,
+  onRetry,
   showSelection = false,
-  onSelectionChange
+  onSelectionChange,
+  onCreateResume,
 }) => {
+  // View mode (persisted to localStorage)
   const [viewMode, setViewMode] = useState(() => {
-    // Persist view preference
-    return localStorage.getItem('resumeViewMode') || 'grid';
+    try {
+      return localStorage.getItem('resumeViewMode') || 'grid';
+    } catch {
+      return 'grid';
+    }
   });
+  
+  // Search & Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('updatedAt');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -52,27 +121,40 @@ const ResumeList = ({
   const [filterTemplate, setFilterTemplate] = useState('all');
   const [filterScoreRange, setFilterScoreRange] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Selection & Pagination
   const [selectedResumes, setSelectedResumes] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12);
 
-  // Persist view mode preference
-  const handleViewModeChange = (mode) => {
+  // ── Persist view mode ──────────────────────────────────────────────────
+
+  const handleViewModeChange = useCallback((mode) => {
     setViewMode(mode);
-    localStorage.setItem('resumeViewMode', mode);
-  };
+    try {
+      localStorage.setItem('resumeViewMode', mode);
+    } catch {}
+  }, []);
 
-  // Get unique templates for filter
+  // ── Get unique templates ───────────────────────────────────────────────
+
   const templates = useMemo(() => {
     const unique = new Set(resumes.map(r => r.template).filter(Boolean));
     return ['all', ...Array.from(unique)];
   }, [resumes]);
 
-  const filterResumes = useCallback(() => {
+  // ── FIXED: Reset page on filter change ────────────────────────────────
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterTemplate, filterScoreRange, sortBy, sortOrder]);
+
+  // ── Filter & Sort (Memoized) ──────────────────────────────────────────
+
+  const filteredResumes = useMemo(() => {
     let filtered = [...resumes];
 
-    // Search filter
-    if (searchTerm) {
+    // Search
+    if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(resume =>
         resume.name?.toLowerCase().includes(term) ||
@@ -96,7 +178,7 @@ const ResumeList = ({
       filtered = filtered.filter(resume => resume.template === filterTemplate);
     }
 
-    // Score range filter
+    // Score filter
     if (filterScoreRange !== 'all') {
       filtered = filtered.filter(resume => {
         const score = resume.atsScore || 0;
@@ -107,16 +189,13 @@ const ResumeList = ({
       });
     }
 
-    // Sorting
+    // Sort
     filtered.sort((a, b) => {
       let comparison = 0;
-      
       switch (sortBy) {
         case 'updatedAt':
         case 'createdAt':
-          const aDate = a[sortBy] ? new Date(a[sortBy]).getTime() : 0;
-          const bDate = b[sortBy] ? new Date(b[sortBy]).getTime() : 0;
-          comparison = aDate - bDate;
+          comparison = (a[sortBy] ? new Date(a[sortBy]).getTime() : 0) - (b[sortBy] ? new Date(b[sortBy]).getTime() : 0);
           break;
         case 'name':
           comparison = (a.name || 'Untitled').localeCompare(b.name || 'Untitled');
@@ -130,37 +209,32 @@ const ResumeList = ({
         default:
           comparison = 0;
       }
-
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
     return filtered;
   }, [resumes, searchTerm, filterStatus, filterTemplate, filterScoreRange, sortBy, sortOrder]);
 
-  const filteredResumes = filterResumes();
-  
-  // Pagination
-  const totalPages = Math.ceil(filteredResumes.length / itemsPerPage);
-  const paginatedResumes = filteredResumes.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // ── Pagination ─────────────────────────────────────────────────────────
 
-  // Reset to first page when filters change
-  useMemo(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterStatus, filterTemplate, filterScoreRange]);
+  const totalPages = Math.ceil(filteredResumes.length / ITEMS_PER_PAGE);
+  const paginatedResumes = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredResumes.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredResumes, currentPage]);
 
-  const toggleSort = (field) => {
+  // ── Handlers ───────────────────────────────────────────────────────────
+
+  const toggleSort = useCallback((field) => {
     if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(field);
       setSortOrder('desc');
     }
-  };
+  }, [sortBy]);
 
-  const toggleSelectAll = () => {
+  const toggleSelectAll = useCallback(() => {
     if (selectedResumes.size === paginatedResumes.length) {
       setSelectedResumes(new Set());
       onSelectionChange?.([]);
@@ -169,90 +243,70 @@ const ResumeList = ({
       setSelectedResumes(newSelected);
       onSelectionChange?.(Array.from(newSelected));
     }
-  };
+  }, [selectedResumes.size, paginatedResumes, onSelectionChange]);
 
-  const toggleSelectResume = (resumeId) => {
-    const newSelected = new Set(selectedResumes);
-    if (newSelected.has(resumeId)) {
-      newSelected.delete(resumeId);
-    } else {
-      newSelected.add(resumeId);
-    }
-    setSelectedResumes(newSelected);
-    onSelectionChange?.(Array.from(newSelected));
-  };
+  const toggleSelectResume = useCallback((resumeId) => {
+    setSelectedResumes(prev => {
+      const next = new Set(prev);
+      if (next.has(resumeId)) next.delete(resumeId);
+      else next.add(resumeId);
+      onSelectionChange?.(Array.from(next));
+      return next;
+    });
+  }, [onSelectionChange]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchTerm('');
     setFilterStatus('all');
     setFilterTemplate('all');
     setFilterScoreRange('all');
     setSortBy('updatedAt');
     setSortOrder('desc');
-  };
+  }, []);
 
   const hasActiveFilters = searchTerm || filterStatus !== 'all' || filterTemplate !== 'all' || filterScoreRange !== 'all';
 
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'text-green-500';
-    if (score >= 60) return 'text-yellow-500';
-    return 'text-red-500';
-  };
+  // ── Loading State ──────────────────────────────────────────────────────
 
-  const getStatusBadge = (resume) => {
-    const status = resume.status || (resume.atsScore >= 80 ? 'completed' : 'draft');
-    return {
-      completed: { variant: 'success', label: 'Completed', icon: <FiCheckCircle className="w-3 h-3" /> },
-      draft: { variant: 'warning', label: 'Draft', icon: <FiClock className="w-3 h-3" /> }
-    }[status] || { variant: 'secondary', label: status, icon: null };
-  };
+  if (loading) return <ListSkeleton />;
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="glass-card p-4">
-          <div className="animate-pulse">
-            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ── Error State ────────────────────────────────────────────────────────
+
+  if (error) return <ErrorState message={error} onRetry={onRetry} />;
 
   return (
     <div className="space-y-6">
-      {/* Search and Filters Bar */}
+      {/* Search & Filters Bar */}
       <div className="glass-card p-4 sm:p-5">
         <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
+          {/* Search Input */}
           <div className="flex-1 relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search by name, title, or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm"
+              aria-label="Search resumes"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                aria-label="Clear search"
               >
                 <FiX className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* Action Buttons */}
+          {/* Toolbar */}
           <div className="flex flex-wrap gap-2">
+            {/* Filter Toggle */}
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setShowFilters(!showFilters)}
               icon={<FiFilter />}
               className="relative"
@@ -263,23 +317,24 @@ const ResumeList = ({
               )}
             </Button>
 
-            {/* Sort Dropdown */}
+            {/* Sort */}
             <select
               value={sortBy}
               onChange={(e) => toggleSort(e.target.value)}
               className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm"
+              aria-label="Sort by"
             >
-              <option value="updatedAt">Last Modified</option>
-              <option value="createdAt">Date Created</option>
-              <option value="name">Name</option>
-              <option value="score">ATS Score</option>
-              <option value="downloads">Downloads</option>
+              {SORT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
 
+            {/* Sort Order */}
             <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
               className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+              aria-label={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
             >
               {sortOrder === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />}
             </button>
@@ -289,22 +344,18 @@ const ResumeList = ({
               <button
                 onClick={() => handleViewModeChange('grid')}
                 className={`p-2 rounded-md transition-all ${
-                  viewMode === 'grid'
-                    ? 'bg-white dark:bg-gray-700 shadow-sm text-primary-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                  viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-primary-600' : 'text-gray-500'
                 }`}
-                title="Grid view"
+                aria-label="Grid view"
               >
                 <FiGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleViewModeChange('list')}
                 className={`p-2 rounded-md transition-all ${
-                  viewMode === 'list'
-                    ? 'bg-white dark:bg-gray-700 shadow-sm text-primary-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                  viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-primary-600' : 'text-gray-500'
                 }`}
-                title="List view"
+                aria-label="List view"
               >
                 <FiList className="w-4 h-4" />
               </button>
@@ -312,7 +363,7 @@ const ResumeList = ({
           </div>
         </div>
 
-        {/* Extended Filters Panel */}
+        {/* Extended Filters */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -322,54 +373,26 @@ const ResumeList = ({
               className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 overflow-hidden"
             >
               <div className="flex flex-wrap items-end gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="completed">Completed</option>
-                    <option value="draft">Draft</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Template</label>
-                  <select
-                    value={filterTemplate}
-                    onChange={(e) => setFilterTemplate(e.target.value)}
-                    className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm capitalize"
-                  >
-                    {templates.map(t => (
-                      <option key={t} value={t} className="capitalize">{t}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">ATS Score</label>
-                  <select
-                    value={filterScoreRange}
-                    onChange={(e) => setFilterScoreRange(e.target.value)}
-                    className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm"
-                  >
-                    <option value="all">All Scores</option>
-                    <option value="excellent">Excellent (80%+)</option>
-                    <option value="good">Good (60-79%)</option>
-                    <option value="needs-work">Needs Work (&lt;60%)</option>
-                  </select>
-                </div>
+                <FilterSelect label="Status" value={filterStatus} onChange={setFilterStatus} options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'draft', label: 'Draft' },
+                ]} />
+                
+                <FilterSelect label="Template" value={filterTemplate} onChange={setFilterTemplate} options={
+                  templates.map(t => ({ value: t, label: t === 'all' ? 'All Templates' : t.charAt(0).toUpperCase() + t.slice(1) }))
+                } />
+                
+                <FilterSelect label="ATS Score" value={filterScoreRange} onChange={setFilterScoreRange} options={[
+                  { value: 'all', label: 'All Scores' },
+                  { value: 'excellent', label: 'Excellent (80%+)' },
+                  { value: 'good', label: 'Good (60-79%)' },
+                  { value: 'needs-work', label: 'Needs Work (<60%)' },
+                ]} />
 
                 {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="text-red-500 hover:text-red-600"
-                  >
-                    Clear All Filters
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="text-red-500">
+                    Clear All
                   </Button>
                 )}
               </div>
@@ -380,17 +403,16 @@ const ResumeList = ({
 
       {/* Results Summary */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Showing <span className="font-medium">{paginatedResumes.length}</span> of{' '}
           <span className="font-medium">{filteredResumes.length}</span> resumes
           {hasActiveFilters && ' (filtered)'}
         </p>
-        
         {showSelection && paginatedResumes.length > 0 && (
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
               type="checkbox"
-              checked={selectedResumes.size === paginatedResumes.length}
+              checked={selectedResumes.size === paginatedResumes.length && paginatedResumes.length > 0}
               onChange={toggleSelectAll}
               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
@@ -399,28 +421,9 @@ const ResumeList = ({
         )}
       </div>
 
-      {/* Resume Display */}
+      {/* Content */}
       {filteredResumes.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="glass-card p-12 text-center"
-        >
-          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FiSearch className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">No resumes found</h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            {hasActiveFilters 
-              ? 'Try adjusting your filters or search terms'
-              : 'Create your first resume to get started'}
-          </p>
-          {hasActiveFilters && (
-            <Button variant="outline" onClick={clearFilters}>
-              Clear Filters
-            </Button>
-          )}
-        </motion.div>
+        <EmptyState hasFilters={hasActiveFilters} onClearFilters={clearFilters} onCreateResume={onCreateResume} />
       ) : viewMode === 'grid' ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -449,267 +452,261 @@ const ResumeList = ({
               ))}
             </AnimatePresence>
           </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <FiChevronLeft className="w-5 h-5" />
-              </button>
-              
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`w-10 h-10 rounded-lg transition-colors ${
-                        currentPage === pageNum
-                          ? 'bg-primary-500 text-white'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                
-                {totalPages > 5 && currentPage < totalPages - 2 && (
-                  <>
-                    <span className="w-10 h-10 flex items-center justify-center">...</span>
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      className="w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
-              </div>
-              
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <FiChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </>
       ) : (
-        <div className="glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                  {showSelection && (
-                    <th className="w-10 py-3 px-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedResumes.size === paginatedResumes.length && paginatedResumes.length > 0}
-                        onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                    </th>
-                  )}
-                  <th 
-                    className="text-left py-3 px-4 cursor-pointer hover:text-primary-500 transition-colors"
-                    onClick={() => toggleSort('name')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Resume Name
-                      {sortBy === 'name' && (
-                        sortOrder === 'asc' ? <FiArrowUp className="w-3 h-3" /> : <FiArrowDown className="w-3 h-3" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="text-left py-3 px-4 cursor-pointer hover:text-primary-500 transition-colors"
-                    onClick={() => toggleSort('updatedAt')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Last Modified
-                      {sortBy === 'updatedAt' && (
-                        sortOrder === 'asc' ? <FiArrowUp className="w-3 h-3" /> : <FiArrowDown className="w-3 h-3" />
-                      )}
-                    </div>
-                  </th>
-                  <th className="text-left py-3 px-4">Template</th>
-                  <th 
-                    className="text-left py-3 px-4 cursor-pointer hover:text-primary-500 transition-colors"
-                    onClick={() => toggleSort('score')}
-                  >
-                    <div className="flex items-center gap-1">
-                      ATS Score
-                      {sortBy === 'score' && (
-                        sortOrder === 'asc' ? <FiArrowUp className="w-3 h-3" /> : <FiArrowDown className="w-3 h-3" />
-                      )}
-                    </div>
-                  </th>
-                  <th className="text-left py-3 px-4">Status</th>
-                  <th className="text-left py-3 px-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence mode="popLayout">
-                  {paginatedResumes.map((resume) => {
-                    const statusBadge = getStatusBadge(resume);
-                    
-                    return (
-                      <motion.tr
-                        key={resume.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
-                      >
-                        {showSelection && (
-                          <td className="py-4 px-4">
-                            <input
-                              type="checkbox"
-                              checked={selectedResumes.has(resume.id)}
-                              onChange={() => toggleSelectResume(resume.id)}
-                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
-                          </td>
-                        )}
-                        <td className="py-4 px-4">
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-gray-100">
-                              {resume.name || 'Untitled'}
-                            </p>
-                            {resume.data?.personal?.fullName && (
-                              <p className="text-sm text-gray-500">{resume.data.personal.fullName}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Tooltip content={resume.updatedAt ? format(new Date(resume.updatedAt), 'PPP p') : 'Never'}>
-                            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                              <FiCalendar className="w-3.5 h-3.5" />
-                              <span className="text-sm">
-                                {resume.updatedAt 
-                                  ? formatDistanceToNow(new Date(resume.updatedAt), { addSuffix: true })
-                                  : 'Never'}
-                              </span>
-                            </div>
-                          </Tooltip>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge variant="secondary" size="sm" className="capitalize">
-                            {resume.template || 'Modern'}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`font-semibold ${getScoreColor(resume.atsScore || 0)}`}>
-                              {resume.atsScore || 0}%
-                            </span>
-                            <Progress 
-                              value={resume.atsScore || 0} 
-                              size="sm" 
-                              className="w-16"
-                              color={resume.atsScore >= 80 ? 'success' : resume.atsScore >= 60 ? 'warning' : 'danger'}
-                            />
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge variant={statusBadge.variant} size="sm" className="flex items-center gap-1 w-fit">
-                            {statusBadge.icon}
-                            {statusBadge.label}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-1">
-                            <Tooltip content="Edit">
-                              <button
-                                onClick={() => onEdit?.(resume)}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                              >
-                                Edit
-                              </button>
-                            </Tooltip>
-                            <Tooltip content="Preview">
-                              <button
-                                onClick={() => onPreview?.(resume)}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                              >
-                                <FiEye className="w-4 h-4" />
-                              </button>
-                            </Tooltip>
-                            <Tooltip content="Download">
-                              <button
-                                onClick={() => onDownload?.(resume)}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                              >
-                                <FiDownload className="w-4 h-4" />
-                              </button>
-                            </Tooltip>
-                            <Tooltip content="Duplicate">
-                              <button
-                                onClick={() => onDuplicate?.(resume)}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                              >
-                                <FiBookmark className="w-4 h-4" />
-                              </button>
-                            </Tooltip>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </AnimatePresence>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination for List View */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-500">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredResumes.length)} of {filteredResumes.length} resumes
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <FiChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm px-3">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <FiChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <ListView
+          resumes={paginatedResumes}
+          showSelection={showSelection}
+          selectedResumes={selectedResumes}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          toggleSort={toggleSort}
+          toggleSelectAll={toggleSelectAll}
+          toggleSelectResume={toggleSelectResume}
+          onEdit={onEdit}
+          onPreview={onPreview}
+          onDownload={onDownload}
+          onDuplicate={onDuplicate}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          filteredCount={filteredResumes.length}
+        />
       )}
     </div>
   );
 };
 
-export default ResumeList;
+// ── Sub-Components ─────────────────────────────────────────────────────────
+
+const FilterSelect = React.memo(({ label, value, onChange, options }) => (
+  <div>
+    <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm"
+    >
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  </div>
+));
+
+const Pagination = React.memo(({ currentPage, totalPages, onPageChange }) => {
+  if (totalPages <= 1) return null;
+
+  const pages = useMemo(() => {
+    const p = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) p.push(i);
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 4; i++) p.push(i);
+      p.push('...');
+      p.push(totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      p.push(1);
+      p.push('...');
+      for (let i = totalPages - 3; i <= totalPages; i++) p.push(i);
+    } else {
+      p.push(1);
+      p.push('...');
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) p.push(i);
+      p.push('...');
+      p.push(totalPages);
+    }
+    return p;
+  }, [currentPage, totalPages]);
+
+  return (
+    <div className="flex items-center justify-center gap-2 mt-8">
+      <button
+        onClick={() => onPageChange(p => Math.max(1, p - 1))}
+        disabled={currentPage === 1}
+        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Previous page"
+      >
+        <FiChevronLeft className="w-5 h-5" />
+      </button>
+      
+      {pages.map((page, i) => (
+        page === '...' ? (
+          <span key={`dots-${i}`} className="w-10 h-10 flex items-center justify-center text-gray-400">...</span>
+        ) : (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`w-10 h-10 rounded-lg transition-colors ${
+              currentPage === page ? 'bg-primary-500 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+          >
+            {page}
+          </button>
+        )
+      ))}
+      
+      <button
+        onClick={() => onPageChange(p => Math.min(totalPages, p + 1))}
+        disabled={currentPage === totalPages}
+        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Next page"
+      >
+        <FiChevronRight className="w-5 h-5" />
+      </button>
+    </div>
+  );
+});
+
+const ListView = React.memo(({ 
+  resumes, showSelection, selectedResumes,
+  sortBy, sortOrder, toggleSort, toggleSelectAll, toggleSelectResume,
+  onEdit, onPreview, onDownload, onDuplicate,
+  currentPage, totalPages, onPageChange, filteredCount,
+}) => (
+  <div className="glass-card overflow-hidden">
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            {showSelection && (
+              <th className="w-10 py-3 px-4">
+                <input
+                  type="checkbox"
+                  checked={selectedResumes.size === resumes.length && resumes.length > 0}
+                  onChange={toggleSelectAll}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+              </th>
+            )}
+            <SortableHeader label="Resume Name" field="name" {...{ sortBy, sortOrder, toggleSort }} />
+            <SortableHeader label="Last Modified" field="updatedAt" {...{ sortBy, sortOrder, toggleSort }} />
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Template</th>
+            <SortableHeader label="ATS Score" field="score" {...{ sortBy, sortOrder, toggleSort }} />
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {resumes.map((resume) => {
+            const statusBadge = getStatusBadge(resume);
+            return (
+              <motion.tr
+                key={resume.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                {showSelection && (
+                  <td className="py-4 px-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedResumes.has(resume.id)}
+                      onChange={() => toggleSelectResume(resume.id)}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                  </td>
+                )}
+                <td className="py-4 px-4">
+                  <p className="font-medium text-sm">{resume.name || 'Untitled'}</p>
+                  {resume.data?.personal?.fullName && (
+                    <p className="text-xs text-gray-500">{resume.data.personal.fullName}</p>
+                  )}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-500">
+                  {resume.updatedAt 
+                    ? formatDistanceToNow(new Date(resume.updatedAt), { addSuffix: true })
+                    : 'Never'}
+                </td>
+                <td className="py-4 px-4">
+                  <Badge variant="secondary" size="sm" className="capitalize">{resume.template || 'Modern'}</Badge>
+                </td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold text-sm ${resume.atsScore >= 80 ? 'text-green-500' : resume.atsScore >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
+                      {resume.atsScore || 0}%
+                    </span>
+                    <Progress value={resume.atsScore || 0} size="sm" className="w-16" color={getScoreVariant(resume.atsScore || 0)} />
+                  </div>
+                </td>
+                <td className="py-4 px-4">
+                  <Badge variant={statusBadge.variant} size="sm">{statusBadge.label}</Badge>
+                </td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-1">
+                    {[
+                      { onClick: onEdit, icon: null, label: 'Edit' },
+                      { onClick: onPreview, icon: <FiEye className="w-4 h-4" />, label: 'Preview' },
+                      { onClick: onDownload, icon: <FiDownload className="w-4 h-4" />, label: 'Download' },
+                    ].map(({ onClick, icon, label }) => (
+                      <Tooltip key={label} content={label}>
+                        <button
+                          onClick={() => onClick?.(resume)}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-sm"
+                          aria-label={`${label} ${resume.name || 'resume'}`}
+                        >
+                          {icon || label}
+                        </button>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </td>
+              </motion.tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+
+    {totalPages > 1 && (
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+        <p className="text-sm text-gray-500">
+          Page {currentPage} of {totalPages} ({filteredCount} total)
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onPageChange(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+          >
+            <FiChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onPageChange(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+          >
+            <FiChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+));
+
+const SortableHeader = React.memo(({ label, field, sortBy, sortOrder, toggleSort }) => (
+  <th 
+    className="text-left py-3 px-4 cursor-pointer hover:text-primary-500 transition-colors text-sm font-medium text-gray-500"
+    onClick={() => toggleSort(field)}
+  >
+    <div className="flex items-center gap-1">
+      {label}
+      {sortBy === field && (
+        sortOrder === 'asc' ? <FiArrowUp className="w-3 h-3" /> : <FiArrowDown className="w-3 h-3" />
+      )}
+    </div>
+  </th>
+));
+
+// ── Display Names ─────────────────────────────────────────────────────────
+
+FilterSelect.displayName = 'FilterSelect';
+Pagination.displayName = 'Pagination';
+ListView.displayName = 'ListView';
+SortableHeader.displayName = 'SortableHeader';
+
+export default React.memo(ResumeList);
