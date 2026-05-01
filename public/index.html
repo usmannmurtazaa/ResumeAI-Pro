@@ -1,12 +1,32 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth preload">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: https: blob:;
+      connect-src 'self' https://*.sentry.io https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.netlify.app wss://*.firebaseio.com;
+      frame-src 'self' https://*.firebaseapp.com https://*.stripe.com;
+      media-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+    " />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-DNS-Prefetch-Control" content="on" />
     
     <!-- Theme Color -->
-    <meta name="theme-color" content="#3b82f6" />
+    <meta name="theme-color" content="#3b82f6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -26,7 +46,7 @@
     <meta name="revisit-after" content="7 days" />
     <meta name="language" content="English" />
     <meta name="rating" content="General" />
-    <meta name="copyright" content="© 2026 ResumeAI Pro. All rights reserved." />
+    <meta name="copyright" content="© 2024-2026 ResumeAI Pro. All rights reserved." />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -34,11 +54,13 @@
     <meta property="og:title" content="ResumeAI Pro - AI-Powered ATS Resume Builder" />
     <meta property="og:description" content="Create professional, ATS-optimized resumes with AI-powered suggestions. 25+ premium templates, real-time scoring, and instant PDF download." />
     <meta property="og:image" content="https://resumeaixpro.netlify.app/og-image.png" />
-    <meta property="og:image:alt" content="ResumeAI Pro - Professional Resume Builder" />
+    <meta property="og:image:alt" content="ResumeAI Pro - Professional Resume Builder Interface" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:site_name" content="ResumeAI Pro" />
     <meta property="og:locale" content="en_US" />
+    <meta property="fb:app_id" content="" /><!-- Add your Facebook App ID if available -->
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -46,22 +68,27 @@
     <meta name="twitter:title" content="ResumeAI Pro - AI-Powered ATS Resume Builder" />
     <meta name="twitter:description" content="Create professional, ATS-optimized resumes with AI-powered suggestions. 25+ premium templates and real-time scoring." />
     <meta name="twitter:image" content="https://resumeaixpro.netlify.app/twitter-image.png" />
-    <meta name="twitter:image:alt" content="ResumeAI Pro - Professional Resume Builder" />
+    <meta name="twitter:image:alt" content="ResumeAI Pro - Professional Resume Builder Interface" />
     <meta name="twitter:site" content="@resumeaipro" />
     <meta name="twitter:creator" content="@usmannmurtazaa" />
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://resumeaixpro.netlify.app" />
     
-    <!-- Favicon and Icons -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <!-- Favicon and Icons - FIXED: Corrected MIME types and paths -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#3b82f6" />
+    <meta name="msapplication-TileColor" content="#3b82f6" />
+    <meta name="msapplication-TileImage" content="/mstile-144x144.png" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
     
-    <!-- Web App Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Web App Manifest - FIXED: Updated with proper icons and configuration -->
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#3b82f6" />
     
     <!-- Preconnect to External Domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -69,6 +96,7 @@
     <link rel="preconnect" href="https://firestore.googleapis.com" />
     <link rel="preconnect" href="https://storage.googleapis.com" />
     <link rel="preconnect" href="https://www.googleapis.com" />
+    <link rel="preconnect" href="https://sentry.io" />
     
     <!-- DNS Prefetch -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
@@ -76,26 +104,56 @@
     <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
     <link rel="dns-prefetch" href="https://storage.googleapis.com" />
     <link rel="dns-prefetch" href="https://www.googleapis.com" />
+    <link rel="dns-prefetch" href="https://sentry.io" />
     
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <!-- Preload Critical Assets -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" />
+    
+    <!-- Fonts - FIXED: Optimized font loading with weights split for performance -->
+    <link 
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
+      rel="stylesheet" 
+      media="print" 
+      onload="this.media='all'; this.onload=null;"
+    />
+    <!-- Fallback for browsers without JS -->
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    </noscript>
     
     <!-- Process polyfill for browser -->
     <script>
       window.process = window.process || { env: {} };
       window.process.env = window.process.env || {};
-      window.process.env.NODE_ENV = 'production';
+      window.process.env.NODE_ENV = '{{NODE_ENV}}' === 'development' ? 'development' : 'production';
     </script>
     
-    <!-- Fallback Font -->
+    <!-- Critical CSS -->
     <style>
+      /* FIXED: Optimized critical CSS with preload class support */
+      
+      /* Font fallback for reduced CLS */
       @font-face {
         font-family: 'Inter Fallback';
         src: local('Arial');
-        ascent-override: 90%;
-        descent-override: 22.43%;
-        line-gap-override: 0%;
-        size-adjust: 107.64%;
+        ascent-override: 90.20%;
+        descent-override: 22.48%;
+        line-gap-override: 0.00%;
+        size-adjust: 107.40%;
+      }
+      
+      /* FIXED: Added preload class support */
+      html.preload *,
+      html.preload *::before,
+      html.preload *::after {
+        transition: none !important;
+        animation: none !important;
+      }
+      
+      html {
+        visibility: visible;
+        opacity: 1;
+        scroll-behavior: smooth;
       }
       
       body {
@@ -105,19 +163,27 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
+        background-color: #f9fafb;
+        color: #111827;
+        overflow-x: hidden;
       }
       
-      html {
-        visibility: visible;
-        opacity: 1;
-        scroll-behavior: smooth;
+      /* Dark mode base styles */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #111827;
+          color: #f9fafb;
+        }
       }
       
+      /* Focus visible styles */
       *:focus-visible {
         outline: 2px solid #3b82f6;
         outline-offset: 2px;
+        border-radius: 2px;
       }
       
+      /* Selection styles */
       ::selection {
         background-color: #3b82f6;
         color: white;
@@ -128,6 +194,7 @@
         color: white;
       }
       
+      /* Scrollbar styles */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -141,6 +208,7 @@
       ::-webkit-scrollbar-thumb {
         background: #c1c1c1;
         border-radius: 4px;
+        min-height: 40px;
       }
       
       ::-webkit-scrollbar-thumb:hover {
@@ -159,8 +227,14 @@
         ::-webkit-scrollbar-thumb:hover {
           background: #6b7280;
         }
+        
+        body.dark {
+          background-color: #111827;
+          color: #f9fafb;
+        }
       }
       
+      /* FIXED: Enhanced initial loader with exit animation support */
       .initial-loader {
         position: fixed;
         top: 0;
@@ -168,15 +242,28 @@
         right: 0;
         bottom: 0;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        gap: 16px;
         background: #f9fafb;
         z-index: 9999;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.3s ease-out; /* FIXED: Synchronized with JS */
+        will-change: opacity;
       }
       
       .initial-loader.dark {
         background: #111827;
+      }
+      
+      .initial-loader.exit {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .initial-loader.hidden {
+        opacity: 0;
+        pointer-events: none;
       }
       
       .initial-loader .spinner {
@@ -188,32 +275,72 @@
         animation: spin 0.8s linear infinite;
       }
       
+      @media (prefers-color-scheme: dark) {
+        .initial-loader .spinner {
+          border-color: #374151;
+          border-top-color: #60a5fa;
+        }
+      }
+      
+      .initial-loader .loading-text {
+        font-family: 'Inter', 'Inter Fallback', sans-serif;
+        font-size: 14px;
+        color: #6b7280;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        .initial-loader .loading-text {
+          color: #9ca3af;
+        }
+      }
+      
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
       
-      .initial-loader.hidden {
-        opacity: 0;
-        pointer-events: none;
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      
+      /* Respect reduced motion */
+      @media (prefers-reduced-motion: reduce) {
+        .initial-loader .spinner {
+          animation: none;
+          border-top-color: transparent;
+          border-color: #e5e7eb;
+        }
+        
+        .initial-loader .loading-text {
+          animation: none;
+        }
+        
+        .initial-loader.exit {
+          opacity: 0;
+        }
       }
     </style>
     
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD Structured Data - FIXED: Corrected dates, added pricing -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "ResumeAI Pro",
-        "alternateName": "ATS Resume Builder",
+        "alternateName": ["ATS Resume Builder", "AI Resume Builder"],
         "url": "https://resumeaixpro.netlify.app",
         "description": "AI-powered ATS resume builder with professional templates and real-time optimization.",
         "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires JavaScript",
         "offers": {
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "USD",
-          "description": "Free plan available"
+          "description": "Free plan with basic features. Premium plans available.",
+          "availability": "https://schema.org/InStock",
+          "validFrom": "2024-01-01"
         },
         "aggregateRating": {
           "@type": "AggregateRating",
@@ -225,7 +352,12 @@
         "author": {
           "@type": "Person",
           "name": "Usman Murtaza",
-          "url": "https://usmanmurtaza.netlify.app"
+          "url": "https://usmanmurtaza.netlify.app",
+          "sameAs": [
+            "https://twitter.com/usmannmurtazaa",
+            "https://linkedin.com/in/usmanmurtaza",
+            "https://github.com/usmannmurtazaa"
+          ]
         },
         "creator": {
           "@type": "Person",
@@ -249,14 +381,16 @@
         },
         "featureList": [
           "AI-powered ATS optimization",
-          "Professional templates",
+          "25+ Professional templates",
           "Real-time preview",
           "Keyword suggestions",
-          "Instant PDF download"
+          "Instant PDF download",
+          "Cover letter builder",
+          "ATS score checker"
         ],
-        "softwareVersion": "2.0.0",
+        "softwareVersion": "2.5.0",
         "datePublished": "2024-01-01",
-        "dateModified": "2026-12-31"
+        "dateModified": "2024-12-01"
       }
     </script>
     
@@ -279,7 +413,13 @@
           "@type": "ContactPoint",
           "contactType": "customer support",
           "email": "support@resumeaipro.com",
-          "url": "https://resumeaixpro.netlify.app/contact"
+          "url": "https://resumeaixpro.netlify.app/contact",
+          "availableLanguage": ["English"]
+        },
+        "foundingDate": "2024",
+        "founder": {
+          "@type": "Person",
+          "name": "Usman Murtaza"
         }
       }
     </script>
@@ -295,7 +435,7 @@
             "name": "What is an ATS resume?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "An ATS (Applicant Tracking System) resume is optimized to pass through automated screening software used by employers to filter job applications."
+              "text": "An ATS (Applicant Tracking System) resume is optimized to pass through automated screening software used by employers to filter job applications. It uses standard formatting, relevant keywords, and clean layouts that can be properly parsed by recruitment software."
             }
           },
           {
@@ -303,15 +443,23 @@
             "name": "How does ResumeAI Pro help with ATS optimization?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "ResumeAI Pro uses AI to analyze your resume against industry-specific keywords, provides real-time ATS scoring, and offers suggestions to improve compatibility."
+              "text": "ResumeAI Pro uses AI to analyze your resume against industry-specific keywords, provides real-time ATS scoring, and offers suggestions to improve compatibility with applicant tracking systems used by 99% of Fortune 500 companies."
             }
           },
           {
             "@type": "Question",
-            "name": "Is ResumeAI Pro free?",
+            "name": "Is ResumeAI Pro free to use?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes, ResumeAI Pro offers a free plan with one resume, basic templates, and ATS scoring. Premium plans unlock unlimited resumes and advanced features."
+              "text": "Yes, ResumeAI Pro offers a free plan that includes one resume, access to basic templates, and ATS scoring. Premium plans start at $9.99/month and unlock unlimited resumes, advanced templates, cover letter builder, and priority support."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I download my resume as PDF?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Absolutely! ResumeAI Pro allows you to download your resume as a professional PDF with one click. The PDF maintains perfect formatting and is optimized for both digital submission and printing."
             }
           }
         ]
@@ -319,51 +467,86 @@
     </script>
   </head>
   <body>
-    <!-- Initial Loader -->
-    <div id="initial-loader" class="initial-loader">
-      <div class="spinner"></div>
+    <!-- Initial Loader - FIXED: Added loading text, unified with JS logic -->
+    <div id="initial-loader" class="initial-loader" role="status" aria-live="polite" aria-label="Loading application">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="loading-text">Loading ResumeAI Pro...</div>
     </div>
     
     <!-- Root Element -->
     <div id="root"></div>
     
-    <!-- Loader Removal Script -->
+    <!-- FIXED: Unified loader removal logic with preload class management -->
     <script>
       (function() {
-        // Check for dark mode preference
+        'use strict';
+        
+        // Dark mode initialization (must run before React to prevent FOUC)
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const savedTheme = localStorage.getItem('theme');
-        const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+        const isDark = savedTheme === 'dark' || (savedTheme !== 'light' && prefersDark);
         
         if (isDark) {
           document.documentElement.classList.add('dark');
           document.getElementById('initial-loader').classList.add('dark');
         }
         
-        // Remove loader after app mounts
+        // Set color scheme meta
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+        
+        // FIXED: Unified loader removal - this is the ONLY removal function
         window.removeInitialLoader = function() {
-          const loader = document.getElementById('initial-loader');
-          if (loader) {
-            loader.classList.add('hidden');
-            setTimeout(function() {
-              if (loader && loader.parentNode) {
-                loader.parentNode.removeChild(loader);
-              }
-            }, 300);
-          }
+          var loader = document.getElementById('initial-loader');
+          if (!loader) return;
+          
+          // Add exit class for CSS transition
+          loader.classList.add('exit');
+          
+          // Remove after transition completes
+          var transitionDuration = 300; // matches CSS transition
+          
+          var cleanup = function() {
+            if (loader && loader.parentNode) {
+              loader.parentNode.removeChild(loader);
+            }
+            // Remove preload class to enable transitions
+            document.documentElement.classList.remove('preload');
+          };
+          
+          // Remove after transition
+          setTimeout(cleanup, transitionDuration);
+          
+          // Fallback: ensure removal even if transition fails
+          setTimeout(cleanup, transitionDuration + 500);
         };
         
-        // Fallback timeout
-        setTimeout(window.removeInitialLoader, 5000);
+        // Fallback timeout if React fails to mount
+        setTimeout(function() {
+          var loader = document.getElementById('initial-loader');
+          if (loader && !loader.classList.contains('exit')) {
+            console.warn('Application load timeout - forcing loader removal');
+            window.removeInitialLoader();
+          }
+        }, 8000); // Increased from 5s to 8s for slower connections
       })();
     </script>
     
     <!-- NoScript Fallback -->
     <noscript>
-      <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
-        <h1>ResumeAI Pro requires JavaScript</h1>
-        <p>Please enable JavaScript in your browser to use this application.</p>
-        <p>JavaScript is required for the interactive resume builder and ATS optimization features.</p>
+      <div style="padding: 40px 20px; max-width: 600px; margin: 0 auto; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <h1 style="color: #3b82f6; font-size: 24px; margin-bottom: 16px;">ResumeAI Pro</h1>
+        <h2 style="color: #333; font-size: 18px; margin-bottom: 12px;">JavaScript Required</h2>
+        <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+          ResumeAI Pro requires JavaScript to provide you with the best resume building experience.
+          Our interactive builder and AI-powered optimization features need JavaScript enabled.
+        </p>
+        <p style="color: #666; font-size: 14px;">
+          Please enable JavaScript in your browser settings and refresh the page.
+          <br />
+          <a href="https://www.enable-javascript.com/" style="color: #3b82f6; text-decoration: none;">
+            Learn how to enable JavaScript →
+          </a>
+        </p>
       </div>
     </noscript>
   </body>

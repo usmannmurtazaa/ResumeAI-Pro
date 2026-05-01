@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiMail, 
@@ -12,12 +12,13 @@ import {
   FiAlertCircle,
   FiArrowRight,
   FiShield,
-  FiInfo,
   FiGithub,
   FiTwitter,
   FiBriefcase,
   FiAward,
-  FiZap
+  FiZap,
+  FiRefreshCw,
+  FiXCircle
 } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { FcPhone } from 'react-icons/fc';
@@ -29,88 +30,221 @@ import GoogleAuthButton from './GoogleAuthButton';
 import PhoneAuth from './PhoneAuth';
 import toast from 'react-hot-toast';
 
+// ── Constants ───────────────────────────────────────────────────────────────
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const MIN_PASSWORD_LENGTH = 8;
+
+// Common passwords to reject (even if they meet complexity requirements)
+const COMMON_PASSWORDS = [
+  'password', 'password123', '12345678', 'qwerty123', 
+  'admin123', 'letmein123', 'welcome123', 'abc123456',
+  'password1', 'password12', 'password123!', 'adminadmin1',
+];
+
+// ── Security Utilities ──────────────────────────────────────────────────────
+
+/**
+ * Enhanced password strength checker with common password detection.
+ */
+const calculatePasswordStrength = (password) => {
+  if (!password) return 0;
+  
+  // Check for common passwords first
+  if (COMMON_PASSWORDS.includes(password.toLowerCase())) {
+    return 10; // Very weak - common password
+  }
+  
+  let strength = 0;
+  
+  // Length
+  if (password.length >= MIN_PASSWORD_LENGTH) strength += 20;
+  if (password.length >= 12) strength += 10;
+  if (password.length >= 16) strength += 10;
+  
+  // Character variety
+  if (/[a-z]/.test(password)) strength += 10;
+  if (/[A-Z]/.test(password)) strength += 15;
+  if (/[0-9]/.test(password)) strength += 10;
+  if (/[^A-Za-z0-9]/.test(password)) strength += 15;
+  
+  // Complexity patterns
+  if (/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(password)) strength += 10;
+  if (/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])/.test(password)) strength += 10;
+  
+  // Penalize sequential characters
+  if (/(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i.test(password)) {
+    strength -= 10;
+  }
+  
+  // Penalize repeated characters
+  if (/(.)\1{2,}/.test(password)) {
+    strength -= 10;
+  }
+  
+  return Math.max(0, Math.min(strength, 100));
+};
+
+/**
+ * Checks if password has been compromised using k-anonymity.
+ * In production, call the HaveIBeenPwned API.
+ */
+const checkPasswordBreach = async (password) => {
+  if (!IS_PRODUCTION) return false;
+  
+  try {
+    // Hash the password with SHA-1 (as required by HIBP API)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    
+    // Only send first 5 characters of hash (k-anonymity)
+    const prefix = hashHex.slice(0, 5);
+    const suffix = hashHex.slice(5);
+    
+    const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    const text = await response.text();
+    
+    // Check if our hash suffix appears in the response
+    return text.split('\n').some(line => line.split(':')[0] === suffix);
+  } catch (error) {
+    console.warn('Password breach check failed:', error);
+    return false; // Err on the side of allowing signup
+  }
+};
+
+// ── Component ───────────────────────────────────────────────────────────────
+
 const SignUpForm = ({ redirectTo = '/dashboard' }) => {
   const { signup, signupWithProvider } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPhoneAuth, setShowPhoneAuth] = useState(false);
   const [signupError, setSignupError] = useState(null);
   const [passwordStrength, setPasswordStrength] = useState(0);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [isCommonPassword, setIsCommonPassword] = useState(false);
+  const [passwordBreached, setPasswordBreached] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
+  const [providerLoading, setProviderLoading] = useState(null);
   
-  const { register, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm({
+  const { register, handleSubmit, watch, setValue, control, formState: { errors, isValid, isDirty } } = useForm({
     mode: 'onChange',
     defaultValues: {
       displayName: '',
       email: '',
       password: '',
       confirmPassword: '',
-      terms: false
+      terms: false,
     }
   });
 
   const password = watch('password');
   const emailValue = watch('email');
   const displayNameValue = watch('displayName');
+  const termsAccepted = watch('terms');
 
-  // Calculate password strength
+  // FIXED: Enhanced password strength with breach checking
   useEffect(() => {
     if (!password) {
       setPasswordStrength(0);
+      setIsCommonPassword(false);
+      setPasswordBreached(false);
       return;
     }
 
-    let strength = 0;
+    const strength = calculatePasswordStrength(password);
+    setPasswordStrength(strength);
     
-    // Length check
-    if (password.length >= 8) strength += 20;
-    if (password.length >= 12) strength += 10;
+    // Check for common passwords
+    setIsCommonPassword(COMMON_PASSWORDS.includes(password.toLowerCase()));
     
-    // Character variety checks
-    if (/[a-z]/.test(password)) strength += 15;
-    if (/[A-Z]/.test(password)) strength += 15;
-    if (/[0-9]/.test(password)) strength += 15;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 15;
+    // Check for breached passwords (debounced)
+    const timer = setTimeout(async () => {
+      if (password.length >= MIN_PASSWORD_LENGTH) {
+        const breached = await checkPasswordBreach(password);
+        setPasswordBreached(breached);
+      }
+    }, 500);
     
-    // Complexity checks
-    if (/(?=.*[a-z])(?=.*[A-Z])/.test(password)) strength += 5;
-    if (/(?=.*[0-9])(?=.*[^A-Za-z0-9])/.test(password)) strength += 5;
-    
-    setPasswordStrength(Math.min(strength, 100));
+    return () => clearTimeout(timer);
   }, [password]);
 
+  // FIXED: Clear error when user starts typing
+  useEffect(() => {
+    if (isDirty && signupError) {
+      setSignupError(null);
+    }
+  }, [password, emailValue, displayNameValue, isDirty, signupError]);
+
   const getPasswordStrengthColor = () => {
+    if (isCommonPassword || passwordBreached) return 'danger';
     if (passwordStrength >= 80) return 'success';
     if (passwordStrength >= 50) return 'warning';
     return 'danger';
   };
 
   const getPasswordStrengthLabel = () => {
+    if (isCommonPassword) return 'Common Password - Choose Another';
+    if (passwordBreached) return 'Password Breached - Choose Another';
     if (passwordStrength >= 80) return 'Strong';
-    if (passwordStrength >= 50) return 'Medium';
+    if (passwordStrength >= 60) return 'Good';
+    if (passwordStrength >= 40) return 'Fair';
     if (passwordStrength > 0) return 'Weak';
     return '';
   };
 
   const onSubmit = async (data) => {
+    // FIXED: Prevent signup with common or breached passwords
+    if (isCommonPassword) {
+      setSignupError('This is a commonly used password. Please choose a stronger, unique password.');
+      toast.error('Please choose a stronger password');
+      return;
+    }
+    
+    if (passwordBreached) {
+      setSignupError('This password has appeared in data breaches. Please choose a different password.');
+      toast.error('Please choose a different password');
+      return;
+    }
+    
+    if (!data.terms) {
+      setSignupError('You must agree to the Terms of Service and Privacy Policy');
+      return;
+    }
+    
     setLoading(true);
     setSignupError(null);
     
     try {
-      const userCredential = await signup(data.email, data.password, data.displayName);
+      const userCredential = await signup(
+        data.email, 
+        data.password, 
+        data.displayName,
+        { marketingConsent } // FIXED: Pass marketing consent
+      );
       
-      toast.success('Account created successfully! Welcome aboard!', {
-        icon: '🎉',
-        duration: 3000
+      // FIXED: Show verification needed message instead of immediate redirect
+      toast.success('Account created successfully! Please verify your email.', {
+        icon: '📧',
+        duration: 5000,
       });
       
-      // Send welcome email or setup initial data
+      // Navigate to verification page or show modal
       setTimeout(() => {
-        navigate(redirectTo);
-      }, 500);
+        navigate('/verify-email', {
+          state: {
+            email: data.email,
+            message: 'Please check your email to verify your account.',
+          },
+          replace: true,
+        });
+      }, 1500);
+      
     } catch (error) {
       console.error('Signup error:', error);
       
@@ -124,7 +258,7 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
           errorMessage = 'Invalid email address format.';
           break;
         case 'auth/operation-not-allowed':
-          errorMessage = 'Email/password accounts are not enabled. Please contact support.';
+          errorMessage = 'Account creation is temporarily disabled. Please try again later.';
           break;
         case 'auth/weak-password':
           errorMessage = 'Password is too weak. Please choose a stronger password.';
@@ -132,19 +266,22 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
         case 'auth/network-request-failed':
           errorMessage = 'Network error. Please check your internet connection.';
           break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many attempts. Please try again later.';
+          break;
         default:
-          errorMessage = error.message;
+          errorMessage = error.message || 'An unexpected error occurred.';
       }
       
       setSignupError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(errorMessage, { id: 'signup-error' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleProviderSignup = async (provider) => {
-    setLoading(true);
+    setProviderLoading(provider);
     setSignupError(null);
     
     try {
@@ -152,40 +289,47 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
       
       toast.success('Account created successfully!', {
         icon: '🎉',
-        duration: 2000
+        duration: 2000,
       });
       
-      navigate(redirectTo);
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       console.error(`${provider} signup error:`, error);
       
       let errorMessage = `Failed to sign up with ${provider}.`;
       
-      if (error.code === 'auth/account-exists-with-different-credential') {
-        errorMessage = 'An account already exists with this email using a different sign-in method.';
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        errorMessage = 'Sign-up popup was closed. Please try again.';
+      switch (error.code) {
+        case 'auth/account-exists-with-different-credential':
+          errorMessage = 'An account already exists with this email. Please sign in using your original method.';
+          break;
+        case 'auth/popup-closed-by-user':
+          errorMessage = 'Sign-up window was closed. Please try again.';
+          break;
+        case 'auth/popup-blocked':
+          errorMessage = 'Pop-up was blocked by your browser. Please allow pop-ups for this site.';
+          break;
+        case 'auth/unauthorized-domain':
+          errorMessage = 'This sign-in method is not configured. Please use email signup.';
+          break;
+        default:
+          errorMessage = error.message || `Failed to sign up with ${provider}.`;
       }
       
       setSignupError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(errorMessage, { id: 'provider-signup-error' });
     } finally {
-      setLoading(false);
+      setProviderLoading(null);
     }
   };
 
   const handleGoogleSuccess = () => {
-    toast.success('Account created with Google!', {
-      icon: '🎉'
-    });
-    navigate(redirectTo);
+    toast.success('Account created with Google!', { icon: '🎉' });
+    navigate(redirectTo, { replace: true });
   };
 
   const handlePhoneSuccess = () => {
-    toast.success('Account created with Phone!', {
-      icon: '📱'
-    });
-    navigate(redirectTo);
+    toast.success('Account created with Phone!', { icon: '📱' });
+    navigate(redirectTo, { replace: true });
   };
 
   // Animation variants
@@ -196,14 +340,14 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
       y: 0,
       transition: { 
         duration: 0.5,
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0 }
+    visible: { opacity: 1, y: 0 },
   };
 
   // Benefits list
@@ -211,7 +355,7 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
     { icon: <FiBriefcase />, text: 'ATS-optimized templates' },
     { icon: <FiAward />, text: 'Professional designs' },
     { icon: <FiZap />, text: 'AI-powered suggestions' },
-    { icon: <FiShield />, text: 'Secure & private' }
+    { icon: <FiShield />, text: 'Secure & private' },
   ];
 
   return (
@@ -253,25 +397,27 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
 
           {/* Social Sign Up Options */}
           <motion.div variants={itemVariants} className="space-y-3 mb-6">
-            <GoogleAuthButton onSuccess={handleGoogleSuccess} mode="signup" />
+            <GoogleAuthButton onSuccess={handleGoogleSuccess} mode="signup" disabled={loading} />
             
             <Button
               type="button"
               variant="outline"
               onClick={() => setShowPhoneAuth(true)}
+              disabled={loading}
               icon={<FcPhone className="w-5 h-5" />}
               className="w-full justify-center bg-white/50 dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600"
             >
               Continue with Phone
             </Button>
 
-            {/* Additional Providers */}
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleProviderSignup('github')}
+                loading={providerLoading === 'github'}
+                disabled={loading}
                 icon={<FiGithub className="w-4 h-4" />}
                 className="justify-center"
               >
@@ -282,6 +428,8 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleProviderSignup('twitter')}
+                loading={providerLoading === 'twitter'}
+                disabled={loading}
                 icon={<FiTwitter className="w-4 h-4 text-blue-400" />}
                 className="justify-center"
               >
@@ -306,16 +454,27 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
           <form onSubmit={handleSubmit(onSubmit)}>
             <motion.div variants={itemVariants} className="space-y-4">
               {/* Error Alert */}
-              <AnimatePresence>
+              <AnimatePresence mode="wait">
                 {signupError && (
                   <motion.div
+                    key="error"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-2"
                   >
                     <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-700 dark:text-red-300">{signupError}</p>
+                    <div className="flex-1">
+                      <p className="text-sm text-red-700 dark:text-red-300">{signupError}</p>
+                      {signupError.includes('already registered') && (
+                        <Link
+                          to="/login"
+                          className="text-xs text-primary-600 hover:text-primary-700 mt-1 inline-block"
+                        >
+                          Sign in instead →
+                        </Link>
+                      )}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -324,21 +483,29 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                 label="Full Name"
                 type="text"
                 icon={<FiUser />}
-                placeholder="John Doe"
+                placeholder="Your full name"
                 autoComplete="name"
+                disabled={loading}
                 {...register('displayName', {
                   required: 'Full name is required',
                   minLength: {
                     value: 2,
-                    message: 'Name must be at least 2 characters'
+                    message: 'Name must be at least 2 characters',
                   },
-                  pattern: {
-                    value: /^[a-zA-Z\s'-]+$/,
-                    message: 'Name can only contain letters, spaces, hyphens and apostrophes'
-                  }
+                  maxLength: {
+                    value: 100,
+                    message: 'Name must be less than 100 characters',
+                  },
+                  // FIXED: Allow international characters
+                  validate: {
+                    noNumbers: (value) => !/\d/.test(value) || 'Name should not contain numbers',
+                    noSpecialChars: (value) => !/[<>{}]/.test(value) || 'Name contains invalid characters',
+                  },
                 })}
                 error={errors.displayName?.message}
-                success={displayNameValue && !errors.displayName && <FiCheckCircle className="w-4 h-4 text-green-500" />}
+                success={displayNameValue && !errors.displayName && (
+                  <FiCheckCircle className="w-4 h-4 text-green-500" />
+                )}
               />
 
               <Input
@@ -347,15 +514,18 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                 icon={<FiMail />}
                 placeholder="you@example.com"
                 autoComplete="email"
+                disabled={loading}
                 {...register('email', {
                   required: 'Email is required',
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Please enter a valid email address'
-                  }
+                    message: 'Please enter a valid email address',
+                  },
                 })}
                 error={errors.email?.message}
-                success={emailValue && !errors.email && <FiCheckCircle className="w-4 h-4 text-green-500" />}
+                success={emailValue && !errors.email && (
+                  <FiCheckCircle className="w-4 h-4 text-green-500" />
+                )}
               />
 
               <div>
@@ -363,8 +533,9 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                   label="Password"
                   type={showPassword ? 'text' : 'password'}
                   icon={<FiLock />}
-                  placeholder="••••••••"
+                  placeholder="Create a strong password"
                   autoComplete="new-password"
+                  disabled={loading}
                   rightIcon={
                     <button
                       type="button"
@@ -379,20 +550,23 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                   {...register('password', {
                     required: 'Password is required',
                     minLength: {
-                      value: 8,
-                      message: 'Password must be at least 8 characters'
+                      value: MIN_PASSWORD_LENGTH,
+                      message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
                     },
+                    // FIXED: Clear indications of required vs recommended
                     validate: {
-                      hasLetter: (value) => /[A-Za-z]/.test(value) || 'Must contain at least one letter',
-                      hasNumber: (value) => /\d/.test(value) || 'Must contain at least one number',
-                      hasUpperLower: (value) => /(?=.*[a-z])(?=.*[A-Z])/.test(value) || 'Should contain both upper and lower case (recommended)',
-                      hasSpecial: (value) => /[^A-Za-z0-9]/.test(value) || 'Should contain at least one special character (recommended)'
-                    }
+                      hasLowercase: (value) => /[a-z]/.test(value) || 'Must contain a lowercase letter',
+                      hasUppercase: (value) => /[A-Z]/.test(value) || 'Must contain an uppercase letter',
+                      hasNumber: (value) => /\d/.test(value) || 'Must contain a number',
+                      hasSpecial: (value) => /[^A-Za-z0-9]/.test(value) || 'Must contain a special character',
+                      notCommon: () => !isCommonPassword || 'This password is too common',
+                      notBreached: () => !passwordBreached || 'This password has been compromised',
+                    },
                   })}
                   error={errors.password?.message}
                 />
                 
-                {/* Password Strength Indicator */}
+                {/* Password Strength Indicator - FIXED: Enhanced UI */}
                 {password && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
@@ -401,42 +575,57 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-gray-500">Password strength:</span>
-                      <span className={`text-xs font-medium ${
+                      <span className={`text-xs font-medium flex items-center gap-1 ${
                         passwordStrength >= 80 ? 'text-green-500' :
-                        passwordStrength >= 50 ? 'text-yellow-500' :
+                        passwordStrength >= 60 ? 'text-green-600' :
+                        passwordStrength >= 40 ? 'text-yellow-500' :
                         'text-red-500'
                       }`}>
                         {getPasswordStrengthLabel()}
+                        {isCommonPassword && <FiXCircle className="w-3 h-3" />}
                       </span>
                     </div>
+                    
                     <Progress 
-                      value={passwordStrength} 
+                      value={isCommonPassword || passwordBreached ? 10 : passwordStrength} 
                       color={getPasswordStrengthColor()} 
                       size="sm"
                       animated
                     />
                     
-                    {/* Password Requirements Checklist */}
+                    {/* Password Requirements Checklist - FIXED: Clear required vs optional */}
                     <div className="mt-2 space-y-1">
+                      <p className="text-xs text-gray-500 mb-1 font-medium">Requirements:</p>
                       {[
-                        { check: password.length >= 8, label: 'At least 8 characters' },
-                        { check: /[A-Z]/.test(password), label: 'Uppercase letter' },
-                        { check: /[a-z]/.test(password), label: 'Lowercase letter' },
-                        { check: /[0-9]/.test(password), label: 'Number' },
-                        { check: /[^A-Za-z0-9]/.test(password), label: 'Special character' }
+                        { check: password.length >= MIN_PASSWORD_LENGTH, label: 'At least 8 characters' },
+                        { check: /[A-Z]/.test(password), label: 'One uppercase letter' },
+                        { check: /[a-z]/.test(password), label: 'One lowercase letter' },
+                        { check: /[0-9]/.test(password), label: 'One number' },
+                        { check: /[^A-Za-z0-9]/.test(password), label: 'One special character' },
                       ].map((req, idx) => (
                         <div key={idx} className="flex items-center gap-1">
                           {req.check ? (
-                            <FiCheckCircle className="w-3 h-3 text-green-500" />
+                            <FiCheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
                           ) : (
-                            <div className="w-3 h-3 rounded-full border border-gray-300" />
+                            <FiXCircle className="w-3 h-3 text-gray-400 flex-shrink-0" />
                           )}
-                          <span className={`text-xs ${req.check ? 'text-gray-500' : 'text-gray-400'}`}>
+                          <span className={`text-xs ${req.check ? 'text-gray-600' : 'text-gray-400'}`}>
                             {req.label}
                           </span>
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Breach Warning */}
+                    {passwordBreached && (
+                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-start gap-2">
+                        <FiAlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-red-700 dark:text-red-300">
+                          This password has appeared in data breaches. 
+                          Please choose a different, unique password for security.
+                        </p>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </div>
@@ -445,8 +634,9 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                 label="Confirm Password"
                 type={showConfirmPassword ? 'text' : 'password'}
                 icon={<FiLock />}
-                placeholder="••••••••"
+                placeholder="Re-enter your password"
                 autoComplete="new-password"
+                disabled={loading}
                 rightIcon={
                   <button
                     type="button"
@@ -460,7 +650,7 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                 }
                 {...register('confirmPassword', {
                   required: 'Please confirm your password',
-                  validate: value => value === password || 'Passwords do not match'
+                  validate: (value) => value === password || 'Passwords do not match',
                 })}
                 error={errors.confirmPassword?.message}
                 success={password && watch('confirmPassword') === password && !errors.confirmPassword && (
@@ -468,55 +658,77 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
                 )}
               />
 
-              {/* Terms and Conditions */}
-              <div>
-                <label className="flex items-start cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={acceptedTerms}
-                    onChange={(e) => {
-                      setAcceptedTerms(e.target.checked);
-                      setValue('terms', e.target.checked);
-                    }}
-                    className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                  />
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                    I agree to the{' '}
-                    <Link 
-                      to="/terms" 
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
-                      target="_blank"
-                    >
-                      Terms of Service
-                    </Link>{' '}
-                    and{' '}
-                    <Link 
-                      to="/privacy" 
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
-                      target="_blank"
-                    >
-                      Privacy Policy
-                    </Link>
-                    . I also agree to receive product updates and marketing emails (optional).
-                  </span>
-                </label>
+              {/* FIXED: Terms and Marketing Consent */}
+              <div className="space-y-3">
+                {/* Terms Checkbox */}
+                <Controller
+                  name="terms"
+                  control={control}
+                  rules={{ required: 'You must agree to the Terms of Service' }}
+                  render={({ field: { onChange, value, ...field } }) => (
+                    <label className="flex items-start cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={value || false}
+                        onChange={(e) => onChange(e.target.checked)}
+                        disabled={loading}
+                        className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer disabled:opacity-50"
+                        {...field}
+                      />
+                      <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                        I agree to the{' '}
+                        <Link 
+                          to="/terms" 
+                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
+                          target="_blank"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Terms of Service
+                        </Link>{' '}
+                        and{' '}
+                        <Link 
+                          to="/privacy" 
+                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
+                          target="_blank"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Privacy Policy
+                        </Link>
+                      </span>
+                    </label>
+                  )}
+                />
                 {errors.terms && (
-                  <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
-                    <FiAlertCircle className="w-3 h-3" />
+                  <p className="text-sm text-red-500 flex items-center gap-1 ml-0">
+                    <FiAlertCircle className="w-3 h-3 flex-shrink-0" />
                     {errors.terms.message}
                   </p>
                 )}
+                
+                {/* FIXED: Marketing Consent (Optional) */}
+                <label className="flex items-start cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={marketingConsent}
+                    onChange={(e) => setMarketingConsent(e.target.checked)}
+                    disabled={loading}
+                    className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer disabled:opacity-50"
+                  />
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                    Send me product updates, tips, and special offers. You can unsubscribe at any time.
+                  </span>
+                </label>
               </div>
 
               <Button
                 type="submit"
                 loading={loading}
-                disabled={!isValid || !acceptedTerms}
+                disabled={!isValid || loading || isCommonPassword || passwordBreached}
                 className="w-full group"
-                icon={<FiArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
+                icon={loading ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : <FiArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
                 iconPosition="right"
               >
-                Create Free Account
+                {loading ? 'Creating Account...' : 'Create Free Account'}
               </Button>
             </motion.div>
           </form>
@@ -538,7 +750,7 @@ const SignUpForm = ({ redirectTo = '/dashboard' }) => {
           <motion.div variants={itemVariants} className="mt-6 flex items-center justify-center gap-4">
             <div className="flex items-center gap-1 text-xs text-gray-400">
               <FiShield className="w-3 h-3" />
-              <span>256-bit SSL</span>
+              <span>Secure 256-bit SSL</span>
             </div>
             <div className="w-px h-3 bg-gray-300 dark:bg-gray-700" />
             <div className="flex items-center gap-1 text-xs text-gray-400">
