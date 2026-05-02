@@ -1,75 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
+// ── Context ───────────────────────────────────────────────────────────────
+
 const ThemeContext = createContext(null);
-
-// ============================================
-// PREDEFINED THEME PRESETS
-// ============================================
-
-export const themePresets = {
-  default: {
-    name: 'Default',
-    primary: '#6366f1',
-    accent: '#8b5cf6',
-    gradient: 'from-indigo-500 to-purple-600',
-  },
-  ocean: {
-    name: 'Ocean',
-    primary: '#0ea5e9',
-    accent: '#06b6d4',
-    gradient: 'from-sky-500 to-cyan-500',
-  },
-  forest: {
-    name: 'Forest',
-    primary: '#10b981',
-    accent: '#059669',
-    gradient: 'from-emerald-500 to-green-600',
-  },
-  sunset: {
-    name: 'Sunset',
-    primary: '#f59e0b',
-    accent: '#ef4444',
-    gradient: 'from-amber-500 to-red-500',
-  },
-  rose: {
-    name: 'Rose',
-    primary: '#ec4899',
-    accent: '#f43f5e',
-    gradient: 'from-pink-500 to-rose-500',
-  },
-  midnight: {
-    name: 'Midnight',
-    primary: '#1e293b',
-    accent: '#334155',
-    gradient: 'from-slate-700 to-slate-900',
-  },
-  lavender: {
-    name: 'Lavender',
-    primary: '#a855f7',
-    accent: '#d946ef',
-    gradient: 'from-purple-500 to-fuchsia-500',
-  },
-  mint: {
-    name: 'Mint',
-    primary: '#14b8a6',
-    accent: '#2dd4bf',
-    gradient: 'from-teal-500 to-emerald-400',
-  },
-};
-
-// ============================================
-// THEME MODES
-// ============================================
-
-export const ThemeModes = {
-  LIGHT: 'light',
-  DARK: 'dark',
-  SYSTEM: 'system',
-};
-
-// ============================================
-// CONTEXT HOOK
-// ============================================
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
@@ -79,264 +12,29 @@ export const useTheme = () => {
   return context;
 };
 
-// ============================================
-// PROVIDER COMPONENT
-// ============================================
+// ── Constants ─────────────────────────────────────────────────────────────
 
-export const ThemeProvider = ({ children }) => {
-  // Custom theme colors
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('customTheme');
-    return saved ? JSON.parse(saved) : { ...themePresets.default };
-  });
-
-  // Current theme preset name
-  const [currentPreset, setCurrentPreset] = useState(() => {
-    return localStorage.getItem('themePreset') || 'default';
-  });
-
-  // Theme mode (light/dark/system)
-  const [themeMode, setThemeMode] = useState(() => {
-    const saved = localStorage.getItem('themeMode');
-    return saved || ThemeModes.SYSTEM;
-  });
-
-  // Actual dark mode state (computed)
-  const [isDark, setIsDark] = useState(() => {
-    if (themeMode === ThemeModes.SYSTEM) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return themeMode === ThemeModes.DARK;
-  });
-
-  // Font size preference
-  const [fontSize, setFontSize] = useState(() => {
-    return localStorage.getItem('fontSize') || 'medium';
-  });
-
-  // Reduced motion preference
-  const [reducedMotion, setReducedMotion] = useState(() => {
-    const saved = localStorage.getItem('reducedMotion');
-    return saved ? saved === 'true' : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  });
-
-  // High contrast mode
-  const [highContrast, setHighContrast] = useState(() => {
-    return localStorage.getItem('highContrast') === 'true';
-  });
-
-  // ============================================
-  // APPLY CSS VARIABLES
-  // ============================================
-
-  useEffect(() => {
-    const root = document.documentElement;
-    
-    // Apply theme colors
-    root.style.setProperty('--color-primary', theme.primary);
-    root.style.setProperty('--color-accent', theme.accent);
-    
-    // Calculate and apply color variants
-    root.style.setProperty('--color-primary-light', adjustColor(theme.primary, 20));
-    root.style.setProperty('--color-primary-dark', adjustColor(theme.primary, -20));
-    root.style.setProperty('--color-accent-light', adjustColor(theme.accent, 20));
-    root.style.setProperty('--color-accent-dark', adjustColor(theme.accent, -20));
-
-    // Save to localStorage
-    localStorage.setItem('customTheme', JSON.stringify(theme));
-  }, [theme]);
-
-  // ============================================
-  // APPLY DARK MODE
-  // ============================================
-
-  useEffect(() => {
-    let isDarkMode = isDark;
-    
-    if (themeMode === ThemeModes.SYSTEM) {
-      isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDark(isDarkMode);
-    }
-
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-
-    localStorage.setItem('themeMode', themeMode);
-  }, [themeMode, isDark]);
-
-  // Listen for system theme changes
-  useEffect(() => {
-    if (themeMode !== ThemeModes.SYSTEM) return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e) => {
-      setIsDark(e.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [themeMode]);
-
-  // ============================================
-  // APPLY FONT SIZE
-  // ============================================
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const sizes = {
-      small: '14px',
-      medium: '16px',
-      large: '18px',
-      'x-large': '20px',
-    };
-
-    root.style.setProperty('--font-size-base', sizes[fontSize] || sizes.medium);
-    localStorage.setItem('fontSize', fontSize);
-  }, [fontSize]);
-
-  // ============================================
-  // APPLY ACCESSIBILITY SETTINGS
-  // ============================================
-
-  useEffect(() => {
-    const root = document.documentElement;
-    
-    if (reducedMotion) {
-      root.classList.add('reduce-motion');
-    } else {
-      root.classList.remove('reduce-motion');
-    }
-    localStorage.setItem('reducedMotion', reducedMotion);
-
-    if (highContrast) {
-      root.classList.add('high-contrast');
-    } else {
-      root.classList.remove('high-contrast');
-    }
-    localStorage.setItem('highContrast', highContrast);
-  }, [reducedMotion, highContrast]);
-
-  // ============================================
-  // THEME ACTIONS
-  // ============================================
-
-  const toggleTheme = useCallback(() => {
-    if (themeMode === ThemeModes.SYSTEM) {
-      setThemeMode(ThemeModes.LIGHT);
-      setIsDark(false);
-    } else if (themeMode === ThemeModes.LIGHT) {
-      setThemeMode(ThemeModes.DARK);
-      setIsDark(true);
-    } else {
-      setThemeMode(ThemeModes.SYSTEM);
-      setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
-    }
-  }, [themeMode]);
-
-  const setThemeModeDirect = useCallback((mode) => {
-    setThemeMode(mode);
-    if (mode === ThemeModes.LIGHT) {
-      setIsDark(false);
-    } else if (mode === ThemeModes.DARK) {
-      setIsDark(true);
-    } else {
-      setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
-    }
-  }, []);
-
-  const applyPreset = useCallback((presetName) => {
-    const preset = themePresets[presetName];
-    if (preset) {
-      setTheme({ ...preset });
-      setCurrentPreset(presetName);
-      localStorage.setItem('themePreset', presetName);
-    }
-  }, []);
-
-  const updateThemeColor = useCallback((colorType, value) => {
-    setTheme((prev) => ({
-      ...prev,
-      [colorType]: value,
-    }));
-    setCurrentPreset('custom');
-    localStorage.setItem('themePreset', 'custom');
-  }, []);
-
-  const resetTheme = useCallback(() => {
-    setTheme({ ...themePresets.default });
-    setCurrentPreset('default');
-    setThemeMode(ThemeModes.SYSTEM);
-    setFontSize('medium');
-    setReducedMotion(false);
-    setHighContrast(false);
-    localStorage.setItem('themePreset', 'default');
-  }, []);
-
-  // ============================================
-  // COMPUTED VALUES
-  // ============================================
-
-  const currentThemeName = useMemo(() => {
-    if (currentPreset === 'custom') return 'Custom';
-    return themePresets[currentPreset]?.name || 'Default';
-  }, [currentPreset]);
-
-  const isSystemDark = useMemo(() => {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  }, []);
-
-  // ============================================
-  // CONTEXT VALUE
-  // ============================================
-
-  const value = {
-    // Theme colors
-    theme,
-    setTheme,
-    currentPreset,
-    currentThemeName,
-    
-    // Theme mode
-    themeMode,
-    isDark,
-    isSystemDark,
-    
-    // Accessibility
-    fontSize,
-    setFontSize,
-    reducedMotion,
-    setReducedMotion,
-    highContrast,
-    setHighContrast,
-    
-    // Actions
-    toggleTheme,
-    setThemeMode: setThemeModeDirect,
-    applyPreset,
-    updateThemeColor,
-    resetTheme,
-    
-    // Constants
-    themePresets,
-    ThemeModes,
-  };
-
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+export const ThemeModes = {
+  LIGHT: 'light',
+  DARK: 'dark',
+  SYSTEM: 'system',
 };
 
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
+export const themePresets = {
+  default: { name: 'Default', primary: '#6366f1', accent: '#8b5cf6', gradient: 'from-indigo-500 to-purple-600' },
+  ocean: { name: 'Ocean', primary: '#0ea5e9', accent: '#06b6d4', gradient: 'from-sky-500 to-cyan-500' },
+  forest: { name: 'Forest', primary: '#10b981', accent: '#059669', gradient: 'from-emerald-500 to-green-600' },
+  sunset: { name: 'Sunset', primary: '#f59e0b', accent: '#ef4444', gradient: 'from-amber-500 to-red-500' },
+  rose: { name: 'Rose', primary: '#ec4899', accent: '#f43f5e', gradient: 'from-pink-500 to-rose-500' },
+  midnight: { name: 'Midnight', primary: '#1e293b', accent: '#334155', gradient: 'from-slate-700 to-slate-900' },
+  lavender: { name: 'Lavender', primary: '#a855f7', accent: '#d946ef', gradient: 'from-purple-500 to-fuchsia-500' },
+  mint: { name: 'Mint', primary: '#14b8a6', accent: '#2dd4bf', gradient: 'from-teal-500 to-emerald-400' },
+};
 
-// Adjust color brightness
-function adjustColor(hex, percent) {
-  // Remove the hash if present
+// ── Utility Functions ────────────────────────────────────────────────────
+
+const adjustColor = (hex, percent) => {
   hex = hex.replace(/^#/, '');
-
-  // Parse the hex values
   let r, g, b;
   if (hex.length === 3) {
     r = parseInt(hex[0] + hex[0], 16);
@@ -347,19 +45,221 @@ function adjustColor(hex, percent) {
     g = parseInt(hex.substring(2, 4), 16);
     b = parseInt(hex.substring(4, 6), 16);
   }
-
-  // Adjust the values
   r = Math.max(0, Math.min(255, r + percent));
   g = Math.max(0, Math.min(255, g + percent));
   b = Math.max(0, Math.min(255, b + percent));
-
-  // Convert back to hex
-  const toHex = (n) => {
-    const hex = n.toString(16);
-    return hex.length === 1 ? '0' + hex : hex;
-  };
-
+  const toHex = (n) => n.toString(16).padStart(2, '0');
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
+};
+
+const getSystemDarkMode = () => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
+const getSystemReducedMotion = () => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+};
+
+const safeGetLocalStorage = (key, fallback) => {
+  try {
+    const value = localStorage.getItem(key);
+    return value !== null ? value : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const safeSetLocalStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+};
+
+// ── Provider ──────────────────────────────────────────────────────────────
+
+export const ThemeProvider = ({ children }) => {
+  // Theme colors
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('customTheme');
+      return saved ? JSON.parse(saved) : { ...themePresets.default };
+    } catch {
+      return { ...themePresets.default };
+    }
+  });
+
+  const [currentPreset, setCurrentPreset] = useState(() => {
+    return safeGetLocalStorage('themePreset', 'default');
+  });
+
+  // Theme mode
+  const [themeMode, setThemeModeState] = useState(() => {
+    return safeGetLocalStorage('themeMode', ThemeModes.SYSTEM);
+  });
+
+  // Dark mode (derived)
+  const [isDark, setIsDark] = useState(() => {
+    const mode = safeGetLocalStorage('themeMode', ThemeModes.SYSTEM);
+    return mode === ThemeModes.SYSTEM ? getSystemDarkMode() : mode === ThemeModes.DARK;
+  });
+
+  // Accessibility
+  const [fontSize, setFontSizeState] = useState(() => {
+    return safeGetLocalStorage('fontSize', 'medium');
+  });
+
+  const [reducedMotion, setReducedMotionState] = useState(() => {
+    const saved = safeGetLocalStorage('reducedMotion', null);
+    return saved !== null ? saved === 'true' : getSystemReducedMotion();
+  });
+
+  const [highContrast, setHighContrastState] = useState(() => {
+    return safeGetLocalStorage('highContrast', 'false') === 'true';
+  });
+
+  // ── FIXED: Live system preference listeners ────────────────────────
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e) => {
+      if (themeMode === ThemeModes.SYSTEM) {
+        setIsDark(e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [themeMode]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleChange = (e) => {
+      // Only update if user hasn't manually set a preference
+      const saved = safeGetLocalStorage('reducedMotion', null);
+      if (saved === null) {
+        setReducedMotionState(e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // ── Apply CSS Variables ──────────────────────────────────────────────
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--color-primary', theme.primary);
+    root.style.setProperty('--color-accent', theme.accent);
+    root.style.setProperty('--color-primary-light', adjustColor(theme.primary, 20));
+    root.style.setProperty('--color-primary-dark', adjustColor(theme.primary, -20));
+    root.style.setProperty('--color-accent-light', adjustColor(theme.accent, 20));
+    root.style.setProperty('--color-accent-dark', adjustColor(theme.accent, -20));
+    safeSetLocalStorage('customTheme', JSON.stringify(theme));
+  }, [theme]);
+
+  // ── Apply Dark Mode ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+    safeSetLocalStorage('themeMode', themeMode);
+  }, [isDark, themeMode]);
+
+  // ── Apply Font Size ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    const sizes = { small: '14px', medium: '16px', large: '18px' };
+    document.documentElement.style.setProperty('--font-size-base', sizes[fontSize] || '16px');
+    document.documentElement.setAttribute('data-font-size', fontSize);
+    safeSetLocalStorage('fontSize', fontSize);
+  }, [fontSize]);
+
+  // ── Apply Accessibility ──────────────────────────────────────────────
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduce-motion', reducedMotion);
+    safeSetLocalStorage('reducedMotion', String(reducedMotion));
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('high-contrast', highContrast);
+    safeSetLocalStorage('highContrast', String(highContrast));
+  }, [highContrast]);
+
+  // ── FIXED: Simpler toggleTheme (Light ↔ Dark only) ──────────────────
+
+  const toggleTheme = useCallback(() => {
+    if (isDark) {
+      setIsDark(false);
+      setThemeModeState(ThemeModes.LIGHT);
+    } else {
+      setIsDark(true);
+      setThemeModeState(ThemeModes.DARK);
+    }
+  }, [isDark]);
+
+  const setThemeMode = useCallback((mode) => {
+    setThemeModeState(mode);
+    if (mode === ThemeModes.LIGHT) setIsDark(false);
+    else if (mode === ThemeModes.DARK) setIsDark(true);
+    else setIsDark(getSystemDarkMode());
+  }, []);
+
+  const setFontSize = useCallback((size) => setFontSizeState(size), []);
+  const setReducedMotion = useCallback((value) => setReducedMotionState(value), []);
+  const setHighContrast = useCallback((value) => setHighContrastState(value), []);
+
+  const applyPreset = useCallback((presetName) => {
+    const preset = themePresets[presetName];
+    if (preset) {
+      setTheme({ ...preset });
+      setCurrentPreset(presetName);
+      safeSetLocalStorage('themePreset', presetName);
+    }
+  }, []);
+
+  const updateThemeColor = useCallback((colorType, value) => {
+    setTheme((prev) => ({ ...prev, [colorType]: value }));
+    setCurrentPreset('custom');
+    safeSetLocalStorage('themePreset', 'custom');
+  }, []);
+
+  const resetTheme = useCallback(() => {
+    setTheme({ ...themePresets.default });
+    setCurrentPreset('default');
+    setThemeModeState(ThemeModes.SYSTEM);
+    setIsDark(getSystemDarkMode());
+    setFontSizeState('medium');
+    setReducedMotionState(getSystemReducedMotion());
+    setHighContrastState(false);
+    safeSetLocalStorage('themePreset', 'default');
+  }, []);
+
+  // ── Computed Values ──────────────────────────────────────────────────
+
+  const currentThemeName = useMemo(() => {
+    return currentPreset === 'custom' ? 'Custom' : themePresets[currentPreset]?.name || 'Default';
+  }, [currentPreset]);
+
+  // ── Context Value ────────────────────────────────────────────────────
+
+  const value = useMemo(() => ({
+    theme, setTheme, currentPreset, currentThemeName,
+    themeMode, isDark,
+    fontSize, setFontSize,
+    reducedMotion, setReducedMotion,
+    highContrast, setHighContrast,
+    toggleTheme, setThemeMode, applyPreset, updateThemeColor, resetTheme,
+    themePresets, ThemeModes,
+  }), [
+    theme, currentPreset, currentThemeName,
+    themeMode, isDark,
+    fontSize, reducedMotion, highContrast,
+    toggleTheme, setThemeMode, applyPreset, updateThemeColor, resetTheme,
+  ]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+};
 
 export default ThemeContext;

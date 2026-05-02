@@ -8,6 +8,8 @@ import React, {
 } from 'react';
 import {
   applyActionCode,
+  browserLocalPersistence,
+  browserSessionPersistence,
   checkActionCode,
   confirmPasswordReset as firebaseConfirmPasswordReset,
   createUserWithEmailAndPassword,
@@ -22,10 +24,12 @@ import {
   linkWithPopup,
   OAuthProvider,
   onAuthStateChanged,
+  onIdTokenChanged,
   reauthenticateWithCredential,
   reload,
   sendEmailVerification,
   sendPasswordResetEmail,
+  setPersistence,
   signInWithEmailAndPassword,
   signInWithPhoneNumber,
   signInWithPopup,
@@ -52,7 +56,7 @@ import {
 import toast from 'react-hot-toast';
 import { auth, db, logAnalyticsEvent } from '../services/firebase';
 
-export const AuthContext = createContext(null);
+// ── Constants ─────────────────────────────────────────────────────────────
 
 const COLLECTIONS = {
   users: 'users',
@@ -77,41 +81,40 @@ const RESTRICTED_PROFILE_FIELDS = new Set([
   'userId',
 ]);
 
-const getErrorMessage = (code) => {
-  const messages = {
-    'auth/email-already-in-use': 'This email is already registered.',
-    'auth/invalid-email': 'Please enter a valid email address.',
-    'auth/weak-password': 'Password should be at least 6 characters.',
-    'auth/user-not-found': 'No account found with this email.',
-    'auth/wrong-password': 'Incorrect password.',
-    'auth/invalid-credential': 'Invalid credentials. Please try again.',
-    'auth/too-many-requests': 'Too many attempts. Please try again later.',
-    'auth/network-request-failed': 'Network error. Check your connection and try again.',
-    'auth/popup-closed-by-user': 'Sign-in popup was closed before completion.',
-    'auth/popup-blocked': 'Popups are blocked. Please allow popups and try again.',
-    'auth/account-exists-with-different-credential':
-      'An account already exists with a different sign-in method.',
-    'auth/requires-recent-login': 'Please sign in again to continue.',
-    'auth/user-disabled': 'This account has been disabled.',
-    'auth/operation-not-allowed': 'This operation is not allowed.',
-    'auth/invalid-verification-code': 'Invalid verification code.',
-    'auth/code-expired': 'Verification code has expired.',
-    'auth/missing-phone-number': 'Phone number is required.',
-    'auth/invalid-phone-number': 'Invalid phone number format.',
-    'auth/quota-exceeded': 'SMS quota exceeded. Try again later.',
-    'auth/invalid-action-code': 'The verification link is invalid or has expired.',
-    'auth/user-token-expired': 'Your session has expired. Please sign in again.',
-    'auth/no-current-user': 'Please sign in to continue.',
-    'auth/no-password-provider': 'This account does not support password-based reauthentication.',
-    'auth/missing-password': 'Please enter your password to continue.',
-    'auth/missing-recaptcha': 'Phone verification is not ready yet. Please refresh and try again.',
-    'auth/provider-not-linked': 'This sign-in method is not linked to your account.',
-    'auth/cannot-unlink-last-provider': 'You must keep at least one sign-in method linked.',
-    'auth/unsupported-provider': 'This sign-in provider is not supported.',
-  };
-
-  return messages[code] || 'An unexpected error occurred. Please try again.';
+const ERROR_MESSAGES = {
+  'auth/email-already-in-use': 'This email is already registered.',
+  'auth/invalid-email': 'Please enter a valid email address.',
+  'auth/weak-password': 'Password should be at least 6 characters.',
+  'auth/user-not-found': 'No account found with this email.',
+  'auth/wrong-password': 'Incorrect password.',
+  'auth/invalid-credential': 'Invalid credentials. Please try again.',
+  'auth/too-many-requests': 'Too many attempts. Please try again later.',
+  'auth/network-request-failed': 'Network error. Check your connection and try again.',
+  'auth/popup-closed-by-user': 'Sign-in popup was closed before completion.',
+  'auth/popup-blocked': 'Popups are blocked. Please allow popups and try again.',
+  'auth/account-exists-with-different-credential': 'An account already exists with a different sign-in method.',
+  'auth/requires-recent-login': 'Please sign in again to continue.',
+  'auth/user-disabled': 'This account has been disabled.',
+  'auth/operation-not-allowed': 'This operation is not allowed.',
+  'auth/invalid-verification-code': 'Invalid verification code.',
+  'auth/code-expired': 'Verification code has expired.',
+  'auth/missing-phone-number': 'Phone number is required.',
+  'auth/invalid-phone-number': 'Invalid phone number format.',
+  'auth/quota-exceeded': 'SMS quota exceeded. Try again later.',
+  'auth/invalid-action-code': 'The verification link is invalid or has expired.',
+  'auth/user-token-expired': 'Your session has expired. Please sign in again.',
+  'auth/no-current-user': 'Please sign in to continue.',
+  'auth/no-password-provider': 'This account does not support password-based reauthentication.',
+  'auth/missing-password': 'Please enter your password to continue.',
+  'auth/missing-recaptcha': 'Phone verification is not ready yet. Please refresh and try again.',
+  'auth/provider-not-linked': 'This sign-in method is not linked to your account.',
+  'auth/cannot-unlink-last-provider': 'You must keep at least one sign-in method linked.',
+  'auth/unsupported-provider': 'This sign-in provider is not supported.',
 };
+
+// ── Utility Functions ─────────────────────────────────────────────────────
+
+const getErrorMessage = (code) => ERROR_MESSAGES[code] || 'An unexpected error occurred. Please try again.';
 
 const safeTrackEvent = (eventName, payload = {}) => {
   try {
@@ -139,7 +142,8 @@ const getPrimaryProviderId = (firebaseUser) =>
 const getLinkedProviderIds = (firebaseUser) =>
   firebaseUser?.providerData?.map((provider) => provider.providerId).filter(Boolean) || [];
 
-const hasPasswordProvider = (firebaseUser) => getLinkedProviderIds(firebaseUser).includes('password');
+const hasPasswordProvider = (firebaseUser) =>
+  getLinkedProviderIds(firebaseUser).includes('password');
 
 const getDisplayName = (firebaseUser) =>
   firebaseUser?.displayName?.trim() || firebaseUser?.email?.split('@')[0] || 'User';
@@ -200,6 +204,10 @@ const deleteDocumentRefsInBatches = async (refs) => {
   }
 };
 
+// ── Context ───────────────────────────────────────────────────────────────
+
+export const AuthContext = createContext(null);
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
 
@@ -209,6 +217,8 @@ export const useAuth = () => {
 
   return context;
 };
+
+// ── Provider Component ────────────────────────────────────────────────────
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -221,6 +231,8 @@ export const AuthProvider = ({ children }) => {
   const [subscription, setSubscription] = useState(null);
   const [linkedProviders, setLinkedProviders] = useState([]);
   const [mfaEnabled, setMfaEnabled] = useState(false);
+
+  // ── State Helpers ─────────────────────────────────────────────────────
 
   const clearAuthState = useCallback(() => {
     setUser(null);
@@ -350,12 +362,10 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      return {
-        created: false,
-        data: mergedData,
-      };
+      return { created: false, data: mergedData };
     }
 
+    // Create new user document
     const newUserData = {
       email: firebaseUser.email ?? null,
       displayName: getDisplayName(firebaseUser),
@@ -390,13 +400,13 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  // ── Auth State Listener ──────────────────────────────────────────────
+
   useEffect(() => {
     let isActive = true;
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!isActive) {
-        return;
-      }
+      if (!isActive) return;
 
       setInitializing(true);
 
@@ -410,9 +420,7 @@ export const AuthProvider = ({ children }) => {
 
         const { created, data } = await hydrateUserDocument(firebaseUser);
 
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         setUserData(data);
         setUserRole(data?.role || 'user');
@@ -421,9 +429,7 @@ export const AuthProvider = ({ children }) => {
           doc(db, COLLECTIONS.subscriptions, firebaseUser.uid)
         );
 
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
         setSubscription(subscriptionSnapshot.exists() ? subscriptionSnapshot.data() : null);
 
@@ -437,15 +443,11 @@ export const AuthProvider = ({ children }) => {
             userId: firebaseUser.uid,
             method: getPrimaryProviderId(firebaseUser),
           });
-
           toast.success('Welcome to ResumeAI Pro!');
         }
       } catch (error) {
         console.error('Error syncing auth state:', error);
-
-        if (isActive) {
-          setAuthError(error);
-        }
+        if (isActive) setAuthError(error);
       } finally {
         if (isActive) {
           setLoading(false);
@@ -459,6 +461,38 @@ export const AuthProvider = ({ children }) => {
       unsubscribe();
     };
   }, [clearAuthState, hydrateUserDocument, syncFirebaseUserState]);
+
+  // ── Token Refresh Listener ──────────────────────────────────────────
+
+  useEffect(() => {
+    let isActive = true;
+
+    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+      if (!isActive || !firebaseUser) return;
+
+      try {
+        // Refresh custom claims if using Firebase Admin SDK
+        const tokenResult = await getIdTokenResult(firebaseUser, false);
+        
+        // If you set custom claims via Admin SDK (e.g., admin: true),
+        // they'll be available here after token refresh
+        // const isAdmin = tokenResult.claims.admin === true;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Token refreshed for user:', firebaseUser.uid);
+        }
+      } catch (error) {
+        console.warn('Token refresh failed:', error);
+      }
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // ── Subscription Real-time Listener ─────────────────────────────────
 
   useEffect(() => {
     if (!user) {
@@ -478,6 +512,8 @@ export const AuthProvider = ({ children }) => {
 
     return unsubscribe;
   }, [user]);
+
+  // ── Auth Methods ──────────────────────────────────────────────────────
 
   const signup = useCallback(async (email, password, displayName, options = {}) => {
     try {
@@ -519,11 +555,7 @@ export const AuthProvider = ({ children }) => {
         { merge: true }
       );
 
-      safeTrackEvent('sign_up', {
-        method: 'email',
-        userId: userCredential.user.uid,
-      });
-
+      safeTrackEvent('sign_up', { method: 'email', userId: userCredential.user.uid });
       toast.success('Account created successfully. Please verify your email.');
       return userCredential.user;
     } catch (error) {
@@ -535,8 +567,13 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (email, password, rememberMe = true) => {
     try {
-      void rememberMe;
       setAuthError(null);
+
+      // Set persistence based on rememberMe
+      await setPersistence(
+        auth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
 
       const normalizedEmail = email.trim().toLowerCase();
       const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
@@ -828,11 +865,7 @@ export const AuthProvider = ({ children }) => {
         setIsEmailVerified(false);
         setUserData((prev) =>
           prev
-            ? {
-                ...prev,
-                email: normalizedEmail,
-                emailVerified: false,
-              }
+            ? { ...prev, email: normalizedEmail, emailVerified: false }
             : prev
         );
 
@@ -894,9 +927,7 @@ export const AuthProvider = ({ children }) => {
 
         const [resumesSnapshot, notificationsSnapshot] = await Promise.all([
           getDocs(query(collection(db, COLLECTIONS.resumes), where('userId', '==', currentUser.uid))),
-          getDocs(
-            query(collection(db, COLLECTIONS.notifications), where('userId', '==', currentUser.uid))
-          ),
+          getDocs(query(collection(db, COLLECTIONS.notifications), where('userId', '==', currentUser.uid))),
         ]);
 
         const refsToDelete = [
@@ -993,11 +1024,7 @@ export const AuthProvider = ({ children }) => {
   const getToken = useCallback(async (forceRefresh = false) => {
     try {
       const currentUser = auth.currentUser;
-
-      if (!currentUser) {
-        return null;
-      }
-
+      if (!currentUser) return null;
       return await getIdToken(currentUser, forceRefresh);
     } catch (error) {
       console.error('Error getting token:', error);
@@ -1008,11 +1035,7 @@ export const AuthProvider = ({ children }) => {
   const getTokenResult = useCallback(async (forceRefresh = false) => {
     try {
       const currentUser = auth.currentUser;
-
-      if (!currentUser) {
-        return null;
-      }
-
+      if (!currentUser) return null;
       return await getIdTokenResult(currentUser, forceRefresh);
     } catch (error) {
       console.error('Error getting token result:', error);
@@ -1022,14 +1045,8 @@ export const AuthProvider = ({ children }) => {
 
   const hasRole = useCallback(
     (requiredRole) => {
-      if (!userRole) {
-        return false;
-      }
-
-      if (Array.isArray(requiredRole)) {
-        return requiredRole.includes(userRole);
-      }
-
+      if (!userRole) return false;
+      if (Array.isArray(requiredRole)) return requiredRole.includes(userRole);
       return userRole === requiredRole;
     },
     [userRole]
@@ -1042,6 +1059,8 @@ export const AuthProvider = ({ children }) => {
       (subscription?.status === 'active' && subscription?.plan === 'premium'),
     [subscription, userRole]
   );
+
+  // ── Context Value ────────────────────────────────────────────────────
 
   const value = useMemo(
     () => ({
@@ -1116,6 +1135,8 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+// ── useRequireAuth Hook ──────────────────────────────────────────────────
 
 export const useRequireAuth = (options = {}) => {
   const { user, loading, initializing, isEmailVerified, hasRole, sendVerificationEmail } =

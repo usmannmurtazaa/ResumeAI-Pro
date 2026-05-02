@@ -1,43 +1,72 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  collection,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  writeBatch,
-  serverTimestamp,
-  increment,
-  limit,
-  startAfter,
+  collection, query, where, orderBy, onSnapshot,
+  addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs,
+  writeBatch, serverTimestamp, increment, limit, startAfter,
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { useNotifications } from './NotificationContext';
-import { calculateATSScore } from '../utils/atsKeywords';
 import toast from 'react-hot-toast';
 
-// ============================================
-// CONSTANTS
-// ============================================
+// ── Constants ─────────────────────────────────────────────────────────────
 
-const FREE_RESUME_LIMIT = 5; // Updated from 1 to 5
-const RESUME_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive', 'tech'];
-const RESUME_STATUS = {
+const FREE_RESUME_LIMIT = 5;
+const RESUMES_PER_PAGE = 20;
+
+export const RESUME_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive', 'tech'];
+
+export const RESUME_STATUS = {
   DRAFT: 'draft',
   COMPLETED: 'completed',
   ARCHIVED: 'archived',
 };
 
-// ============================================
-// CONTEXT CREATION
-// ============================================
+// ── Safe ATS Score Calculation ───────────────────────────────────────────
+
+const calculateATSScoreSafe = async (data) => {
+  try {
+    const { calculateATSScore } = await import('../utils/atsKeywords');
+    return calculateATSScore(data);
+  } catch {
+    // Fallback: basic score calculation
+    let score = 50;
+    if (data?.personal?.fullName) score += 10;
+    if (data?.personal?.email) score += 5;
+    if (data?.experience?.length > 0) score += 15;
+    if (data?.education?.length > 0) score += 10;
+    if (data?.skills?.technical?.length >= 3) score += 10;
+    return Math.min(score, 100);
+  }
+};
+
+// ── Simple Debounce ──────────────────────────────────────────────────────
+
+const useDebounce = (callback, delay) => {
+  const timeoutRef = useRef(null);
+  const callbackRef = useRef(callback);
+
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
+  const debouncedFn = useCallback((...args) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      callbackRef.current(...args);
+    }, delay);
+  }, [delay]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return debouncedFn;
+};
+
+// ── Context ───────────────────────────────────────────────────────────────
 
 const ResumeContext = createContext(null);
 
@@ -49,11 +78,9 @@ export const useResume = () => {
   return context;
 };
 
-export const useResumeContext = useResume; // Alias for backward compatibility
+export const useResumeContext = useResume;
 
-// ============================================
-// PROVIDER COMPONENT
-// ============================================
+// ── Provider ──────────────────────────────────────────────────────────────
 
 export const ResumeProvider = ({ children }) => {
   const { user, isPremium } = useAuth();
@@ -65,19 +92,43 @@ export const ResumeProvider = ({ children }) => {
   const [lastVisible, setLastVisible] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [stats, setStats] = useState({
-    total: 0,
-    completed: 0,
-    inProgress: 0,
-    archived: 0,
-    avgScore: 0,
-    bestScore: 0,
-    totalDownloads: 0,
-    templateDistribution: {},
+    total: 0, completed: 0, inProgress: 0, archived: 0,
+    avgScore: 0, bestScore: 0, totalDownloads: 0, templateDistribution: {},
   });
 
-  // ============================================
-  // REAL-TIME RESUMES SUBSCRIPTION
-  // ============================================
+  const mountedRef = useRef(true);
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // ── Calculate Stats ──────────────────────────────────────────────────
+
+  const calculateStats = useCallback((resumeData) => {
+    const completed = resumeData.filter((r) => r.status === 'completed' || r.atsScore >= 80).length;
+    const archived = resumeData.filter((r) => r.status === 'archived').length;
+    const scores = resumeData.map((r) => r.atsScore || 0).filter((s) => s > 0);
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    const totalDownloads = resumeData.reduce((sum, r) => sum + (r.downloadCount || 0), 0);
+
+    const templateDistribution = {};
+    resumeData.forEach((r) => {
+      const t = r.template || 'modern';
+      templateDistribution[t] = (templateDistribution[t] || 0) + 1;
+    });
+
+    setStats({
+      total: resumeData.length, completed,
+      inProgress: resumeData.length - completed - archived, archived,
+      avgScore, bestScore: scores.length > 0 ? Math.max(...scores) : 0,
+      totalDownloads, templateDistribution,
+    });
+  }, []);
+
+  // ── Real-time Subscription ──────────────────────────────────────────
 
   useEffect(() => {
     if (!user) {
@@ -94,12 +145,13 @@ export const ResumeProvider = ({ children }) => {
       collection(db, 'resumes'),
       where('userId', '==', user.uid),
       orderBy('updatedAt', 'desc'),
-      limit(20)
+      limit(RESUMES_PER_PAGE)
     );
 
-    const unsubscribe = onSnapshot(
-      q,
+    const unsubscribe = onSnapshot(q,
       (snapshot) => {
+        if (!mountedRef.current) return;
+
         const resumeData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -109,54 +161,24 @@ export const ResumeProvider = ({ children }) => {
 
         setResumes(resumeData);
         setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-        setHasMore(snapshot.docs.length === 20);
+        setHasMore(snapshot.docs.length === RESUMES_PER_PAGE);
         calculateStats(resumeData);
         setLoading(false);
       },
       (err) => {
         console.error('Error fetching resumes:', err);
-        setError(err);
-        setLoading(false);
-        toast.error('Failed to load resumes');
+        if (mountedRef.current) {
+          setError(err);
+          setLoading(false);
+          toast.error('Failed to load resumes');
+        }
       }
     );
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, calculateStats]);
 
-  // ============================================
-  // CALCULATE STATISTICS
-  // ============================================
-
-  const calculateStats = (resumeData) => {
-    const completed = resumeData.filter((r) => r.status === 'completed' || r.atsScore >= 80).length;
-    const archived = resumeData.filter((r) => r.status === 'archived').length;
-    const scores = resumeData.map((r) => r.atsScore || 0).filter((s) => s > 0);
-    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-    const totalDownloads = resumeData.reduce((sum, r) => sum + (r.downloadCount || 0), 0);
-
-    // Template distribution
-    const templateDistribution = {};
-    resumeData.forEach((r) => {
-      const template = r.template || 'modern';
-      templateDistribution[template] = (templateDistribution[template] || 0) + 1;
-    });
-
-    setStats({
-      total: resumeData.length,
-      completed,
-      inProgress: resumeData.length - completed - archived,
-      archived,
-      avgScore,
-      bestScore: scores.length > 0 ? Math.max(...scores) : 0,
-      totalDownloads,
-      templateDistribution,
-    });
-  };
-
-  // ============================================
-  // LOAD MORE (PAGINATION)
-  // ============================================
+  // ── Load More ────────────────────────────────────────────────────────
 
   const loadMore = useCallback(async () => {
     if (!user || !lastVisible || !hasMore || loading) return;
@@ -167,10 +189,12 @@ export const ResumeProvider = ({ children }) => {
         where('userId', '==', user.uid),
         orderBy('updatedAt', 'desc'),
         startAfter(lastVisible),
-        limit(20)
+        limit(RESUMES_PER_PAGE)
       );
 
       const snapshot = await getDocs(q);
+      if (!mountedRef.current) return;
+
       const newResumes = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -180,15 +204,13 @@ export const ResumeProvider = ({ children }) => {
 
       setResumes((prev) => [...prev, ...newResumes]);
       setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-      setHasMore(snapshot.docs.length === 20);
-    } catch (error) {
-      console.error('Error loading more resumes:', error);
+      setHasMore(snapshot.docs.length === RESUMES_PER_PAGE);
+    } catch (err) {
+      console.error('Error loading more resumes:', err);
     }
   }, [user, lastVisible, hasMore, loading]);
 
-  // ============================================
-  // PERMISSIONS
-  // ============================================
+  // ── Permissions ─────────────────────────────────────────────────────
 
   const canCreateResume = useMemo(() => {
     if (!user) return false;
@@ -201,479 +223,340 @@ export const ResumeProvider = ({ children }) => {
     return Math.max(0, FREE_RESUME_LIMIT - resumes.length);
   }, [isPremium, resumes.length]);
 
-  // ============================================
-  // CREATE RESUME
-  // ============================================
+  // ── Create Resume ────────────────────────────────────────────────────
 
-  const createResume = useCallback(
-    async (data = {}) => {
-      if (!user) throw new Error('User not authenticated');
+  const createResume = useCallback(async (data = {}) => {
+    if (!user) throw new Error('User not authenticated');
 
-      if (!canCreateResume) {
-        toast.error(
-          `Free plan limited to ${FREE_RESUME_LIMIT} resumes. Upgrade to Pro for unlimited resumes!`
-        );
-        throw new Error('Resume limit reached');
-      }
+    if (!canCreateResume) {
+      toast.error(`Free plan: ${FREE_RESUME_LIMIT} resumes max. Upgrade to Pro!`);
+      throw new Error('Resume limit reached');
+    }
 
-      try {
-        const newResume = {
-          userId: user.uid,
-          name: data.name || 'Untitled Resume',
-          template: data.template || 'modern',
-          data: data.data || {},
-          status: RESUME_STATUS.DRAFT,
-          atsScore: 0,
-          atsBreakdown: {},
-          downloadCount: 0,
-          viewCount: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastModified: serverTimestamp(),
-        };
+    try {
+      const newResume = {
+        userId: user.uid,
+        name: data.name || 'Untitled Resume',
+        template: data.template || 'modern',
+        data: data.data || {},
+        status: RESUME_STATUS.DRAFT,
+        atsScore: 0,
+        downloadCount: 0,
+        viewCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
 
-        const docRef = await addDoc(collection(db, 'resumes'), newResume);
+      const docRef = await addDoc(collection(db, 'resumes'), newResume);
 
-        const createdResume = {
-          id: docRef.id,
-          ...newResume,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+      notify?.resumeCreated?.(newResume.name);
 
-        notify?.resumeCreated?.(newResume.name) ||
-          notify?.success('Resume Created', `"${newResume.name}" has been created successfully.`);
+      return {
+        id: docRef.id,
+        ...newResume,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    } catch (err) {
+      console.error('Error creating resume:', err);
+      toast.error('Failed to create resume');
+      throw err;
+    }
+  }, [user, canCreateResume, notify]);
 
-        toast.success('Resume created successfully');
-        return createdResume;
-      } catch (error) {
-        console.error('Error creating resume:', error);
-        toast.error('Failed to create resume');
-        throw error;
-      }
-    },
-    [user, canCreateResume, notify]
-  );
+  // ── Update Resume ────────────────────────────────────────────────────
 
-  // ============================================
-  // UPDATE RESUME
-  // ============================================
-
-  const updateResume = useCallback(
-    async (resumeId, data) => {
-      try {
-        const resumeRef = doc(db, 'resumes', resumeId);
-
-        let atsScore = data.atsScore;
-        let atsBreakdown = data.atsBreakdown;
-        if (data.data && !atsScore) {
-          atsScore = calculateATSScore(data.data);
-        }
-
-        const updates = {
-          ...data,
-          atsScore,
-          atsBreakdown,
-          updatedAt: serverTimestamp(),
-          lastModified: serverTimestamp(),
-          status: atsScore >= 80 ? RESUME_STATUS.COMPLETED : data.status || RESUME_STATUS.DRAFT,
-        };
-
-        await updateDoc(resumeRef, updates);
-
-        if (currentResume?.id === resumeId) {
-          setCurrentResume((prev) => ({ ...prev, ...updates }));
-        }
-
-        // Check for ATS milestone
-        const oldScore = currentResume?.atsScore || 0;
-        if (atsScore >= 80 && oldScore < 80) {
-          notify?.atsScoreMilestone?.(data.name || 'Resume', atsScore);
-        }
-
-        return true;
-      } catch (error) {
-        console.error('Error updating resume:', error);
-        toast.error('Failed to update resume');
-        throw error;
-      }
-    },
-    [currentResume, notify]
-  );
-
-  // ============================================
-  // AUTO-SAVE RESUME
-  // ============================================
-
-  const autoSaveResume = useCallback(async (resumeId, data) => {
+  const updateResume = useCallback(async (resumeId, data) => {
     try {
       const resumeRef = doc(db, 'resumes', resumeId);
-      const atsScore = calculateATSScore(data);
+
+      let atsScore = data.atsScore;
+      if (data.data && !atsScore) {
+        atsScore = await calculateATSScoreSafe(data.data);
+      }
+
+      const updates = {
+        ...data,
+        atsScore,
+        updatedAt: serverTimestamp(),
+        status: atsScore >= 80 ? RESUME_STATUS.COMPLETED : (data.status || RESUME_STATUS.DRAFT),
+      };
+
+      await updateDoc(resumeRef, updates);
+
+      if (currentResume?.id === resumeId) {
+        setCurrentResume((prev) => ({ ...prev, ...updates }));
+      }
+
+      const oldScore = currentResume?.atsScore || 0;
+      if (atsScore >= 80 && oldScore < 80) {
+        notify?.atsScoreMilestone?.(data.name || 'Resume', atsScore);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error updating resume:', err);
+      toast.error('Failed to update resume');
+      throw err;
+    }
+  }, [currentResume, notify]);
+
+  // ── Auto-Save (Debounced) ────────────────────────────────────────────
+
+  const autoSaveHandler = useCallback(async (resumeId, data) => {
+    try {
+      const resumeRef = doc(db, 'resumes', resumeId);
+      const atsScore = await calculateATSScoreSafe(data);
 
       await updateDoc(resumeRef, {
         data,
         atsScore,
         updatedAt: serverTimestamp(),
-        lastModified: serverTimestamp(),
         status: atsScore >= 80 ? RESUME_STATUS.COMPLETED : RESUME_STATUS.DRAFT,
       });
-
       return true;
-    } catch (error) {
-      console.error('Error auto-saving resume:', error);
+    } catch (err) {
+      console.error('Auto-save error:', err);
       return false;
     }
   }, []);
 
-  // ============================================
-  // DELETE RESUME
-  // ============================================
+  const autoSaveResume = useDebounce(autoSaveHandler, 1500);
 
-  const deleteResume = useCallback(
-    async (resumeId) => {
-      try {
-        const resumeRef = doc(db, 'resumes', resumeId);
-        await deleteDoc(resumeRef);
+  // ── Delete Resume ────────────────────────────────────────────────────
 
-        if (currentResume?.id === resumeId) {
-          setCurrentResume(null);
-        }
+  const deleteResume = useCallback(async (resumeId) => {
+    try {
+      await deleteDoc(doc(db, 'resumes', resumeId));
+      if (currentResume?.id === resumeId) setCurrentResume(null);
+      toast.success('Resume deleted');
+      return true;
+    } catch (err) {
+      console.error('Error deleting resume:', err);
+      toast.error('Failed to delete resume');
+      throw err;
+    }
+  }, [currentResume]);
 
-        toast.success('Resume deleted successfully');
-        return true;
-      } catch (error) {
-        console.error('Error deleting resume:', error);
-        toast.error('Failed to delete resume');
-        throw error;
-      }
-    },
-    [currentResume]
-  );
+  // ── Duplicate Resume ─────────────────────────────────────────────────
 
-  // ============================================
-  // DUPLICATE RESUME
-  // ============================================
+  const duplicateResume = useCallback(async (resume) => {
+    if (!user) throw new Error('User not authenticated');
+    if (!canCreateResume) {
+      toast.error(`Free plan: ${FREE_RESUME_LIMIT} resumes max.`);
+      throw new Error('Resume limit reached');
+    }
 
-  const duplicateResume = useCallback(
-    async (resume) => {
-      if (!user) throw new Error('User not authenticated');
+    try {
+      const { id, createdAt, updatedAt, downloadCount, viewCount, ...resumeData } = resume;
 
-      if (!canCreateResume) {
-        toast.error(
-          `Free plan limited to ${FREE_RESUME_LIMIT} resumes. Upgrade to Pro for unlimited resumes!`
-        );
-        throw new Error('Resume limit reached');
-      }
+      const newResume = {
+        ...resumeData,
+        userId: user.uid,
+        name: `${resume.name || 'Untitled'} (Copy)`,
+        status: RESUME_STATUS.DRAFT,
+        downloadCount: 0,
+        viewCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
 
-      try {
-        const { id, createdAt, updatedAt, downloadCount, viewCount, ...resumeData } = resume;
+      const docRef = await addDoc(collection(db, 'resumes'), newResume);
+      notify?.success?.('Resume duplicated', `"${newResume.name}" created.`);
 
-        const newResume = {
-          ...resumeData,
-          userId: user.uid,
-          name: `${resume.name || 'Untitled'} (Copy)`,
-          status: RESUME_STATUS.DRAFT,
-          downloadCount: 0,
-          viewCount: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastModified: serverTimestamp(),
-        };
+      return {
+        id: docRef.id,
+        ...newResume,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    } catch (err) {
+      console.error('Error duplicating resume:', err);
+      toast.error('Failed to duplicate resume');
+      throw err;
+    }
+  }, [user, canCreateResume, notify]);
 
-        const docRef = await addDoc(collection(db, 'resumes'), newResume);
+  // ── Archive/Unarchive ────────────────────────────────────────────────
 
-        const duplicatedResume = {
-          id: docRef.id,
-          ...newResume,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+  const archiveResume = useCallback(async (resumeId) => {
+    try {
+      await updateDoc(doc(db, 'resumes', resumeId), {
+        status: RESUME_STATUS.ARCHIVED,
+        archivedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      toast.success('Resume archived');
+      return true;
+    } catch (err) {
+      console.error('Archive error:', err);
+      toast.error('Failed to archive');
+      throw err;
+    }
+  }, []);
 
-        notify?.success('Resume Duplicated', `"${newResume.name}" has been created.`);
+  const unarchiveResume = useCallback(async (resumeId) => {
+    try {
+      await updateDoc(doc(db, 'resumes', resumeId), {
+        status: RESUME_STATUS.DRAFT,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success('Resume restored');
+      return true;
+    } catch (err) {
+      console.error('Restore error:', err);
+      toast.error('Failed to restore');
+      throw err;
+    }
+  }, []);
 
-        toast.success('Resume duplicated successfully');
-        return duplicatedResume;
-      } catch (error) {
-        console.error('Error duplicating resume:', error);
-        toast.error('Failed to duplicate resume');
-        throw error;
-      }
-    },
-    [user, canCreateResume, notify]
-  );
-
-  // ============================================
-  // ARCHIVE RESUME
-  // ============================================
-
-  const archiveResume = useCallback(
-    async (resumeId) => {
-      try {
-        const resumeRef = doc(db, 'resumes', resumeId);
-        await updateDoc(resumeRef, {
-          status: RESUME_STATUS.ARCHIVED,
-          archivedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-
-        toast.success('Resume archived');
-        return true;
-      } catch (error) {
-        console.error('Error archiving resume:', error);
-        toast.error('Failed to archive resume');
-        throw error;
-      }
-    },
-    []
-  );
-
-  const unarchiveResume = useCallback(
-    async (resumeId) => {
-      try {
-        const resumeRef = doc(db, 'resumes', resumeId);
-        await updateDoc(resumeRef, {
-          status: RESUME_STATUS.DRAFT,
-          updatedAt: serverTimestamp(),
-        });
-
-        toast.success('Resume restored');
-        return true;
-      } catch (error) {
-        console.error('Error restoring resume:', error);
-        toast.error('Failed to restore resume');
-        throw error;
-      }
-    },
-    []
-  );
-
-  // ============================================
-  // INCREMENT DOWNLOAD COUNT
-  // ============================================
+  // ── Counters ─────────────────────────────────────────────────────────
 
   const incrementDownloadCount = useCallback(async (resumeId) => {
     try {
-      const resumeRef = doc(db, 'resumes', resumeId);
-      await updateDoc(resumeRef, {
+      await updateDoc(doc(db, 'resumes', resumeId), {
         downloadCount: increment(1),
         lastDownloaded: serverTimestamp(),
       });
-
-      setResumes((prev) =>
-        prev.map((r) =>
-          r.id === resumeId ? { ...r, downloadCount: (r.downloadCount || 0) + 1 } : r
-        )
-      );
-
+      setResumes((prev) => prev.map((r) =>
+        r.id === resumeId ? { ...r, downloadCount: (r.downloadCount || 0) + 1 } : r
+      ));
       return true;
-    } catch (error) {
-      console.error('Error incrementing download count:', error);
+    } catch (err) {
+      console.error('Download count error:', err);
       return false;
     }
   }, []);
-
-  // ============================================
-  // INCREMENT VIEW COUNT
-  // ============================================
 
   const incrementViewCount = useCallback(async (resumeId) => {
     try {
-      const resumeRef = doc(db, 'resumes', resumeId);
-      await updateDoc(resumeRef, {
+      await updateDoc(doc(db, 'resumes', resumeId), {
         viewCount: increment(1),
         lastViewed: serverTimestamp(),
       });
-
-      setResumes((prev) =>
-        prev.map((r) =>
-          r.id === resumeId ? { ...r, viewCount: (r.viewCount || 0) + 1 } : r
-        )
-      );
-
       return true;
-    } catch (error) {
-      console.error('Error incrementing view count:', error);
+    } catch (err) {
+      console.error('View count error:', err);
       return false;
     }
   }, []);
 
-  // ============================================
-  // GET SINGLE RESUME
-  // ============================================
+  // ── Get/Load Resume ──────────────────────────────────────────────────
 
   const getResume = useCallback(async (resumeId) => {
     try {
-      const resumeRef = doc(db, 'resumes', resumeId);
-      const resumeDoc = await getDoc(resumeRef);
-
-      if (resumeDoc.exists()) {
-        const resume = {
-          id: resumeDoc.id,
-          ...resumeDoc.data(),
-          createdAt: resumeDoc.data().createdAt?.toDate?.() || new Date(),
-          updatedAt: resumeDoc.data().updatedAt?.toDate?.() || new Date(),
+      const docRef = doc(db, 'resumes', resumeId);
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        return {
+          id: snapshot.id,
+          ...snapshot.data(),
+          createdAt: snapshot.data().createdAt?.toDate?.() || new Date(),
+          updatedAt: snapshot.data().updatedAt?.toDate?.() || new Date(),
         };
-        return resume;
       }
       return null;
-    } catch (error) {
-      console.error('Error fetching resume:', error);
+    } catch (err) {
+      console.error('Get resume error:', err);
       return null;
     }
   }, []);
 
-  const loadResume = useCallback(
-    async (resumeId) => {
-      const resume = await getResume(resumeId);
-      if (resume) {
-        setCurrentResume(resume);
-        await incrementViewCount(resumeId);
-      }
-      return resume;
-    },
-    [getResume, incrementViewCount]
-  );
+  const loadResume = useCallback(async (resumeId) => {
+    const resume = await getResume(resumeId);
+    if (resume) {
+      setCurrentResume(resume);
+      incrementViewCount(resumeId);
+    }
+    return resume;
+  }, [getResume, incrementViewCount]);
 
-  const clearCurrentResume = useCallback(() => {
-    setCurrentResume(null);
-  }, []);
+  const clearCurrentResume = useCallback(() => setCurrentResume(null), []);
 
-  // ============================================
-  // BULK OPERATIONS
-  // ============================================
+  // ── Bulk Operations ──────────────────────────────────────────────────
 
-  const deleteMultipleResumes = useCallback(
-    async (resumeIds) => {
-      if (!resumeIds.length) return;
-
-      try {
-        const batch = writeBatch(db);
-        resumeIds.forEach((id) => {
-          const resumeRef = doc(db, 'resumes', id);
-          batch.delete(resumeRef);
-        });
-        await batch.commit();
-
-        if (currentResume && resumeIds.includes(currentResume.id)) {
-          setCurrentResume(null);
-        }
-
-        toast.success(`Deleted ${resumeIds.length} resumes`);
-        return true;
-      } catch (error) {
-        console.error('Error deleting multiple resumes:', error);
-        toast.error('Failed to delete resumes');
-        throw error;
-      }
-    },
-    [currentResume]
-  );
+  const deleteMultipleResumes = useCallback(async (resumeIds) => {
+    if (!resumeIds.length) return;
+    try {
+      const batch = writeBatch(db);
+      resumeIds.forEach((id) => batch.delete(doc(db, 'resumes', id)));
+      await batch.commit();
+      if (currentResume && resumeIds.includes(currentResume.id)) setCurrentResume(null);
+      toast.success(`Deleted ${resumeIds.length} resumes`);
+      return true;
+    } catch (err) {
+      console.error('Bulk delete error:', err);
+      toast.error('Failed to delete resumes');
+      throw err;
+    }
+  }, [currentResume]);
 
   const archiveMultipleResumes = useCallback(async (resumeIds) => {
     if (!resumeIds.length) return;
-
     try {
       const batch = writeBatch(db);
-      resumeIds.forEach((id) => {
-        const resumeRef = doc(db, 'resumes', id);
-        batch.update(resumeRef, {
-          status: RESUME_STATUS.ARCHIVED,
-          archivedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      });
+      resumeIds.forEach((id) => batch.update(doc(db, 'resumes', id), {
+        status: RESUME_STATUS.ARCHIVED,
+        archivedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }));
       await batch.commit();
-
       toast.success(`Archived ${resumeIds.length} resumes`);
       return true;
-    } catch (error) {
-      console.error('Error archiving multiple resumes:', error);
-      toast.error('Failed to archive resumes');
-      throw error;
+    } catch (err) {
+      console.error('Bulk archive error:', err);
+      toast.error('Failed to archive');
+      throw err;
     }
   }, []);
 
-  // ============================================
-  // SEARCH & FILTER
-  // ============================================
+  // ── Search & Filter ──────────────────────────────────────────────────
 
-  const searchResumes = useCallback(
-    (searchTerm) => {
-      if (!searchTerm) return resumes;
-      const term = searchTerm.toLowerCase();
-      return resumes.filter(
-        (r) =>
-          r.name?.toLowerCase().includes(term) ||
-          r.data?.personal?.fullName?.toLowerCase().includes(term) ||
-          r.data?.personal?.title?.toLowerCase().includes(term)
-      );
-    },
-    [resumes]
-  );
+  const searchResumes = useCallback((searchTerm) => {
+    if (!searchTerm) return resumes;
+    const term = searchTerm.toLowerCase();
+    return resumes.filter((r) =>
+      r.name?.toLowerCase().includes(term) ||
+      r.data?.personal?.fullName?.toLowerCase().includes(term) ||
+      r.data?.personal?.title?.toLowerCase().includes(term)
+    );
+  }, [resumes]);
 
-  const filterResumesByStatus = useCallback(
-    (status) => {
-      if (status === 'all') return resumes;
-      return resumes.filter((r) => r.status === status);
-    },
-    [resumes]
-  );
+  const filterResumesByStatus = useCallback((status) => {
+    if (status === 'all') return resumes;
+    return resumes.filter((r) => r.status === status);
+  }, [resumes]);
 
-  const filterResumesByTemplate = useCallback(
-    (template) => {
-      if (template === 'all') return resumes;
-      return resumes.filter((r) => r.template === template);
-    },
-    [resumes]
-  );
+  const filterResumesByTemplate = useCallback((template) => {
+    if (template === 'all') return resumes;
+    return resumes.filter((r) => r.template === template);
+  }, [resumes]);
 
-  // ============================================
-  // CONTEXT VALUE
-  // ============================================
+  // ── Context Value ────────────────────────────────────────────────────
 
-  const value = {
-    // State
-    resumes,
-    currentResume,
-    loading,
-    error,
-    stats,
-    hasMore,
-    canCreateResume,
-    freeResumesRemaining,
-
-    // Actions
-    createResume,
-    updateResume,
-    autoSaveResume,
-    deleteResume,
-    duplicateResume,
-    archiveResume,
-    unarchiveResume,
-    deleteMultipleResumes,
-    archiveMultipleResumes,
-    incrementDownloadCount,
-    incrementViewCount,
-    loadMore,
-
-    // Helpers
-    getResume,
-    loadResume,
-    clearCurrentResume,
-    setCurrentResume,
-    searchResumes,
-    filterResumesByStatus,
-    filterResumesByTemplate,
-
-    // Constants
-    FREE_RESUME_LIMIT,
-    RESUME_TEMPLATES,
-    RESUME_STATUS,
-
-    // Computed
+  const value = useMemo(() => ({
+    resumes, currentResume, loading, error, stats, hasMore,
+    canCreateResume, freeResumesRemaining,
+    createResume, updateResume, autoSaveResume,
+    deleteResume, duplicateResume, archiveResume, unarchiveResume,
+    deleteMultipleResumes, archiveMultipleResumes,
+    incrementDownloadCount, incrementViewCount, loadMore,
+    getResume, loadResume, clearCurrentResume, setCurrentResume,
+    searchResumes, filterResumesByStatus, filterResumesByTemplate,
+    FREE_RESUME_LIMIT, RESUME_TEMPLATES, RESUME_STATUS,
     hasResumes: resumes.length > 0,
     freeLimitReached: !isPremium && resumes.length >= FREE_RESUME_LIMIT,
-  };
+  }), [
+    resumes, currentResume, loading, error, stats, hasMore,
+    canCreateResume, freeResumesRemaining,
+    createResume, updateResume, autoSaveResume,
+    deleteResume, duplicateResume, archiveResume, unarchiveResume,
+    deleteMultipleResumes, archiveMultipleResumes,
+    incrementDownloadCount, incrementViewCount, loadMore,
+    getResume, loadResume, clearCurrentResume,
+    searchResumes, filterResumesByStatus, filterResumesByTemplate,
+    isPremium,
+  ]);
 
   return <ResumeContext.Provider value={value}>{children}</ResumeContext.Provider>;
 };

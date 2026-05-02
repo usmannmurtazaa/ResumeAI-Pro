@@ -1,22 +1,64 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
-import {
-  doc,
-  getDoc,
-  setDoc,
-  onSnapshot,
-  updateDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { useDebouncedCallback } from '../hooks/useDebounce';
 import toast from 'react-hot-toast';
 
-// ============================================
-// CONTEXT CREATION
-// ============================================
+// ── Inline Hooks (Self-contained) ────────────────────────────────────────
+
+/**
+ * Monitors online/offline status.
+ */
+const useOnlineStatus = () => {
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return isOnline;
+};
+
+/**
+ * Debounced callback hook.
+ */
+const useDebouncedCallback = (callback, delay) => {
+  const timeoutRef = useRef(null);
+  const callbackRef = useRef(callback);
+
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
+  const debouncedFn = useCallback((...args) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      callbackRef.current(...args);
+    }, delay);
+  }, [delay]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return debouncedFn;
+};
+
+// ── Context ───────────────────────────────────────────────────────────────
 
 const SettingsContext = createContext(null);
 
@@ -28,9 +70,7 @@ export const useSettings = () => {
   return context;
 };
 
-// ============================================
-// SETTINGS CATEGORIES (for UI organization)
-// ============================================
+// ── Constants ─────────────────────────────────────────────────────────────
 
 export const SettingsCategories = {
   NOTIFICATIONS: 'notifications',
@@ -43,7 +83,6 @@ export const SettingsCategories = {
   ADVANCED: 'advanced',
 };
 
-// Category labels for display
 export const CategoryLabels = {
   [SettingsCategories.NOTIFICATIONS]: 'Notifications',
   [SettingsCategories.PRIVACY]: 'Privacy & Security',
@@ -55,7 +94,6 @@ export const CategoryLabels = {
   [SettingsCategories.ADVANCED]: 'Advanced',
 };
 
-// Setting definitions with metadata
 export const settingDefinitions = {
   // Notifications
   emailNotifications: { category: 'notifications', type: 'boolean', default: true },
@@ -64,87 +102,55 @@ export const settingDefinitions = {
   atsScoreAlerts: { category: 'notifications', type: 'boolean', default: true },
   marketingEmails: { category: 'notifications', type: 'boolean', default: false },
   weeklyDigest: { category: 'notifications', type: 'boolean', default: true },
-  securityAlerts: { category: 'notifications', type: 'boolean', default: true },
   soundEnabled: { category: 'notifications', type: 'boolean', default: true },
   desktopNotifications: { category: 'notifications', type: 'boolean', default: false },
 
-  // Privacy & Security
-  twoFactorAuth: { category: 'privacy', type: 'boolean', default: false },
+  // Privacy
   sessionTimeout: { category: 'privacy', type: 'select', options: ['15', '30', '60', '120', 'never'], default: '30' },
-  loginAlerts: { category: 'privacy', type: 'boolean', default: true },
   showEmail: { category: 'privacy', type: 'boolean', default: false },
-  showPhone: { category: 'privacy', type: 'boolean', default: false },
-  showLocation: { category: 'privacy', type: 'boolean', default: false },
   dataCollection: { category: 'privacy', type: 'boolean', default: true },
-  anonymousUsage: { category: 'privacy', type: 'boolean', default: true },
 
   // Appearance
   theme: { category: 'appearance', type: 'select', options: ['light', 'dark', 'system'], default: 'system' },
   fontSize: { category: 'appearance', type: 'select', options: ['small', 'medium', 'large'], default: 'medium' },
   compactMode: { category: 'appearance', type: 'boolean', default: false },
   reducedMotion: { category: 'appearance', type: 'boolean', default: false },
-  highContrast: { category: 'appearance', type: 'boolean', default: false },
 
-  // Editor Preferences
+  // Editor
   autoSave: { category: 'editor', type: 'boolean', default: true },
   autoSaveInterval: { category: 'editor', type: 'select', options: ['10', '30', '60', '120'], default: '30' },
   defaultTemplate: { category: 'editor', type: 'select', options: ['modern', 'classic', 'creative', 'minimal', 'executive', 'tech'], default: 'modern' },
   spellCheck: { category: 'editor', type: 'boolean', default: true },
-  grammarCheck: { category: 'editor', type: 'boolean', default: true },
-  showWordCount: { category: 'editor', type: 'boolean', default: true },
   showATSScore: { category: 'editor', type: 'boolean', default: true },
 
-  // Regional Settings
-  language: { category: 'regional', type: 'select', options: ['en', 'es', 'fr', 'de', 'zh', 'ja', 'ko', 'hi'], default: 'en' },
-  timezone: { category: 'regional', type: 'timezone', default: Intl.DateTimeFormat().resolvedOptions().timeZone },
+  // Regional
+  language: { category: 'regional', type: 'select', options: ['en', 'es', 'fr', 'de', 'zh', 'ja'], default: 'en' },
   dateFormat: { category: 'regional', type: 'select', options: ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'], default: 'MM/DD/YYYY' },
   timeFormat: { category: 'regional', type: 'select', options: ['12h', '24h'], default: '12h' },
   currency: { category: 'regional', type: 'select', options: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'INR'], default: 'USD' },
-  firstDayOfWeek: { category: 'regional', type: 'select', options: ['sunday', 'monday'], default: 'sunday' },
 
-  // Data & Storage
-  cacheEnabled: { category: 'storage', type: 'boolean', default: true },
+  // Storage
   offlineMode: { category: 'storage', type: 'boolean', default: true },
-  autoDownload: { category: 'storage', type: 'boolean', default: false },
   compressImages: { category: 'storage', type: 'boolean', default: true },
-  storageLocation: { category: 'storage', type: 'select', options: ['cloud', 'local'], default: 'cloud' },
-  syncFrequency: { category: 'storage', type: 'select', options: ['auto', 'manual', 'daily', 'weekly'], default: 'auto' },
 
-  // AI Features
+  // AI
   aiSuggestions: { category: 'ai', type: 'boolean', default: true },
   aiKeywordOptimization: { category: 'ai', type: 'boolean', default: true },
-  aiGrammarCheck: { category: 'ai', type: 'boolean', default: true },
-  aiContentGeneration: { category: 'ai', type: 'boolean', default: false },
 
   // Advanced
   debugMode: { category: 'advanced', type: 'boolean', default: false },
   experimentalFeatures: { category: 'advanced', type: 'boolean', default: false },
-  betaFeatures: { category: 'advanced', type: 'boolean', default: false },
 };
 
-// ============================================
-// VALIDATION
-// ============================================
+// ── Utilities ────────────────────────────────────────────────────────────
 
 const validateSetting = (key, value) => {
-  const definition = settingDefinitions[key];
-  if (!definition) return true;
-
-  switch (definition.type) {
-    case 'boolean':
-      return typeof value === 'boolean';
-    case 'select':
-      return definition.options.includes(value);
-    case 'timezone':
-      return typeof value === 'string' && value.length > 0;
-    default:
-      return true;
-  }
+  const def = settingDefinitions[key];
+  if (!def) return true;
+  if (def.type === 'boolean') return typeof value === 'boolean';
+  if (def.type === 'select') return def.options.includes(value);
+  return true;
 };
-
-// ============================================
-// DEFAULT SETTINGS
-// ============================================
 
 const generateDefaultSettings = () => {
   const defaults = {};
@@ -156,13 +162,11 @@ const generateDefaultSettings = () => {
 
 const defaultSettings = generateDefaultSettings();
 
-// ============================================
-// PROVIDER COMPONENT
-// ============================================
+// ── Provider ──────────────────────────────────────────────────────────────
 
 export const SettingsProvider = ({ children }) => {
   const { user } = useAuth();
-  const { applyPreset, setThemeMode, setFontSize, setReducedMotion, setHighContrast } = useTheme();
+  const { toggleTheme, setThemeMode } = useTheme();
   const isOnline = useOnlineStatus();
 
   const [settings, setSettings] = useState(defaultSettings);
@@ -171,153 +175,119 @@ export const SettingsProvider = ({ children }) => {
   const [syncStatus, setSyncStatus] = useState('idle');
   const [pendingChanges, setPendingChanges] = useState({});
   const [lastSynced, setLastSynced] = useState(null);
-  const [settingsVersion, setSettingsVersion] = useState('2.0.0');
 
-  // ============================================
-  // LOAD SETTINGS
-  // ============================================
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    const loadSettings = async () => {
-      if (!user) {
-        // Load from localStorage for anonymous users
-        const localSettings = localStorage.getItem('anonymousSettings');
-        if (localSettings) {
-          try {
-            const parsed = JSON.parse(localSettings);
-            setSettings((prev) => ({ ...prev, ...parsed }));
-            applySettingsToApp(parsed);
-          } catch (e) {
-            console.error('Error parsing local settings:', e);
-          }
-        }
-        setLoading(false);
-        return;
-      }
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
-      try {
-        setLoading(true);
-        setError(null);
-
-        const settingsRef = doc(db, 'settings', user.uid);
-
-        // Real-time listener for settings
-        const unsubscribe = onSnapshot(
-          settingsRef,
-          (doc) => {
-            if (doc.exists()) {
-              const savedSettings = doc.data();
-              const metadata = savedSettings._metadata || {};
-
-              // Remove metadata from settings object
-              const { _metadata, ...cleanSettings } = savedSettings;
-
-              setSettings((prev) => ({
-                ...prev,
-                ...cleanSettings,
-                timezone: cleanSettings.timezone || defaultSettings.timezone,
-              }));
-              setSettingsVersion(metadata.version || '2.0.0');
-              setLastSynced(metadata.lastSynced?.toDate?.()?.toISOString() || new Date().toISOString());
-
-              // Apply settings to app
-              applySettingsToApp(cleanSettings);
-            } else {
-              // Create default settings document
-              const newSettings = {
-                ...defaultSettings,
-                userId: user.uid,
-                _metadata: {
-                  createdAt: serverTimestamp(),
-                  updatedAt: serverTimestamp(),
-                  lastSynced: serverTimestamp(),
-                  version: '2.0.0',
-                },
-              };
-
-              setDoc(settingsRef, newSettings);
-              setSettings(defaultSettings);
-              setLastSynced(new Date().toISOString());
-              applySettingsToApp(defaultSettings);
-            }
-            setLoading(false);
-          },
-          (err) => {
-            console.error('Error in settings listener:', err);
-            setError(err);
-            setLoading(false);
-
-            // Load from cache if available
-            const cachedSettings = localStorage.getItem(`settings_${user.uid}`);
-            if (cachedSettings) {
-              try {
-                const parsed = JSON.parse(cachedSettings);
-                setSettings((prev) => ({ ...prev, ...parsed }));
-                toast.success('Loaded settings from cache');
-              } catch (e) {
-                console.error('Error parsing cached settings:', e);
-              }
-            }
-          }
-        );
-
-        return () => unsubscribe();
-      } catch (err) {
-        console.error('Error loading settings:', err);
-        setError(err);
-        setLoading(false);
-      }
-    };
-
-    loadSettings();
-  }, [user]);
-
-  // ============================================
-  // APPLY SETTINGS TO APP
-  // ============================================
+  // ── Apply Settings to App ────────────────────────────────────────────
 
   const applySettingsToApp = useCallback((settingsToApply) => {
-    // Apply theme settings
-    if (settingsToApply.theme) {
+    // Apply theme
+    if (settingsToApply.theme && typeof setThemeMode === 'function') {
       setThemeMode(settingsToApply.theme);
-    }
-    if (settingsToApply.fontSize) {
-      setFontSize(settingsToApply.fontSize);
-    }
-    if (settingsToApply.reducedMotion !== undefined) {
-      setReducedMotion(settingsToApply.reducedMotion);
-    }
-    if (settingsToApply.highContrast !== undefined) {
-      setHighContrast(settingsToApply.highContrast);
+    } else if (settingsToApply.theme === 'dark' && !settingsToApply.theme.includes('system')) {
+      // Fallback: directly toggle if setThemeMode not available
+      const isDark = settingsToApply.theme === 'dark';
+      document.documentElement.classList.toggle('dark', isDark);
     }
 
-    // Apply language (would trigger i18n)
+    // Apply reduced motion
+    if (settingsToApply.reducedMotion !== undefined) {
+      document.documentElement.classList.toggle('reduce-motion', settingsToApply.reducedMotion);
+    }
+
+    // Apply font size
+    if (settingsToApply.fontSize) {
+      document.documentElement.setAttribute('data-font-size', settingsToApply.fontSize);
+    }
+
+    // Apply language
     if (settingsToApply.language) {
       document.documentElement.setAttribute('lang', settingsToApply.language);
     }
-  }, [setThemeMode, setFontSize, setReducedMotion, setHighContrast]);
+  }, [setThemeMode]);
 
-  // ============================================
-  // SAVE ANONYMOUS SETTINGS
-  // ============================================
+  // ── Load Settings ────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!user && !loading) {
-      localStorage.setItem('anonymousSettings', JSON.stringify(settings));
-      applySettingsToApp(settings);
+    if (!user) {
+      try {
+        const localSettings = localStorage.getItem('anonymousSettings');
+        if (localSettings) {
+          const parsed = JSON.parse(localSettings);
+          setSettings(prev => ({ ...prev, ...parsed }));
+          applySettingsToApp(parsed);
+        }
+      } catch {}
+      setLoading(false);
+      return;
     }
-  }, [settings, user, loading, applySettingsToApp]);
 
-  // ============================================
-  // DEBOUNCED SYNC
-  // ============================================
+    setLoading(true);
+    setError(null);
+
+    const settingsRef = doc(db, 'settings', user.uid);
+
+    const unsubscribe = onSnapshot(settingsRef,
+      (snapshot) => {
+        if (!mountedRef.current) return;
+
+        if (snapshot.exists()) {
+          const savedSettings = snapshot.data();
+          const { _metadata, ...cleanSettings } = savedSettings;
+
+          setSettings(prev => ({ ...prev, ...cleanSettings }));
+          setLastSynced(_metadata?.lastSynced?.toDate?.()?.toISOString() || new Date().toISOString());
+          applySettingsToApp(cleanSettings);
+        } else {
+          const newSettings = {
+            ...defaultSettings,
+            userId: user.uid,
+            _metadata: {
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+              lastSynced: serverTimestamp(),
+            },
+          };
+          setDoc(settingsRef, newSettings);
+          setSettings(defaultSettings);
+          setLastSynced(new Date().toISOString());
+          applySettingsToApp(defaultSettings);
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Settings listener error:', err);
+        if (mountedRef.current) {
+          setError(err);
+          setLoading(false);
+
+          // Load from cache
+          try {
+            const cached = localStorage.getItem(`settings_${user.uid}`);
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              setSettings(prev => ({ ...prev, ...parsed }));
+            }
+          } catch {}
+        }
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user, applySettingsToApp]);
+
+  // ── Sync Pending Changes ─────────────────────────────────────────────
 
   const syncPendingChanges = useDebouncedCallback(async () => {
     if (!user || !isOnline || Object.keys(pendingChanges).length === 0) return;
 
     try {
       setSyncStatus('syncing');
-
       const settingsRef = doc(db, 'settings', user.uid);
       await updateDoc(settingsRef, {
         ...pendingChanges,
@@ -325,16 +295,15 @@ export const SettingsProvider = ({ children }) => {
         '_metadata.lastSynced': serverTimestamp(),
       });
 
-      // Cache locally
-      localStorage.setItem(`settings_${user.uid}`, JSON.stringify(settings));
+      try {
+        localStorage.setItem(`settings_${user.uid}`, JSON.stringify(settings));
+      } catch {}
 
       setPendingChanges({});
       setSyncStatus('synced');
       setLastSynced(new Date().toISOString());
-
-      setTimeout(() => setSyncStatus('idle'), 2000);
-    } catch (err) {
-      console.error('Error syncing settings:', err);
+      setTimeout(() => { if (mountedRef.current) setSyncStatus('idle'); }, 2000);
+    } catch {
       setSyncStatus('error');
       toast.error('Failed to sync settings');
     }
@@ -346,282 +315,142 @@ export const SettingsProvider = ({ children }) => {
     }
   }, [pendingChanges, syncPendingChanges]);
 
-  // ============================================
-  // UPDATE SETTINGS
-  // ============================================
+  // ── Update Setting ───────────────────────────────────────────────────
 
-  const updateSetting = useCallback(
-    async (key, value) => {
-      if (!validateSetting(key, value)) {
-        toast.error(`Invalid value for ${key}`);
-        return;
-      }
-
-      // Optimistic update
-      setSettings((prev) => ({ ...prev, [key]: value }));
-
-      // Apply to app immediately
-      applySettingsToApp({ [key]: value });
-
-      if (!user) {
-        toast.success('Setting updated');
-        return;
-      }
-
-      setPendingChanges((prev) => ({ ...prev, [key]: value }));
-
-      if (isOnline) {
-        try {
-          const settingsRef = doc(db, 'settings', user.uid);
-          await updateDoc(settingsRef, {
-            [key]: value,
-            '_metadata.updatedAt': serverTimestamp(),
-          });
-          toast.success('Setting updated');
-        } catch (err) {
-          console.error(`Error updating setting ${key}:`, err);
-          if (!isOnline) {
-            toast.success('Setting saved locally, will sync when online');
-          } else {
-            toast.error('Failed to update setting');
-            setSettings((prev) => ({ ...prev, [key]: !value }));
-          }
-        }
-      } else {
-        toast.success('Setting saved locally, will sync when online');
-      }
-    },
-    [user, isOnline, applySettingsToApp]
-  );
-
-  const updateSettings = useCallback(
-    async (newSettings) => {
-      for (const [key, value] of Object.entries(newSettings)) {
-        if (!validateSetting(key, value)) {
-          toast.error(`Invalid value for ${key}`);
-          return;
-        }
-      }
-
-      setSettings((prev) => ({ ...prev, ...newSettings }));
-      applySettingsToApp(newSettings);
-
-      if (!user) {
-        toast.success('Settings saved');
-        return;
-      }
-
-      setPendingChanges((prev) => ({ ...prev, ...newSettings }));
-
-      if (isOnline) {
-        try {
-          const settingsRef = doc(db, 'settings', user.uid);
-          await updateDoc(settingsRef, {
-            ...newSettings,
-            '_metadata.updatedAt': serverTimestamp(),
-          });
-          toast.success('Settings saved successfully');
-        } catch (err) {
-          console.error('Error updating settings:', err);
-          toast.error('Failed to save settings');
-          throw err;
-        }
-      } else {
-        toast.success('Settings saved locally, will sync when online');
-      }
-    },
-    [user, isOnline, applySettingsToApp]
-  );
-
-  // ============================================
-  // RESET SETTINGS
-  // ============================================
-
-  const resetSettings = useCallback(async () => {
-    if (!window.confirm('Are you sure you want to reset all settings to default?')) {
+  const updateSetting = useCallback(async (key, value) => {
+    if (!validateSetting(key, value)) {
+      toast.error(`Invalid value for ${key}`);
       return;
     }
 
+    setSettings(prev => ({ ...prev, [key]: value }));
+    applySettingsToApp({ [key]: value });
+
+    if (!user) {
+      try {
+        const local = JSON.parse(localStorage.getItem('anonymousSettings') || '{}');
+        local[key] = value;
+        localStorage.setItem('anonymousSettings', JSON.stringify(local));
+      } catch {}
+      return;
+    }
+
+    setPendingChanges(prev => ({ ...prev, [key]: value }));
+
+    if (isOnline) {
+      try {
+        await updateDoc(doc(db, 'settings', user.uid), {
+          [key]: value,
+          '_metadata.updatedAt': serverTimestamp(),
+        });
+      } catch {
+        toast.error('Failed to update setting');
+        setSettings(prev => ({ ...prev, [key]: !value }));
+      }
+    }
+  }, [user, isOnline, applySettingsToApp]);
+
+  const toggleSetting = useCallback(async (key) => {
+    await updateSetting(key, !settings[key]);
+  }, [settings, updateSetting]);
+
+  // ── Reset Settings ───────────────────────────────────────────────────
+
+  const resetSettings = useCallback(async () => {
     setSettings(defaultSettings);
     applySettingsToApp(defaultSettings);
 
     if (!user) {
       localStorage.removeItem('anonymousSettings');
-      toast.success('Settings reset to defaults');
+      toast.success('Settings reset');
       return;
     }
 
     try {
-      const settingsRef = doc(db, 'settings', user.uid);
-      await setDoc(
-        settingsRef,
-        {
-          ...defaultSettings,
-          userId: user.uid,
-          _metadata: {
-            updatedAt: serverTimestamp(),
-            lastSynced: serverTimestamp(),
-            version: '2.0.0',
-          },
-        },
-        { merge: true }
-      );
-
+      await setDoc(doc(db, 'settings', user.uid), {
+        ...defaultSettings,
+        userId: user.uid,
+        _metadata: { updatedAt: serverTimestamp(), lastSynced: serverTimestamp() },
+      }, { merge: true });
       setPendingChanges({});
       toast.success('Settings reset to defaults');
-    } catch (err) {
-      console.error('Error resetting settings:', err);
+    } catch {
       toast.error('Failed to reset settings');
-      throw err;
     }
-  }, [user, defaultSettings, applySettingsToApp]);
+  }, [user, applySettingsToApp]);
 
-  // ============================================
-  // TOGGLE SETTING
-  // ============================================
-
-  const toggleSetting = useCallback(
-    async (key) => {
-      const currentValue = settings[key];
-      await updateSetting(key, !currentValue);
-    },
-    [settings, updateSetting]
-  );
-
-  // ============================================
-  // IMPORT/EXPORT
-  // ============================================
+  // ── Export/Import ────────────────────────────────────────────────────
 
   const exportSettings = useCallback(() => {
-    const data = {
-      settings,
-      _metadata: {
-        exportedAt: new Date().toISOString(),
-        version: '2.0.0',
-        userId: user?.uid || 'anonymous',
-      },
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ settings, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `resumeai-settings-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    toast.success('Settings exported');
+  }, [settings]);
 
-    toast.success('Settings exported successfully');
-  }, [settings, user]);
+  const importSettings = useCallback(async (file) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.settings) throw new Error('Invalid file');
 
-  const importSettings = useCallback(
-    async (file) => {
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-
-        if (data.settings) {
-          const validatedSettings = {};
-          for (const [key, value] of Object.entries(data.settings)) {
-            if (key in defaultSettings && validateSetting(key, value)) {
-              validatedSettings[key] = value;
-            }
-          }
-
-          await updateSettings(validatedSettings);
-          toast.success(`Imported ${Object.keys(validatedSettings).length} settings`);
-        } else {
-          throw new Error('Invalid settings file');
+      const validated = {};
+      Object.entries(data.settings).forEach(([key, value]) => {
+        if (key in defaultSettings && validateSetting(key, value)) {
+          validated[key] = value;
         }
-      } catch (err) {
-        console.error('Error importing settings:', err);
-        toast.error('Failed to import settings');
-        throw err;
-      }
-    },
-    [updateSettings, defaultSettings]
-  );
+      });
 
-  // ============================================
-  // HELPER FUNCTIONS
-  // ============================================
+      setSettings(prev => ({ ...prev, ...validated }));
+      applySettingsToApp(validated);
+      toast.success(`Imported ${Object.keys(validated).length} settings`);
+    } catch {
+      toast.error('Failed to import settings');
+    }
+  }, [applySettingsToApp]);
 
-  const getSetting = useCallback(
-    (key, defaultValue = null) => {
-      return settings[key] ?? defaultValue;
-    },
-    [settings]
-  );
+  // ── Helpers ──────────────────────────────────────────────────────────
 
-  const isFeatureEnabled = useCallback(
-    (feature) => {
-      return settings[feature] === true;
-    },
-    [settings]
-  );
+  const getSetting = useCallback((key, defaultValue = null) => settings[key] ?? defaultValue, [settings]);
+  const isFeatureEnabled = useCallback((feature) => settings[feature] === true, [settings]);
 
-  const getSettingsByCategory = useCallback(
-    (category) => {
-      return Object.entries(settingDefinitions)
-        .filter(([, def]) => def.category === category)
-        .reduce((acc, [key]) => {
-          acc[key] = settings[key];
-          return acc;
-        }, {});
-    },
-    [settings]
-  );
+  const getSettingsByCategory = useCallback((category) => {
+    return Object.entries(settingDefinitions)
+      .filter(([, def]) => def.category === category)
+      .reduce((acc, [key]) => { acc[key] = settings[key]; return acc; }, {});
+  }, [settings]);
 
-  // ============================================
-  // SYNC INDICATOR
-  // ============================================
+  // ── FIXED: Extracted SyncIndicator ───────────────────────────────────
 
-  const SyncIndicator = () => {
+  const syncIndicatorText = useMemo(() => {
     if (syncStatus === 'syncing') return '🔄 Syncing...';
     if (syncStatus === 'synced') return '✅ Synced';
     if (syncStatus === 'error') return '❌ Sync failed';
     if (!isOnline) return '📴 Offline';
     return null;
-  };
+  }, [syncStatus, isOnline]);
 
-  // ============================================
-  // CONTEXT VALUE
-  // ============================================
+  // ── Context Value ────────────────────────────────────────────────────
 
-  const value = {
-    // State
-    settings,
-    loading,
-    error,
-    syncStatus,
-    lastSynced,
-    isOnline,
-    settingsVersion,
-
-    // Actions
-    updateSetting,
-    updateSettings,
-    resetSettings,
-    toggleSetting,
-    exportSettings,
-    importSettings,
-
-    // Helpers
-    getSetting,
-    isFeatureEnabled,
-    getSettingsByCategory,
-
-    // UI Components
-    SyncIndicator,
-
-    // Constants
-    defaultSettings,
-    settingDefinitions,
-    SettingsCategories,
-    CategoryLabels,
-
-    // Computed
+  const value = useMemo(() => ({
+    settings, loading, error, syncStatus, lastSynced, isOnline,
+    updateSetting, resetSettings, toggleSetting,
+    exportSettings, importSettings,
+    getSetting, isFeatureEnabled, getSettingsByCategory,
+    syncIndicatorText,
+    defaultSettings, settingDefinitions, SettingsCategories, CategoryLabels,
     hasPendingChanges: Object.keys(pendingChanges).length > 0,
-  };
+  }), [
+    settings, loading, error, syncStatus, lastSynced, isOnline,
+    updateSetting, resetSettings, toggleSetting,
+    exportSettings, importSettings,
+    getSetting, isFeatureEnabled, getSettingsByCategory,
+    syncIndicatorText, pendingChanges,
+  ]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };
