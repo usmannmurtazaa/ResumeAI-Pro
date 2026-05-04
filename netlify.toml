@@ -6,7 +6,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  NPM_VERSION = "10"
+  NPM_VERSION = "10.8.2"
   NODE_ENV = "production"
   CI = "true"
   GENERATE_SOURCEMAP = "false"
