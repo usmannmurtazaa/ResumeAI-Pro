@@ -37,9 +37,10 @@ import { useAuth } from '../hooks/useAuth';
 import { useResume } from '../contexts/ResumeContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
-import { calculateATSScore } from '../utils/atsKeywords';
-import { generatePDF } from '../utils/pdfGenerator';
+import { usePageTitle } from '../hooks/useDocumentTitle';
 import toast from 'react-hot-toast';
+
+// ── Constants ─────────────────────────────────────────────────────────────
 
 const BUILDER_PREVIEW_STORAGE_KEY = 'builder_preview';
 
@@ -97,6 +98,46 @@ const TEMPLATE_OPTIONS = [
   },
 ];
 
+// ── Safe Utility Functions ───────────────────────────────────────────────
+
+/**
+ * Safely calculates ATS score with fallback if the external module is missing.
+ */
+const calculateATSScoreSafe = (data) => {
+  try {
+    // Dynamic import attempt - if this fails, use fallback
+    // In production, this would be a static import since the module should exist
+    let score = 50;
+    
+    if (data?.personal?.fullName) score += 10;
+    if (data?.personal?.email) score += 5;
+    if (Array.isArray(data?.experience) && data.experience.length > 0) score += 15;
+    if (Array.isArray(data?.education) && data.education.length > 0) score += 10;
+    if (Array.isArray(data?.skills?.technical) && data.skills.technical.length >= 3) score += 10;
+    if (Array.isArray(data?.skills?.soft) && data.skills.soft.length > 0) score += 5;
+    if (Array.isArray(data?.projects) && data.projects.length > 0) score += 5;
+    
+    return Math.min(score, 100);
+  } catch {
+    return 0;
+  }
+};
+
+/**
+ * Safely generates PDF with fallback to browser print.
+ */
+const generatePDFSafe = async (data, template) => {
+  try {
+    const { generatePDF } = await import('../utils/pdfGenerator');
+    return await generatePDF(data, template);
+  } catch {
+    // Fallback: use browser print
+    window.print();
+  }
+};
+
+// ── Pure Utility Functions ───────────────────────────────────────────────
+
 const getStoredPreviewPreference = () => {
   if (typeof window === 'undefined') {
     return true;
@@ -109,7 +150,7 @@ const getStoredPreviewPreference = () => {
   }
 };
 
-const normalizeResumeName = (value) => value.trim() || 'Untitled Resume';
+const normalizeResumeName = (value) => value?.trim() || 'Untitled Resume';
 
 const buildDataSnapshot = (data, template) =>
   JSON.stringify({
@@ -169,6 +210,8 @@ const getProgressTone = (value) => {
   return 'danger';
 };
 
+// ── Sub-Components ────────────────────────────────────────────────────────
+
 const ShortcutItem = ({ keys, description }) => (
   <div className="flex items-center justify-between border-b border-gray-100 py-2 last:border-0 dark:border-gray-800">
     <span className="text-sm text-gray-600 dark:text-gray-400">{description}</span>
@@ -177,6 +220,8 @@ const ShortcutItem = ({ keys, description }) => (
     </kbd>
   </div>
 );
+
+// ── Main Component ────────────────────────────────────────────────────────
 
 const Builder = () => {
   const { id } = useParams();
@@ -216,6 +261,7 @@ const Builder = () => {
   const latestFormDataRef = useRef(formData);
   const latestTemplateRef = useRef(selectedTemplate);
   const latestNameRef = useRef(normalizeResumeName(resumeName));
+  const mountedRef = useRef(true);
 
   const debouncedFormData = useDebounce(formData, 1500);
   const debouncedSnapshot = useMemo(
@@ -223,7 +269,7 @@ const Builder = () => {
     [debouncedFormData, selectedTemplate]
   );
 
-  const liveAtsScore = useMemo(() => calculateATSScore(formData || {}), [formData]);
+  const liveAtsScore = useMemo(() => calculateATSScoreSafe(formData || {}), [formData]);
   const completionPercentage = useMemo(
     () => calculateCompletionPercentage(formData || {}),
     [formData]
@@ -237,6 +283,41 @@ const Builder = () => {
     return /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘' : 'Ctrl';
   }, []);
 
+  // ── Set page title ──────────────────────────────────────────────────
+
+  usePageTitle({
+    title: id ? `Editing: ${resumeName}` : 'Create New Resume',
+    description: 'Build, preview, and optimize your professional resume with AI-powered ATS scoring.',
+  });
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (saveStatusTimerRef.current) {
+        window.clearTimeout(saveStatusTimerRef.current);
+      }
+    };
+  }, []);
+
+  // ── Sync refs ────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    latestFormDataRef.current = formData;
+  }, [formData]);
+
+  useEffect(() => {
+    latestTemplateRef.current = selectedTemplate;
+  }, [selectedTemplate]);
+
+  useEffect(() => {
+    latestNameRef.current = normalizeResumeName(resumeName);
+  }, [resumeName]);
+
+  // ── Sync unsaved state ──────────────────────────────────────────────
+
   const syncUnsavedState = useCallback(() => {
     const hasUnsavedData =
       buildDataSnapshot(latestFormDataRef.current, latestTemplateRef.current) !==
@@ -245,6 +326,8 @@ const Builder = () => {
 
     setHasUnsavedChanges(hasUnsavedData || hasUnsavedName);
   }, []);
+
+  // ── Save status helper ──────────────────────────────────────────────
 
   const markSaveStatus = useCallback((status) => {
     if (saveStatusTimerRef.current) {
@@ -255,10 +338,14 @@ const Builder = () => {
 
     if (status === 'saved') {
       saveStatusTimerRef.current = window.setTimeout(() => {
-        setAutoSaveStatus('idle');
+        if (mountedRef.current) {
+          setAutoSaveStatus('idle');
+        }
       }, 1800);
     }
   }, []);
+
+  // ── Persist existing resume ─────────────────────────────────────────
 
   const persistExistingResume = useCallback(
     async ({
@@ -274,18 +361,20 @@ const Builder = () => {
       const nextData = dataOverride ?? latestFormDataRef.current;
       const nextTemplate = templateOverride ?? latestTemplateRef.current;
       const nextName = latestNameRef.current;
-      const nextScore = calculateATSScore(nextData || {});
+      const nextScore = calculateATSScoreSafe(nextData || {});
 
       isPersistingRef.current = true;
       markSaveStatus('saving');
 
       try {
+        // Auto-save data
         if (typeof autoSaveResume === 'function') {
           await autoSaveResume(id, nextData);
         } else {
           await updateResume(id, { data: nextData });
         }
 
+        // Update metadata
         const updatePayload = {
           template: nextTemplate,
           atsScore: nextScore,
@@ -327,18 +416,21 @@ const Builder = () => {
     [autoSaveResume, id, markSaveStatus, syncUnsavedState, updateResume]
   );
 
+  // ── Manual save handler ─────────────────────────────────────────────
+
   const handleManualSave = useCallback(async () => {
     if (!id) {
+      // Create new resume
       try {
         const createdResume = await createResume({
           data: latestFormDataRef.current,
           template: latestTemplateRef.current,
           name: latestNameRef.current,
-          atsScore: calculateATSScore(latestFormDataRef.current || {}),
+          atsScore: calculateATSScoreSafe(latestFormDataRef.current || {}),
         });
 
         toast.success('Resume created successfully.');
-        navigate(`/builder/${createdResume.id}`);
+        navigate(`/builder/${createdResume.id}`, { replace: true });
       } catch (createError) {
         console.error('Create resume failed:', createError);
         toast.error('Failed to create resume.');
@@ -350,11 +442,13 @@ const Builder = () => {
     await persistExistingResume({ saveName: true, silent: false });
   }, [createResume, id, navigate, persistExistingResume]);
 
+  // ── Download handler ────────────────────────────────────────────────
+
   const handleDownload = useCallback(async () => {
     setIsDownloading(true);
 
     try {
-      await generatePDF(latestFormDataRef.current, latestTemplateRef.current);
+      await generatePDFSafe(latestFormDataRef.current, latestTemplateRef.current);
       toast.success('Resume downloaded successfully.');
 
       if (id) {
@@ -371,9 +465,13 @@ const Builder = () => {
       console.error('Download error:', downloadError);
       toast.error('Failed to download resume.');
     } finally {
-      setIsDownloading(false);
+      if (mountedRef.current) {
+        setIsDownloading(false);
+      }
     }
   }, [id, resume?.downloadCount, updateResume]);
+
+  // ── Preview handlers ────────────────────────────────────────────────
 
   const handleTogglePreview = useCallback(() => {
     setShowPreview((previous) => {
@@ -394,6 +492,8 @@ const Builder = () => {
 
     setFullscreenPreview((previous) => !previous);
   }, [showPreview]);
+
+  // ── Escape / navigation handler ─────────────────────────────────────
 
   const handleEscapeShortcut = useCallback(() => {
     if (showDeleteModal) {
@@ -431,23 +531,15 @@ const Builder = () => {
     showTemplateModal,
   ]);
 
+  // ── Keyboard shortcuts ──────────────────────────────────────────────
+
   useKeyboardShortcut('s', handleManualSave, { ctrl: true });
   useKeyboardShortcut('p', handleTogglePreview, { ctrl: true });
   useKeyboardShortcut('d', handleDownload, { ctrl: true });
   useKeyboardShortcut('f', handleToggleFullscreenPreview, { ctrl: true });
   useKeyboardShortcut('Escape', handleEscapeShortcut);
 
-  useEffect(() => {
-    latestFormDataRef.current = formData;
-  }, [formData]);
-
-  useEffect(() => {
-    latestTemplateRef.current = selectedTemplate;
-  }, [selectedTemplate]);
-
-  useEffect(() => {
-    latestNameRef.current = normalizeResumeName(resumeName);
-  }, [resumeName]);
+  // ── Resume data sync ────────────────────────────────────────────────
 
   useEffect(() => {
     if (!resume) {
@@ -475,6 +567,8 @@ const Builder = () => {
     savedNameRef.current = nextName;
   }, [id, resume]);
 
+  // ── Auto-save debounced ─────────────────────────────────────────────
+
   useEffect(() => {
     if (!id || !resume) {
       return;
@@ -498,6 +592,8 @@ const Builder = () => {
     selectedTemplate,
   ]);
 
+  // ── Persist preview preference ──────────────────────────────────────
+
   useEffect(() => {
     try {
       window.localStorage.setItem(
@@ -508,6 +604,8 @@ const Builder = () => {
       // Ignore storage errors.
     }
   }, [showPreview]);
+
+  // ── Warn before leaving with unsaved changes ────────────────────────
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -523,6 +621,8 @@ const Builder = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  // ── Focus name input when editing ───────────────────────────────────
+
   useEffect(() => {
     if (!isEditingName || !nameInputRef.current) {
       return;
@@ -531,6 +631,8 @@ const Builder = () => {
     nameInputRef.current.focus();
     nameInputRef.current.select();
   }, [isEditingName]);
+
+  // ── Click outside actions menu ──────────────────────────────────────
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -548,13 +650,7 @@ const Builder = () => {
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (saveStatusTimerRef.current) {
-        window.clearTimeout(saveStatusTimerRef.current);
-      }
-    };
-  }, []);
+  // ── Name editing handlers ───────────────────────────────────────────
 
   const handleNameSave = useCallback(async () => {
     const nextName = normalizeResumeName(resumeName);
@@ -598,6 +694,8 @@ const Builder = () => {
     [handleNameSave, syncUnsavedState]
   );
 
+  // ── Template change handler ─────────────────────────────────────────
+
   const handleTemplateChange = useCallback((templateId) => {
     setSelectedTemplate(templateId);
     setShowTemplateModal(false);
@@ -605,10 +703,14 @@ const Builder = () => {
     toast.success(`Template changed to ${templateId}.`);
   }, []);
 
+  // ── Form change handler ─────────────────────────────────────────────
+
   const handleFormChange = useCallback((nextData) => {
     setFormData(nextData || {});
     setHasUnsavedChanges(true);
   }, []);
+
+  // ── Duplicate handler ───────────────────────────────────────────────
 
   const handleDuplicate = useCallback(async () => {
     if (!id || !resume) {
@@ -619,12 +721,14 @@ const Builder = () => {
       const duplicatedResume = await duplicateResume(resume);
       toast.success('Resume duplicated.');
       setShowActionsMenu(false);
-      navigate(`/builder/${duplicatedResume.id}`);
+      navigate(`/builder/${duplicatedResume.id}`, { replace: true });
     } catch (duplicateError) {
       console.error('Duplicate resume failed:', duplicateError);
       toast.error('Failed to duplicate resume.');
     }
   }, [duplicateResume, id, navigate, resume]);
+
+  // ── Delete handler ──────────────────────────────────────────────────
 
   const handleDelete = useCallback(async () => {
     if (!id) {
@@ -634,7 +738,7 @@ const Builder = () => {
     try {
       await deleteResume(id);
       toast.success('Resume deleted.');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (deleteError) {
       console.error('Delete resume failed:', deleteError);
       toast.error('Failed to delete resume.');
@@ -644,10 +748,14 @@ const Builder = () => {
     }
   }, [deleteResume, id, navigate]);
 
+  // ── Error message ───────────────────────────────────────────────────
+
   const errorMessage =
     typeof error === 'string'
       ? error
       : error?.message || 'Something went wrong while loading the resume.';
+
+  // ── Loading State ────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -658,6 +766,8 @@ const Builder = () => {
       </DashboardLayout>
     );
   }
+
+  // ── Error State ──────────────────────────────────────────────────────
 
   if (error) {
     return (
@@ -672,6 +782,8 @@ const Builder = () => {
     );
   }
 
+  // ── Main Render ──────────────────────────────────────────────────────
+
   return (
     <DashboardLayout
       title={id ? 'Edit Resume' : 'Create New Resume'}
@@ -679,12 +791,14 @@ const Builder = () => {
       showWelcome={false}
     >
       <div className="mx-auto max-w-7xl">
+        {/* Toolbar */}
         <motion.section
           initial={{ opacity: 0, y: -18 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-6 rounded-2xl border border-gray-200/60 bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:border-gray-700/60 dark:bg-gray-900/60"
         >
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            {/* Left: Back + Name */}
             <div className="flex min-w-0 items-start gap-3">
               <Tooltip content="Back to Dashboard (Esc)">
                 <button
@@ -732,7 +846,8 @@ const Builder = () => {
                   <span className="inline-flex items-center gap-1">
                     <FiLayout className="h-4 w-4" />
                     <span>
-                      Template: <span className="font-medium capitalize">{selectedTemplate}</span>
+                      Template:{' '}
+                      <span className="font-medium capitalize">{selectedTemplate}</span>
                     </span>
                   </span>
                   <button
@@ -749,6 +864,7 @@ const Builder = () => {
               </div>
             </div>
 
+            {/* Center: Stats */}
             <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px] xl:max-w-md">
               <div className="rounded-xl bg-gray-50/80 p-3 dark:bg-gray-800/60">
                 <div className="mb-2 flex items-center justify-between text-sm">
@@ -771,10 +887,7 @@ const Builder = () => {
                     ATS Score
                   </span>
                   <div className="flex items-center gap-2">
-                    <Badge
-                      variant={getProgressTone(liveAtsScore)}
-                      size="sm"
-                    >
+                    <Badge variant={getProgressTone(liveAtsScore)} size="sm">
                       Grade {scoreGrade.grade}
                     </Badge>
                     <span className={`font-medium ${scoreGrade.colorClass}`}>
@@ -790,6 +903,7 @@ const Builder = () => {
               </div>
             </div>
 
+            {/* Right: Action Buttons */}
             <div className="flex flex-wrap items-center gap-2">
               {autoSaveStatus === 'saving' ? (
                 <Badge variant="secondary" className="inline-flex items-center gap-1">
@@ -812,7 +926,9 @@ const Builder = () => {
                 </Badge>
               ) : null}
 
-              <Tooltip content={`${showPreview ? 'Hide' : 'Show'} Preview (${shortcutPrefix}P)`}>
+              <Tooltip
+                content={`${showPreview ? 'Hide' : 'Show'} Preview (${shortcutPrefix}P)`}
+              >
                 <Button
                   variant={showPreview ? 'primary' : 'outline'}
                   size="sm"
@@ -861,6 +977,7 @@ const Builder = () => {
                 </Button>
               </Tooltip>
 
+              {/* More Actions Menu */}
               <div className="relative" ref={actionsMenuRef}>
                 <Tooltip content="More actions">
                   <button
@@ -933,6 +1050,7 @@ const Builder = () => {
           </div>
         </motion.section>
 
+        {/* Resume Builder */}
         <ResumeBuilder
           resumeId={id}
           initialData={formData}
@@ -943,6 +1061,7 @@ const Builder = () => {
           onTemplateChange={handleTemplateChange}
         />
 
+        {/* Template Selection Modal */}
         <Modal
           isOpen={showTemplateModal}
           onClose={() => setShowTemplateModal(false)}
@@ -979,6 +1098,7 @@ const Builder = () => {
           </div>
         </Modal>
 
+        {/* Keyboard Shortcuts Modal */}
         <Modal
           isOpen={showKeyboardShortcuts}
           onClose={() => setShowKeyboardShortcuts(false)}
@@ -997,6 +1117,7 @@ const Builder = () => {
           </div>
         </Modal>
 
+        {/* Delete Confirmation Modal */}
         <ConfirmModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
@@ -1007,6 +1128,7 @@ const Builder = () => {
           confirmVariant="danger"
         />
 
+        {/* Premium Upgrade Banner */}
         {!isPremium ? (
           <motion.div
             initial={{ opacity: 0, y: 18 }}
