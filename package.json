@@ -104,7 +104,7 @@
     "shell": "firebase functions:shell",
     "clean": "node -e \"['node_modules','build','coverage','.firebase'].forEach((path) => require('fs').rmSync(path, { recursive: true, force: true }))\"",
     "clean:install": "npm run clean && npm install",
-    "prepare": "husky install",
+    "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { require('child_process').execSync('husky install', { stdio: 'inherit' }) }\""
     "pre-commit": "lint-staged",
     "release:patch": "npm version patch && git push --follow-tags",
     "release:minor": "npm version minor && git push --follow-tags",
