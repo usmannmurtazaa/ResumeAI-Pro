@@ -339,9 +339,8 @@ self.addEventListener('fetch', (event) => {
 // ── Message Event ───────────────────────────────────────────────────────────
 
 self.addEventListener('message', (event) => {
-  // FIX: Handle non-standard messages (e.g., navigation preload, dev tools, browser extensions)
-  if (!event.data || typeof event.data !== 'object') {
-    return; // Silently ignore malformed messages
+  if (!event.data || !event.data.type) {
+    return;
   }
   
   const { type, payload } = event.data;

@@ -6,8 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
     
     <!-- Security Headers -->
-    <!-- FIXED: Removed X-Frame-Options from meta (must be set via HTTP header) -->
-    <!-- FIXED: Added Google Analytics domains to connect-src -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://*.googletagmanager.com;
@@ -33,7 +31,6 @@
     " />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <!-- REMOVED: X-Frame-Options meta - must be set via HTTP header -->
     <meta http-equiv="X-DNS-Prefetch-Control" content="on" />
     
     <!-- Theme Color -->
@@ -122,19 +119,19 @@
     <link rel="dns-prefetch" href="https://www.google-analytics.com" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     
-    <!-- FIXED: Preload Critical Font with 'crossorigin' attribute -->
-    <!-- FIXED: Match preload weights with actual font weights used -->
+    <!-- Preload Critical Font with matching crossorigin -->
     <link 
       rel="preload" 
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
       as="style"
-      crossorigin="anonymous"
+      crossorigin
     />
     
-    <!-- Fonts - Optimized loading -->
+    <!-- Fonts stylesheet with matching crossorigin -->
     <link 
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
       rel="stylesheet"
+      crossorigin
     />
     
     <!-- Process polyfill for browser -->
@@ -496,9 +493,9 @@
         'use strict';
         
         // Dark mode initialization
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const savedTheme = localStorage.getItem('theme');
-        const isDark = savedTheme === 'dark' || (savedTheme !== 'light' && prefersDark);
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var savedTheme = localStorage.getItem('theme');
+        var isDark = savedTheme === 'dark' || (savedTheme !== 'light' && prefersDark);
         
         if (isDark) {
           document.documentElement.classList.add('dark');
