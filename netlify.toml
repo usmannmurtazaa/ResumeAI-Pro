@@ -1,5 +1,3 @@
-# ── Build Configuration ───────────────────────────────────────────────────
-
 [build]
   command = "npm run build"
   publish = "build"
@@ -11,10 +9,7 @@
   CI = "true"
   GENERATE_SOURCEMAP = "false"
 
-# ── Environment Variables (Production) ────────────────────────────────────
-
-[build.environment]
-  # Firebase Configuration
+# Firebase Configuration
 REACT_APP_FIREBASE_API_KEY=AIzaSyDlMVwM7UlS5-LkvE3TlxdaZwqpifGmWoI
 REACT_APP_FIREBASE_AUTH_DOMAIN=ats-resume-builder-f7783.firebaseapp.com
 REACT_APP_FIREBASE_PROJECT_ID=ats-resume-builder-f7783
@@ -38,7 +33,7 @@ REACT_APP_FIREBASE_MEASUREMENT_ID=G-MJ0PRZ2SCM
 
 # ── Redirects ─────────────────────────────────────────────────────────────
 
-# SPA fallback - only for non-file requests
+# SPA fallback
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -51,21 +46,9 @@ REACT_APP_FIREBASE_MEASUREMENT_ID=G-MJ0PRZ2SCM
   to = "https://:splat"
   status = 301
 
-# Redirect www to non-www (or vice versa)
-[[redirects]]
-  from = "https://www.resumeaixpro.netlify.app/*"
-  to = "https://resumeaixpro.netlify.app/:splat"
-  status = 301
-
-# Redirect old paths
-[[redirects]]
-  from = "/old-dashboard"
-  to = "/dashboard"
-  status = 301
-
 # ── Headers ────────────────────────────────────────────────────────────────
 
-# Security Headers for all requests
+# Security Headers
 [[headers]]
   for = "/*"
   [headers.values]
@@ -73,26 +56,7 @@ REACT_APP_FIREBASE_MEASUREMENT_ID=G-MJ0PRZ2SCM
     X-Content-Type-Options = "nosniff"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-
-# Content Security Policy
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Content-Security-Policy = """
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://*.firebaseio.com;
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      img-src 'self' data: https: blob:;
-      connect-src 'self' https://*.sentry.io https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com https://*.stripe.com https://api.resumeaipro.com;
-      frame-src 'self' https://*.firebaseapp.com https://*.stripe.com;
-      media-src 'self';
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-    """
 
 # Static assets - long cache
 [[headers]]
@@ -112,56 +76,14 @@ REACT_APP_FIREBASE_MEASUREMENT_ID=G-MJ0PRZ2SCM
   [headers.values]
     Content-Type = "text/css; charset=UTF-8"
 
-# Font files - long cache
-[[headers]]
-  for = "/*.woff2"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# Image files - long cache
-[[headers]]
-  for = "/images/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# Service Worker
+# Service Worker - no cache
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache, max-age=0"
-    Service-Worker-Allowed = "/"
 
-# Manifest
-[[headers]]
-  for = "/manifest.json"
-  [headers.values]
-    Cache-Control = "public, max-age=604800"
-
-# HTML pages - no cache (for SPA)
+# HTML - no cache for SPA
 [[headers]]
   for = "/*.html"
   [headers.values]
     Cache-Control = "no-cache, max-age=0, must-revalidate"
-
-# ── Plugins ────────────────────────────────────────────────────────────────
-
-# Optional: Enable Netlify Plugins
-[[plugins]]
-  package = "@netlify/plugin-lighthouse"    # Performance audits
-
-[[plugins]]
-  package = "netlify-plugin-gatsby-cache"   # Build caching (if using Gatsby)
-
-# ── Functions (Optional - if using Netlify Functions) ──────────────────────
-
-# [functions]
-#   directory = "netlify/functions"
-#   node_bundler = "esbuild"
-
-# ── Deploy Notifications (Optional) ────────────────────────────────────────
-
-# [build.processing]
-#   skip_processing = false
-
-# [build.environment]
-#   NETLIFY_USE_YARN = "false"
