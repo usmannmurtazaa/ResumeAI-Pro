@@ -1,35 +1,53 @@
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+
+// ── Constants ──────────────────────────────────────────────────────────────
 
 const DEFAULT_FILENAME = 'resume.pdf';
 const DEFAULT_TEMPLATE = 'modern';
 const DEFAULT_MARGIN_MM = 8;
-const OFFSCREEN_WIDTH = '210mm';
+const OFFSCREEN_WIDTH = '210mm'; // A4 width
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+// ── Lazy-Loaded Heavy Dependencies ────────────────────────────────────────
+
+let html2canvasModule = null;
+let jsPDFModule = null;
+
+const getHtml2Canvas = async () => {
+  if (!html2canvasModule) {
+    html2canvasModule = (await import('html2canvas')).default;
+  }
+  return html2canvasModule;
+};
+
+const getJsPDF = async () => {
+  if (!jsPDFModule) {
+    jsPDFModule = (await import('jspdf')).default;
+  }
+  return jsPDFModule;
+};
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 const isDomElement = (value) =>
   typeof HTMLElement !== 'undefined' && value instanceof HTMLElement;
 
 const normalizeFilename = (filename) => {
-  if (!filename) {
-    return DEFAULT_FILENAME;
-  }
-
+  if (!filename) return DEFAULT_FILENAME;
   return filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
 };
 
 const buildResumeFilename = (resumeData, filename) => {
-  if (filename) {
-    return normalizeFilename(filename);
-  }
-
+  if (filename) return normalizeFilename(filename);
   const fullName = resumeData?.personal?.fullName?.trim();
   const slug = fullName
     ?.toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-
   return `${slug || 'resume'}.pdf`;
 };
 
@@ -41,56 +59,54 @@ const waitForNextPaint = () =>
   });
 
 const waitForFonts = async () => {
-  if (typeof document === 'undefined' || !document.fonts?.ready) {
-    return;
-  }
-
+  if (!isBrowser || !document.fonts?.ready) return;
   try {
     await document.fonts.ready;
   } catch {
-    // Ignore font loading failures and continue with export.
+    // Font loading failed — continue with fallback fonts
   }
 };
 
 const waitForImages = async (container) => {
   const images = Array.from(container.querySelectorAll('img')).filter(
-    (image) => !image.complete
+    (img) => !img.complete
   );
-
-  if (images.length === 0) {
-    return;
-  }
+  if (images.length === 0) return;
 
   await Promise.all(
     images.map(
-      (image) =>
+      (img) =>
         new Promise((resolve) => {
           const finish = () => {
-            image.removeEventListener('load', finish);
-            image.removeEventListener('error', finish);
+            img.removeEventListener('load', finish);
+            img.removeEventListener('error', finish);
             resolve();
           };
-
-          image.addEventListener('load', finish, { once: true });
-          image.addEventListener('error', finish, { once: true });
+          img.addEventListener('load', finish, { once: true });
+          img.addEventListener('error', finish, { once: true });
         })
     )
   );
 };
 
+// ── PDF Generation Core ───────────────────────────────────────────────────
+
 const renderElementToCanvas = async (element, options = {}) => {
+  const html2canvas = await getHtml2Canvas();
+
   const rect = element.getBoundingClientRect();
   const width = Math.ceil(Math.max(element.scrollWidth, rect.width));
   const height = Math.ceil(Math.max(element.scrollHeight, rect.height));
+
+  // Cap scale at 2x for performance on high-DPI displays
+  const scale = options.scale ?? Math.min(2, Math.max(1.5, window.devicePixelRatio || 1));
 
   return html2canvas(element, {
     backgroundColor: '#ffffff',
     logging: false,
     useCORS: true,
     allowTaint: false,
-    scale:
-      options.scale ??
-      Math.min(3, Math.max(2, window.devicePixelRatio || 1)),
+    scale,
     width,
     height,
     windowWidth: width,
@@ -100,7 +116,9 @@ const renderElementToCanvas = async (element, options = {}) => {
   });
 };
 
-const exportCanvasToPdf = (canvas, { filename, marginMm = DEFAULT_MARGIN_MM } = {}) => {
+const exportCanvasToPdf = async (canvas, { filename, marginMm = DEFAULT_MARGIN_MM } = {}) => {
+  const jsPDF = await getJsPDF();
+
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -119,9 +137,7 @@ const exportCanvasToPdf = (canvas, { filename, marginMm = DEFAULT_MARGIN_MM } = 
   let pageIndex = 0;
 
   while (renderedHeightPx < canvas.height) {
-    if (pageIndex > 0) {
-      pdf.addPage();
-    }
+    if (pageIndex > 0) pdf.addPage();
 
     const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedHeightPx);
     const pageCanvas = document.createElement('canvas');
@@ -129,55 +145,36 @@ const exportCanvasToPdf = (canvas, { filename, marginMm = DEFAULT_MARGIN_MM } = 
     pageCanvas.height = sliceHeightPx;
 
     const context = pageCanvas.getContext('2d');
-
-    if (!context) {
-      throw new Error('Failed to prepare the PDF canvas context.');
-    }
+    if (!context) throw new Error('Failed to create canvas context.');
 
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
     context.drawImage(
-      canvas,
-      0,
-      renderedHeightPx,
-      canvas.width,
-      sliceHeightPx,
-      0,
-      0,
-      canvas.width,
-      sliceHeightPx
+      canvas, 0, renderedHeightPx, canvas.width, sliceHeightPx,
+      0, 0, canvas.width, sliceHeightPx
     );
 
     const imageData = pageCanvas.toDataURL('image/png');
     const renderedHeightMm = Math.min(printableHeight, sliceHeightPx * scaleRatio);
 
-    pdf.addImage(
-      imageData,
-      'PNG',
-      marginMm,
-      marginMm,
-      printableWidth,
-      renderedHeightMm,
-      undefined,
-      'FAST'
-    );
+    pdf.addImage(imageData, 'PNG', marginMm, marginMm, printableWidth, renderedHeightMm, undefined, 'FAST');
 
     renderedHeightPx += sliceHeightPx;
     pageIndex += 1;
   }
 
   pdf.save(normalizeFilename(filename));
-
   return true;
 };
+
+// ── Offscreen Preview Rendering ───────────────────────────────────────────
 
 const cleanupMountedPreview = (root, container) => {
   try {
     root?.unmount();
-  } catch {
-    // Ignore unmount issues during cleanup.
+  } catch (error) {
+    if (isDevelopment) console.warn('Cleanup unmount failed:', error);
   }
-
   if (container?.parentNode) {
     container.parentNode.removeChild(container);
   }
@@ -185,30 +182,18 @@ const cleanupMountedPreview = (root, container) => {
 
 const mountResumePreview = async (resumeData, template) => {
   const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.left = '-10000px';
-  container.style.top = '0';
-  container.style.width = OFFSCREEN_WIDTH;
-  container.style.maxWidth = OFFSCREEN_WIDTH;
-  container.style.background = '#ffffff';
-  container.style.pointerEvents = 'none';
-  container.style.zIndex = '-1';
-
+  container.style.cssText = `
+    position: fixed; left: -10000px; top: 0;
+    width: ${OFFSCREEN_WIDTH}; max-width: ${OFFSCREEN_WIDTH};
+    background: #ffffff; pointer-events: none; z-index: -1;
+  `;
   document.body.appendChild(container);
 
   const root = createRoot(container);
 
   try {
-    const { default: ResumePreview } = await import(
-      '../components/resume/ResumePreview'
-    );
-
-    root.render(
-      createElement(ResumePreview, {
-        data: resumeData,
-        template,
-      })
-    );
+    const { default: ResumePreview } = await import('../components/resume/ResumePreview');
+    root.render(createElement(ResumePreview, { data: resumeData, template }));
 
     await waitForFonts();
     await waitForNextPaint();
@@ -222,84 +207,71 @@ const mountResumePreview = async (resumeData, template) => {
   }
 };
 
-export const generateElementPDF = async (element, options = {}) => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    throw new Error('PDF generation is only available in the browser.');
-  }
+// ── Public API ─────────────────────────────────────────────────────────────
 
-  if (!isDomElement(element)) {
-    throw new Error('generateElementPDF expects a valid DOM element.');
-  }
+/**
+ * Generate PDF from a DOM element.
+ */
+export const generateElementPDF = async (element, options = {}) => {
+  if (!isBrowser) throw new Error('PDF generation requires a browser environment.');
+  if (!isDomElement(element)) throw new Error('Expected a valid DOM element.');
 
   try {
     const canvas = await renderElementToCanvas(element, options);
-
     return exportCanvasToPdf(canvas, {
       filename: options.filename || DEFAULT_FILENAME,
       marginMm: options.marginMm,
     });
   } catch (error) {
     console.error('PDF generation failed:', error);
-    throw error;
+    throw new Error('Failed to generate PDF. Please try again.');
   }
 };
 
-export const downloadResumeAsPDF = async (
-  resumeData,
-  template = DEFAULT_TEMPLATE,
-  options = {}
-) => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    throw new Error('PDF generation is only available in the browser.');
-  }
+/**
+ * Generate PDF from resume data using offscreen rendering.
+ */
+export const downloadResumeAsPDF = async (resumeData, template = DEFAULT_TEMPLATE, options = {}) => {
+  if (!isBrowser) throw new Error('PDF generation requires a browser environment.');
 
   let root;
   let container;
 
   try {
-    const mountedPreview = await mountResumePreview(resumeData, template);
-    root = mountedPreview.root;
-    container = mountedPreview.container;
+    const preview = await mountResumePreview(resumeData, template);
+    root = preview.root;
+    container = preview.container;
 
     const canvas = await renderElementToCanvas(container, options);
-
     return exportCanvasToPdf(canvas, {
       filename: buildResumeFilename(resumeData, options.filename),
       marginMm: options.marginMm,
     });
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error('Error generating resume PDF:', error);
     throw error;
   } finally {
     cleanupMountedPreview(root, container);
   }
 };
 
-export const generatePDF = async (source, templateOrFilename, options = {}) => {
+/**
+ * Unified PDF generation — accepts either a DOM element or resume data.
+ *
+ * @example
+ * // From DOM element
+ * await generatePDF(document.getElementById('resume'));
+ *
+ * // From resume data
+ * await generatePDF(resumeData, 'modern', { filename: 'my-resume.pdf' });
+ */
+export const generatePDF = async (source, templateOrOptions, options = {}) => {
   if (isDomElement(source)) {
-    const elementOptions =
-      typeof templateOrFilename === 'object' && templateOrFilename !== null
-        ? templateOrFilename
-        : {
-            ...options,
-            filename:
-              typeof templateOrFilename === 'string'
-                ? templateOrFilename
-                : options.filename,
-          };
-
-    return generateElementPDF(source, elementOptions);
+    const opts = typeof templateOrOptions === 'object' ? templateOrOptions : { ...options, filename: templateOrOptions || options.filename };
+    return generateElementPDF(source, opts);
   }
 
-  const template =
-    typeof templateOrFilename === 'string'
-      ? templateOrFilename
-      : templateOrFilename?.template || DEFAULT_TEMPLATE;
-
-  const pdfOptions =
-    typeof templateOrFilename === 'object' && templateOrFilename !== null
-      ? templateOrFilename
-      : options;
-
-  return downloadResumeAsPDF(source, template, pdfOptions);
+  const template = typeof templateOrOptions === 'string' ? templateOrOptions : (templateOrOptions?.template || DEFAULT_TEMPLATE);
+  const opts = typeof templateOrOptions === 'object' ? templateOrOptions : options;
+  return downloadResumeAsPDF(source, template, opts);
 };
