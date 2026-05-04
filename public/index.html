@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
     
-    <!-- Security Headers -->
+    <!-- Security Headers - FIXED: Added Google Analytics domains to CSP -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com https://*.g.doubleclick.net;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
-      img-src 'self' data: https: blob:;
-      connect-src 'self' https://*.sentry.io https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.netlify.app wss://*.firebaseio.com;
+      img-src 'self' data: https: blob: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com;
+      connect-src 'self' https://*.sentry.io https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.netlify.app wss://*.firebaseio.com https://www.google-analytics.com https://*.google-analytics.com https://*.g.doubleclick.net https://www.google.com;
       frame-src 'self' https://*.firebaseapp.com https://*.stripe.com;
       media-src 'self';
       object-src 'none';
@@ -21,7 +21,7 @@
     " />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <!-- FIXED: Removed X-Frame-Options meta tag - must be set via HTTP header -->
     <meta http-equiv="X-DNS-Prefetch-Control" content="on" />
     
     <!-- Theme Color -->
@@ -75,7 +75,7 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://resumeaixpro.netlify.app" />
     
-    <!-- Favicon and Icons - FIXED: Corrected MIME types and paths -->
+    <!-- Favicon and Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
@@ -86,7 +86,7 @@
     <meta name="msapplication-TileImage" content="/mstile-144x144.png" />
     <meta name="msapplication-config" content="/browserconfig.xml" />
     
-    <!-- Web App Manifest - FIXED: Updated with proper icons and configuration -->
+    <!-- Web App Manifest -->
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#3b82f6" />
     
@@ -97,6 +97,8 @@
     <link rel="preconnect" href="https://storage.googleapis.com" />
     <link rel="preconnect" href="https://www.googleapis.com" />
     <link rel="preconnect" href="https://sentry.io" />
+    <link rel="preconnect" href="https://www.google-analytics.com" />
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
     
     <!-- DNS Prefetch -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
@@ -105,21 +107,22 @@
     <link rel="dns-prefetch" href="https://storage.googleapis.com" />
     <link rel="dns-prefetch" href="https://www.googleapis.com" />
     <link rel="dns-prefetch" href="https://sentry.io" />
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     
-    <!-- Preload Critical Assets -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" />
+    <!-- FIXED: Preload with proper crossorigin attribute and matching as value -->
+    <link 
+      rel="preload" 
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
+      as="style"
+      crossorigin="anonymous"
+    />
     
-    <!-- Fonts - FIXED: Optimized font loading with weights split for performance -->
+    <!-- FIXED: Removed media="print" trick to ensure font loads properly -->
     <link 
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
-      rel="stylesheet" 
-      media="print" 
-      onload="this.media='all'; this.onload=null;"
+      rel="stylesheet"
     />
-    <!-- Fallback for browsers without JS -->
-    <noscript>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    </noscript>
     
     <!-- Process polyfill for browser -->
     <script>
@@ -130,7 +133,7 @@
     
     <!-- Critical CSS -->
     <style>
-      /* FIXED: Optimized critical CSS with preload class support */
+      /* Optimized critical CSS with preload class support */
       
       /* Font fallback for reduced CLS */
       @font-face {
@@ -142,7 +145,7 @@
         size-adjust: 107.40%;
       }
       
-      /* FIXED: Added preload class support */
+      /* Added preload class support */
       html.preload *,
       html.preload *::before,
       html.preload *::after {
@@ -234,7 +237,7 @@
         }
       }
       
-      /* FIXED: Enhanced initial loader with exit animation support */
+      /* Enhanced initial loader with exit animation support */
       .initial-loader {
         position: fixed;
         top: 0;
@@ -248,7 +251,7 @@
         gap: 16px;
         background: #f9fafb;
         z-index: 9999;
-        transition: opacity 0.3s ease-out; /* FIXED: Synchronized with JS */
+        transition: opacity 0.3s ease-out;
         will-change: opacity;
       }
       
@@ -322,7 +325,7 @@
       }
     </style>
     
-    <!-- JSON-LD Structured Data - FIXED: Corrected dates, added pricing -->
+    <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -467,7 +470,7 @@
     </script>
   </head>
   <body>
-    <!-- Initial Loader - FIXED: Added loading text, unified with JS logic -->
+    <!-- Initial Loader -->
     <div id="initial-loader" class="initial-loader" role="status" aria-live="polite" aria-label="Loading application">
       <div class="spinner" aria-hidden="true"></div>
       <div class="loading-text">Loading ResumeAI Pro...</div>
@@ -476,7 +479,7 @@
     <!-- Root Element -->
     <div id="root"></div>
     
-    <!-- FIXED: Unified loader removal logic with preload class management -->
+    <!-- Unified loader removal logic with preload class management -->
     <script>
       (function() {
         'use strict';
@@ -494,7 +497,7 @@
         // Set color scheme meta
         document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
         
-        // FIXED: Unified loader removal - this is the ONLY removal function
+        // Unified loader removal - this is the ONLY removal function
         window.removeInitialLoader = function() {
           var loader = document.getElementById('initial-loader');
           if (!loader) return;

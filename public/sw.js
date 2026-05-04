@@ -339,7 +339,17 @@ self.addEventListener('fetch', (event) => {
 // ── Message Event ───────────────────────────────────────────────────────────
 
 self.addEventListener('message', (event) => {
+  // FIX: Handle non-standard messages (e.g., navigation preload, dev tools, browser extensions)
+  if (!event.data || typeof event.data !== 'object') {
+    return; // Silently ignore malformed messages
+  }
+  
   const { type, payload } = event.data;
+  
+  // FIX: If no type is provided, ignore the message instead of logging warning
+  if (!type) {
+    return; // This prevents the "Unknown message type: undefined" warning
+  }
   
   switch (type) {
     case 'SKIP_WAITING':
@@ -357,9 +367,12 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({
-        version: CONFIG.CACHE_VERSION,
-      });
+      // FIX: Safe check for ports before accessing
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({
+          version: CONFIG.CACHE_VERSION,
+        });
+      }
       break;
       
     case 'UPDATE_CACHE':
@@ -370,8 +383,23 @@ self.addEventListener('message', (event) => {
       }
       break;
       
+    case 'SW_UPDATED':
+      // Handle service worker update notifications from clients
+      console.log('Service Worker updated to version:', payload?.version || CONFIG.CACHE_VERSION);
+      break;
+      
+    case 'SYNC_OFFLINE_DATA':
+      // Handle sync data messages from clients
+      console.log('Sync request received for:', payload?.category);
+      break;
+      
+    case 'NOTIFICATION_CLICKED':
+      // Handle notification click forwarded from clients
+      console.log('Notification click handled:', payload);
+      break;
+      
     default:
-      console.warn('Unknown message type:', type);
+      console.warn('Unknown message type:', type, 'from:', event.source);
   }
 });
 
