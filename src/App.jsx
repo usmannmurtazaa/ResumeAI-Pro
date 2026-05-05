@@ -19,7 +19,6 @@ import RouteErrorBoundary from './components/common/ErrorBoundary';
 import { logAnalyticsEvent } from './services/firebase';
 import './styles/globals.css';
 import './styles/animations.css';
-import ATSScannerPage from './pages/ATSScannerPage';
 
 // ── Environment ──────────────────────────────────────────────────────────────
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -34,11 +33,6 @@ const ReactQueryDevtools = isDevelopment
   : null;
 
 // ── Lazy Page Factory ───────────────────────────────────────────────────────
-/**
- * Creates a lazily loaded page component with a `.preload()` method.
- * This allows strategic prefetching of critical routes without immediately
- * executing the module.
- */
 const createLazyPage = (loader) => {
   const Component = lazy(loader);
   Component.preload = loader;
@@ -47,12 +41,11 @@ const createLazyPage = (loader) => {
 };
 
 // ── Lazy-loaded Pages ───────────────────────────────────────────────────────
-// Critical routes (prefetched eagerly via webpackPrefetch / useChunkPrefetch)
 const Home = createLazyPage(() => import(/* webpackPrefetch: true */ './pages/Home'));
 const Dashboard = createLazyPage(() => import(/* webpackPrefetch: true */ './pages/Dashboard'));
 const Builder = createLazyPage(() => import(/* webpackPrefetch: true */ './pages/Builder'));
 
-// Secondary routes (loaded on demand)
+// Secondary routes
 const Login = createLazyPage(() => import('./pages/Login'));
 const SignUp = createLazyPage(() => import('./pages/SignUp'));
 const ForgotPasswordPage = createLazyPage(() => import('./pages/ForgotPasswordPage'));
@@ -66,7 +59,7 @@ const Terms = createLazyPage(() => import('./pages/Terms'));
 const Profile = createLazyPage(() => import('./pages/Profile'));
 const Settings = createLazyPage(() => import('./pages/Settings'));
 const Templates = createLazyPage(() => import('./pages/Templates'));
-const ATSScanner = createLazyPage(() => import('./pages/ATSScannerPage'));
+const ATSScannerPage = createLazyPage(() => import('./pages/ATSScannerPage'));
 const Analytics = createLazyPage(() => import('./pages/Analytics'));
 const Features = createLazyPage(() => import('./pages/Features'));
 const Blog = createLazyPage(() => import('./pages/Blog'));
@@ -85,8 +78,8 @@ const createQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 30,   // 30 minutes (formerly cacheTime)
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
         retry: 1,
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
         refetchOnWindowFocus: false,
@@ -139,13 +132,10 @@ const PROTECTED_ROUTES = [
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 const subscribeToMediaQuery = (mediaQuery, listener) => {
-  // Modern browsers support addEventListener on MediaQueryList
   if (typeof mediaQuery.addEventListener === 'function') {
     mediaQuery.addEventListener('change', listener);
     return () => mediaQuery.removeEventListener('change', listener);
   }
-
-  // Fallback for very old browsers (Safari < 14)
   mediaQuery.addListener(listener);
   return () => mediaQuery.removeListener(listener);
 };
@@ -155,16 +145,7 @@ const resolveIsDark = (savedTheme, systemPrefersDark) => {
 };
 
 // ── Custom Hooks ────────────────────────────────────────────────────────────
-
-/**
- * Applies the correct theme class to `<html>` before React hydrates
- * to prevent a flash of incorrect theme. Syncs with localStorage and
- * system preference changes.
- * 
- * FIXED: Now uses useLayoutEffect to prevent FOUC (Flash of Unstyled Content)
- */
 const useInitialThemeClass = () => {
-  // Use useLayoutEffect for synchronous DOM mutations before paint
   React.useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -181,15 +162,12 @@ const useInitialThemeClass = () => {
         const savedTheme = localStorage.getItem('theme');
         applyTheme(resolveIsDark(savedTheme, mediaQuery.matches));
       } catch (error) {
-        // localStorage might be unavailable (private browsing in some browsers)
         applyTheme(mediaQuery.matches);
       }
     };
 
-    // Apply immediately before paint
     syncTheme();
 
-    // Listen for system preference changes
     const unsubscribe = subscribeToMediaQuery(mediaQuery, (event) => {
       try {
         const savedTheme = localStorage.getItem('theme');
@@ -205,10 +183,6 @@ const useInitialThemeClass = () => {
   }, []);
 };
 
-/**
- * Prefetches critical page bundles during browser idle time.
- * Falls back to setTimeout when requestIdleCallback is unavailable.
- */
 const useChunkPrefetch = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -241,13 +215,6 @@ const useChunkPrefetch = () => {
   }, []);
 };
 
-/**
- * Monitors online/offline status and provides user feedback.
- * Uses a persistent error toast when offline (auto-dismisses on reconnect),
- * plus a slide-down banner for keyboard/screen-reader accessibility.
- * 
- * FIXED: Cleanup toast on unmount to prevent memory leaks
- */
 const useOnlineStatusFeedback = () => {
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -283,7 +250,6 @@ const useOnlineStatusFeedback = () => {
       }
     };
 
-    // Set initial status (optimistic — navigator.onLine is best-effort)
     syncStatus(navigator.onLine, { notify: false });
     hasInitialized.current = true;
 
@@ -296,7 +262,6 @@ const useOnlineStatusFeedback = () => {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      // Clean up persistent toast on unmount
       toast.dismiss(toastIdRef.current);
     };
   }, []);
@@ -305,11 +270,6 @@ const useOnlineStatusFeedback = () => {
 };
 
 // ── Route-Level Components ──────────────────────────────────────────────────
-
-/**
- * Tracks page views in Firebase Analytics.
- * Debounces duplicate events (same URL within rapid re-renders).
- */
 const AnalyticsTracker = () => {
   const { pathname, search, hash } = useLocation();
   const lastTrackedUrl = useRef('');
@@ -322,7 +282,6 @@ const AnalyticsTracker = () => {
 
     lastTrackedUrl.current = currentUrl;
 
-    // Clear previous timeout if exists
     if (timeoutRef.current) {
       window.clearTimeout(timeoutRef.current);
     }
@@ -351,15 +310,10 @@ const AnalyticsTracker = () => {
   return null;
 };
 
-/**
- * Scrolls to top on route change.
- * Skips scroll when a URL hash is present (browser handles anchor navigation).
- */
 const ScrollToTop = () => {
   const { pathname, hash } = useLocation();
 
   useEffect(() => {
-    // Let the browser handle hash-based scroll naturally
     if (hash) return;
 
     window.scrollTo({
@@ -373,7 +327,6 @@ const ScrollToTop = () => {
 };
 
 // ── Page Transition Variants ────────────────────────────────────────────────
-
 const basePageVariants = {
   initial: { opacity: 0, y: 10 },
   animate: {
@@ -388,12 +341,6 @@ const basePageVariants = {
   },
 };
 
-/**
- * When users prefer reduced motion, we eliminate all movement
- * and minimize duration to near-zero (not just faster).
- * A small opacity fade remains to preserve the sense of navigation
- * without causing discomfort.
- */
 const reducedMotionPageVariants = {
   initial: { opacity: 0 },
   animate: {
@@ -407,7 +354,6 @@ const reducedMotionPageVariants = {
 };
 
 // ── Visual Components ───────────────────────────────────────────────────────
-
 const PageLoader = () => {
   const shouldReduceMotion = useReducedMotion();
 
@@ -436,9 +382,6 @@ const PageLoader = () => {
   );
 };
 
-/**
- * FIXED: Changed min-h-[inherit] to min-h-full for proper height inheritance
- */
 const PageTransition = ({ children }) => {
   const shouldReduceMotion = useReducedMotion();
 
@@ -455,9 +398,6 @@ const PageTransition = ({ children }) => {
   );
 };
 
-/**
- * Wraps page component with error boundary and transition
- */
 const renderPage = (Component) => (
   <RouteErrorBoundary>
     <PageTransition>
@@ -467,57 +407,55 @@ const renderPage = (Component) => (
 );
 
 // ── Animated Routes ─────────────────────────────────────────────────────────
-
-/**
- * Renders all application routes wrapped in AnimatePresence
- * for page-level exit animations. Uses location.pathname as key
- * so that path changes trigger mount/unmount transitions.
- *
- * Note: Query string changes on the same path will NOT trigger
- * a transition animation — this is intentional to avoid jarring
- * re-animations on filter/sort operations.
- */
 const AnimatedRoutes = () => {
   const location = useLocation();
 
   return (
     <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={location.pathname}>
-        {/* Public routes */}
-        {PUBLIC_ROUTES.map(({ path, component: Component }) => (
-          <Route key={path} path={path} element={renderPage(Component)} />
+        {/* Public routes - Added null check with fallback empty array */}
+        {(PUBLIC_ROUTES || []).map(({ path, component: Component }) => (
+          Component ? (
+            <Route key={path} path={path} element={renderPage(Component)} />
+          ) : null
         ))}
 
-        {/* Auth routes */}
-        {AUTH_ROUTES.map(({ path, component: Component }) => (
-          <Route key={path} path={path} element={renderPage(Component)} />
+        {/* Auth routes - Added null check with fallback empty array */}
+        {(AUTH_ROUTES || []).map(({ path, component: Component }) => (
+          Component ? (
+            <Route key={path} path={path} element={renderPage(Component)} />
+          ) : null
         ))}
 
-        {/* Protected routes - FIXED: PrivateRoute now properly wraps with element pattern */}
-        {PROTECTED_ROUTES.map(({ path, component: Component, requirePremium }) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              <PrivateRoute requirePremium={requirePremium}>
-                <RouteErrorBoundary>
-                  <PageTransition>
-                    <Component />
-                  </PageTransition>
-                </RouteErrorBoundary>
-              </PrivateRoute>
-            }
-          />
+        {/* Protected routes - Added null check and Component validation */}
+        {(PROTECTED_ROUTES || []).map(({ path, component: Component, requirePremium }) => (
+          Component ? (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <PrivateRoute requirePremium={requirePremium}>
+                  <RouteErrorBoundary>
+                    <PageTransition>
+                      <Component />
+                    </PageTransition>
+                  </RouteErrorBoundary>
+                </PrivateRoute>
+              }
+            />
+          ) : null
         ))}
 
-        {/* Admin routes */}
+        {/* Admin routes - Wrapped in Suspense for lazy loading */}
         <Route
           path="/admin/*"
           element={
             <AdminRoute>
               <RouteErrorBoundary>
                 <PageTransition>
-                  <Admin />
+                  <Suspense fallback={<PageLoader />}>
+                    <Admin />
+                  </Suspense>
                 </PageTransition>
               </RouteErrorBoundary>
             </AdminRoute>
@@ -532,7 +470,6 @@ const AnimatedRoutes = () => {
 };
 
 // ── App Shell ───────────────────────────────────────────────────────────────
-
 const AppShell = () => {
   useInitialThemeClass();
   useChunkPrefetch();
@@ -541,16 +478,13 @@ const AppShell = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 transition-colors duration-300 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        {/* Invisible utility components */}
         <AnalyticsTracker />
         <ScrollToTop />
 
-        {/* Lazy-loaded page routes with error boundary */}
         <Suspense fallback={<PageLoader />}>
           <AnimatedRoutes />
         </Suspense>
 
-        {/* Toast notifications */}
         <Toaster
           position="top-right"
           reverseOrder={false}
@@ -579,7 +513,6 @@ const AppShell = () => {
           }}
         />
 
-        {/* Development mode indicator */}
         {isDevelopment && (
           <div className="pointer-events-none fixed bottom-4 left-4 z-50 opacity-50 transition-opacity hover:opacity-100 sm:bottom-6 sm:left-6">
             <div className="flex items-center gap-1.5 rounded-full bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-sm">
@@ -592,7 +525,6 @@ const AppShell = () => {
           </div>
         )}
 
-        {/* Offline banner (visual only — toast handles the interactive feedback) */}
         <div
           role="status"
           aria-live="polite"
@@ -608,17 +540,6 @@ const AppShell = () => {
 };
 
 // ── Root Component ──────────────────────────────────────────────────────────
-
-/**
- * ResumeAI Pro — Root Application Component
- *
- * Provider hierarchy (outermost to innermost):
- * ErrorBoundary > HelmetProvider > QueryClientProvider > Router >
- * ThemeProvider > AuthProvider > SettingsProvider >
- * NotificationProvider > ResumeProvider > AppShell
- * 
- * FIXED: QueryClient is now memoized to prevent recreation on re-renders
- */
 function App() {
   const queryClient = useMemo(() => createQueryClient(), []);
 
