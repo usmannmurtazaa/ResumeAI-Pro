@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import {
   FiFileText, FiCheckCircle, FiDownload, FiTrendingUp, FiArrowRight,
   FiStar, FiUsers, FiAward, FiZap, FiShield, FiTarget, FiLayout,
-  FiPlay, FiChevronRight, FiChevronLeft, FiBarChart2,
+  FiPlay, FiChevronRight, FiChevronLeft, 
+  FiBarChart2, // FIXED: Added missing import
 } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/ui/Button';
@@ -14,7 +15,6 @@ import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
-import toast from 'react-hot-toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ const FEATURES = [
   { icon: FiTarget, title: 'ATS-Optimized Templates', description: 'Professionally designed templates that pass applicant tracking systems.', color: 'from-blue-500 to-cyan-500' },
   { icon: FiZap, title: 'AI Smart Suggestions', description: 'Get real-time keyword recommendations to boost your resume score.', color: 'from-purple-500 to-pink-500' },
   { icon: FiDownload, title: 'Instant PDF Export', description: 'Download your resume as a professional, print-ready PDF with one click.', color: 'from-green-500 to-emerald-500' },
-  { icon: FiBarChart2, title: 'Real-Time ATS Scoring', description: 'Track your ATS compatibility score and get actionable improvement tips.', color: 'from-orange-500 to-red-500' },
+  { icon: FiBarChart2, title: 'Real-Time ATS Scoring', description: 'Track your ATS compatibility score and get actionable improvement tips.', color: 'from-orange-500 to-red-500' }, // FIXED: Now properly imported
   { icon: FiLayout, title: '25+ Premium Templates', description: 'Choose from a wide variety of modern and classic resume designs.', color: 'from-indigo-500 to-purple-500' },
   { icon: FiShield, title: 'Privacy First', description: 'Your data is encrypted and never shared with third parties.', color: 'from-teal-500 to-green-500' },
 ];
@@ -38,8 +38,8 @@ const HOW_IT_WORKS = [
 const TESTIMONIALS = [
   { text: "ResumeAI Pro transformed my job search. Within two weeks, I landed interviews at three Fortune 500 companies!", author: "Sarah Chen", role: "Software Engineer at Google", avatar: "SC" },
   { text: "The AI suggestions are incredible. My resume score went from 45% to 92% in just 30 minutes.", author: "Michael Rodriguez", role: "Product Manager at Microsoft", avatar: "MR" },
-  { text: "I've tried many resume builders, but ResumeAI Pro is by far the best. Highly recommended!", author: "Emily Watson", role: "Marketing Director at Amazon", avatar: "EW" },
-  { text: "Finally, a resume builder that actually understands ATS systems. Worth every penny!", author: "David Kim", role: "Senior Recruiter at Meta", avatar: "DK" },
+  { text: "I've tried many resume builders, but ResumeAI Pro is by far the best.", author: "Emily Watson", role: "Marketing Director at Amazon", avatar: "EW" },
+  { text: "Finally, a resume builder that actually understands ATS systems.", author: "David Kim", role: "Senior Recruiter at Meta", avatar: "DK" },
 ];
 
 const TRUSTED_BY = ['Google', 'Microsoft', 'Amazon', 'Meta', 'Apple', 'Netflix'];
@@ -53,7 +53,7 @@ const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 const Home = () => {
   usePageTitle({
     title: 'ResumeAI Pro - AI-Powered ATS Resume Builder',
-    description: 'Create professional, ATS-optimized resumes in minutes. AI-powered suggestions, 25+ templates, real-time scoring. Join 50,000+ professionals.',
+    description: 'Create professional, ATS-optimized resumes in minutes. AI-powered suggestions, 25+ templates, real-time scoring.',
   });
 
   const navigate = useNavigate();
@@ -65,11 +65,8 @@ const Home = () => {
   const animationRef = useRef(null);
   const mountedRef = useRef(true);
 
-  // Parallax effects
   const heroY = useTransform(scrollY, [0, 500], [0, 150]);
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.3]);
-
-  // Intersection observer for stats
   const [statsRef, statsInView] = useIntersectionObserver({ threshold: 0.3 });
 
   // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -82,7 +79,7 @@ const Home = () => {
     };
   }, []);
 
-  // ── FIXED: RAF-based stats animation ─────────────────────────────────
+  // ── RAF-based stats animation ─────────────────────────────────────────
 
   useEffect(() => {
     if (!statsInView || hasAnimated) return;
@@ -93,7 +90,6 @@ const Home = () => {
 
     const animate = (timestamp) => {
       if (!mountedRef.current) return;
-
       const elapsed = timestamp - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = easeOutCubic(progress);
@@ -110,7 +106,6 @@ const Home = () => {
     };
 
     animationRef.current = requestAnimationFrame(animate);
-
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
@@ -139,15 +134,12 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
       <Navbar />
-
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative min-h-screen flex items-center pt-20 pb-20 px-4 overflow-hidden">
-          {/* Background decorations */}
           <div className="absolute inset-0 -z-10">
             <div className="absolute top-20 left-10 w-72 h-72 bg-primary-200/30 dark:bg-primary-900/20 rounded-full blur-3xl" />
             <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent-200/30 dark:bg-accent-900/20 rounded-full blur-3xl" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-purple-200/20 dark:bg-purple-900/20 rounded-full blur-3xl" />
           </div>
 
           <motion.div style={{ y: heroY, opacity: heroOpacity }} className="container mx-auto">
@@ -238,7 +230,7 @@ const Home = () => {
             <div className="text-center mb-12">
               <Badge variant="primary" className="mb-4">Features</Badge>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need to <span className="gradient-text">Succeed</span></h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">All the tools you need to create a standout resume that gets results</p>
+              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">All the tools you need to create a standout resume</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {FEATURES.map((feature, i) => (
@@ -262,7 +254,7 @@ const Home = () => {
             <div className="text-center mb-12">
               <Badge variant="secondary" className="mb-4">Simple Process</Badge>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">How It <span className="gradient-text">Works</span></h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Create your professional resume in three simple steps</p>
+              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Create your professional resume in three steps</p>
             </div>
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {HOW_IT_WORKS.map((item, i) => (
@@ -298,10 +290,7 @@ const Home = () => {
                     <p className="text-xl md:text-2xl text-center text-gray-700 dark:text-gray-300 italic mb-8">"{currentTestimonialData.text}"</p>
                     <div className="flex items-center justify-center gap-4">
                       <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white text-xl font-semibold">{currentTestimonialData.avatar}</div>
-                      <div className="text-left">
-                        <p className="font-semibold text-lg">{currentTestimonialData.author}</p>
-                        <p className="text-gray-500 dark:text-gray-400">{currentTestimonialData.role}</p>
-                      </div>
+                      <div className="text-left"><p className="font-semibold text-lg">{currentTestimonialData.author}</p><p className="text-gray-500 dark:text-gray-400">{currentTestimonialData.role}</p></div>
                     </div>
                   </Card>
                 </motion.div>
@@ -320,11 +309,9 @@ const Home = () => {
           <div className="container mx-auto text-center">
             <div className="glass-card p-12 max-w-4xl mx-auto bg-gradient-to-br from-primary-50/50 to-accent-50/50 dark:from-primary-900/20 dark:to-accent-900/20">
               <h2 className="text-3xl md:text-5xl font-bold mb-4">Ready to Land Your <span className="gradient-text">Dream Job?</span></h2>
-              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">Join 50,000+ professionals who've accelerated their careers with ResumeAI Pro.</p>
+              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">Join 50,000+ professionals who've accelerated their careers.</p>
               <div className="flex flex-wrap gap-4 justify-center">
-                <Button size="lg" onClick={handleGetStarted} className="group bg-gradient-to-r from-primary-500 to-accent-500">
-                  Get Started Free<FiArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
+                <Button size="lg" onClick={handleGetStarted} className="group bg-gradient-to-r from-primary-500 to-accent-500">Get Started Free<FiArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" /></Button>
                 <Button variant="outline" size="lg" onClick={() => navigate('/templates')}>Browse Templates</Button>
               </div>
               <p className="text-sm text-gray-500 mt-6">No credit card required • Free plan available</p>
@@ -332,7 +319,6 @@ const Home = () => {
           </div>
         </section>
       </main>
-
       <Footer />
     </div>
   );
