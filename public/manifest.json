@@ -13,15 +13,15 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "/favicon-16x16.png",
+      "src": "/favicon-16x16.ico",
       "sizes": "16x16",
-      "type": "image/png",
+      "type": "image/x-icon",
       "purpose": "any"
     },
     {
-      "src": "/favicon-32x32.png",
+      "src": "/favicon-32x32.ico",
       "sizes": "32x32",
-      "type": "image/png",
+      "type": "image/x-icon",
       "purpose": "any"
     },
     {
@@ -31,9 +31,9 @@
       "purpose": "any"
     },
     {
-      "src": "/apple-touch-icon.png",
+      "src": "/apple-touch-icon.ico",
       "sizes": "180x180",
-      "type": "image/png",
+      "type": "image/x-icon",
       "purpose": "any"
     },
     {
@@ -43,9 +43,9 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "/icon-512x512.ico",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/x-icon",
       "purpose": "any maskable"
     }
   ],
