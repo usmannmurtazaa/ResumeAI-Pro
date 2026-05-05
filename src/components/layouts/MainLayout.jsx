@@ -9,12 +9,12 @@ import {
   FiArrowUp, FiHelpCircle, FiMail, FiMessageCircle, FiSend,
   FiThumbsDown, FiThumbsUp, FiUser, FiX,
 } from 'react-icons/fi';
-import Navbar from '../components/common/Navbar';
-import Footer from '../components/common/Footer';
-import ErrorBoundary from '../components/common/ErrorBoundary';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import { useAuth } from '../hooks/useAuth';
+import Navbar from '../../components/common/Navbar';
+import Footer from '../../components/common/Footer';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────

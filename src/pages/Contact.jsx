@@ -7,7 +7,7 @@ import {
   FiTwitter, FiLinkedin, FiGithub, FiFacebook, FiInstagram,
   FiAlertCircle,
 } from 'react-icons/fi';
-import MainLayout from '../components/layout/MainLayout';
+import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';

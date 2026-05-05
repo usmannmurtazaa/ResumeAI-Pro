@@ -7,7 +7,7 @@ import {
   FiRefreshCw, FiFileText, FiAlertCircle,
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
-import DashboardLayout from '../components/layout/DashboardLayout';
+import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';

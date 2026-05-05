@@ -9,17 +9,17 @@ import {
   FiRefreshCw, FiSearch, FiSettings, FiStar, FiSun,
   FiTarget, FiTrendingUp, FiUser, FiX, FiZap,
 } from 'react-icons/fi';
-import Sidebar from '../components/common/Sidebar';
-import ErrorBoundary from '../components/common/ErrorBoundary';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import Tooltip from '../components/ui/Tooltip';
-import Modal from '../components/ui/Modal';
-import Input from '../components/ui/Input';
-import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '../contexts/ThemeContext';
-import { useNotifications } from '../contexts/NotificationContext';
-import { useResume } from '../contexts/ResumeContext';
+import Sidebar from '../../components/common/Sidebar';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
+import Button from '../../components/ui/Button';
+import Badge from '../../components/ui/Badge';
+import Tooltip from '../../components/ui/Tooltip';
+import Modal from '../../components/ui/Modal';
+import Input from '../../components/ui/Input';
+import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useNotifications } from '../../contexts/NotificationContext';
+import { useResume } from '../../contexts/ResumeContext';
 import toast from 'react-hot-toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────

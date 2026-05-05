@@ -7,7 +7,7 @@ import {
   FiArrowRight, FiCheckCircle,
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
-import MainLayout from '../components/layout/MainLayout';
+import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';

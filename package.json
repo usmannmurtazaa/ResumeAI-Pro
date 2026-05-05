@@ -184,7 +184,7 @@
       "^@utils/(.*)$": "<rootDir>/src/utils/$1",
       "^@services/(.*)$": "<rootDir>/src/services/$1",
       "^@contexts/(.*)$": "<rootDir>/src/contexts/$1",
-      "^@layouts/(.*)$": "<rootDir>/src/layouts/$1",
+      "^@layouts/(.*)$": "<rootDir>/src/components/layouts/$1",
       "^@styles/(.*)$": "<rootDir>/src/styles/$1",
       "^@assets/(.*)$": "<rootDir>/src/assets/$1"
     },

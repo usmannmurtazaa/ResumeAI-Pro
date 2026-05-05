@@ -5,7 +5,7 @@ import {
   FiEye, FiTrash2, FiTarget, FiChevronLeft, FiChevronRight,
   FiAlertCircle,
 } from 'react-icons/fi';
-import AdminLayout from '../../components/layout/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
