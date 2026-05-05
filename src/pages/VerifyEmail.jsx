@@ -6,7 +6,7 @@ import {
   FiArrowRight, FiRefreshCw, FiHome, FiLogIn,
 } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
-import AuthLayout from '../layouts/AuthLayout';
+import AuthLayout from '../components/layouts/AuthLayout';
 import Button from '../components/ui/Button';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import { applyActionCode, checkActionCode } from 'firebase/auth';

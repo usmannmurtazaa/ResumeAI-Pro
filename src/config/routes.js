@@ -277,7 +277,7 @@ export const routes = {
     },
     {
       path: '/ats-scanner',
-      component: lazy(() => import('../pages/ATSScanner')),
+      component: lazy(() => import('../pages/ATSScannerPage')),
       exact: true,
       meta: {
         title: 'ATS Scanner',

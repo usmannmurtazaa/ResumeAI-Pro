@@ -6,6 +6,7 @@ import {
   FiShield, FiZap, FiFileText, FiTarget,
   FiArrowLeft,
 } from 'react-icons/fi';
+import AuthLayout from '../components/layout/AuthLayout';
 import { useAuth } from '../hooks/useAuth';
 import LoginForm from '../components/auth/LoginForm';
 import ThemeToggle from '../components/common/ThemeToggle';

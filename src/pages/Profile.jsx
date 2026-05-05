@@ -8,7 +8,7 @@ import {
   FiLinkedin, FiTwitter, FiTrash2, FiEdit2, FiCheckCircle,
   FiAlertCircle, FiAward, FiEye, FiEyeOff,
 } from 'react-icons/fi';
-import DashboardLayout from '../layouts/DashboardLayout';
+import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';

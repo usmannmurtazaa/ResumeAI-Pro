@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { FiHome, FiArrowLeft, FiSearch, FiFileText, FiStar } from 'react-icons/fi';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import Button from '../components/ui/Button';
-import MainLayout from '../layouts/MainLayout';
+import MainLayout from '../components/layouts/MainLayout';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 

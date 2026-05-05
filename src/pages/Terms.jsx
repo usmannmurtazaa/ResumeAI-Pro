@@ -5,7 +5,7 @@ import {
   FiFileText, FiCheckCircle, FiAlertCircle, FiUsers, FiCreditCard,
   FiShield, FiMail, FiChevronRight, FiGlobe, FiEdit3, FiXCircle,
 } from 'react-icons/fi';
-import MainLayout from '../layouts/MainLayout';
+import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 

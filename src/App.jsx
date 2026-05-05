@@ -19,6 +19,7 @@ import RouteErrorBoundary from './components/common/ErrorBoundary';
 import { logAnalyticsEvent } from './services/firebase';
 import './styles/globals.css';
 import './styles/animations.css';
+import ATSScannerPage from './pages/ATSScannerPage';
 
 // ── Environment ──────────────────────────────────────────────────────────────
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -65,7 +66,7 @@ const Terms = createLazyPage(() => import('./pages/Terms'));
 const Profile = createLazyPage(() => import('./pages/Profile'));
 const Settings = createLazyPage(() => import('./pages/Settings'));
 const Templates = createLazyPage(() => import('./pages/Templates'));
-const ATSScanner = createLazyPage(() => import('./pages/ATSScanner'));
+const ATSScanner = createLazyPage(() => import('./pages/ATSScannerPage'));
 const Analytics = createLazyPage(() => import('./pages/Analytics'));
 const Features = createLazyPage(() => import('./pages/Features'));
 const Blog = createLazyPage(() => import('./pages/Blog'));
@@ -130,7 +131,7 @@ const PROTECTED_ROUTES = [
   { path: '/settings', component: Settings },
   { path: '/my-resumes', component: MyResumes },
   { path: '/preview/:id', component: Preview },
-  { path: '/ats-scanner', component: ATSScanner },
+  { path: '/ats-scanner', component: ATSScannerPage },
   { path: '/billing', component: Billing },
   { path: '/analytics', component: Analytics, requirePremium: true },
   { path: '/cover-letter', component: CoverLetter, requirePremium: true },

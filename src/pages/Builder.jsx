@@ -25,7 +25,7 @@ import {
   FiTarget,
   FiTrash2,
 } from 'react-icons/fi';
-import DashboardLayout from '../layouts/DashboardLayout';
+import DashboardLayout from '../components/layout/DashboardLayout';
 import ResumeBuilder from '../components/resume/ResumeBuilder';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';

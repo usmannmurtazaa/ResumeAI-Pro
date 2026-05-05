@@ -7,7 +7,7 @@ import {
   FiX, FiCheckCircle, FiTarget, FiArrowUp, FiArrowDown,
   FiAlertCircle, FiClock,
 } from 'react-icons/fi';
-import DashboardLayout from '../layouts/DashboardLayout';
+import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';

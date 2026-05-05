@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import SignUpForm from '../components/auth/SignUpForm';
-import AuthLayout from '../layouts/AuthLayout';
+import AuthLayout from '../components/layouts/AuthLayout';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import Loader from '../components/common/Loader';
 

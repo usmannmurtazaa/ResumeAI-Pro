@@ -11,7 +11,7 @@ import {
   FiRefreshCw, FiMessageSquare, FiUsers, FiTrendingUp,
   FiAlertCircle, FiX,
 } from 'react-icons/fi';
-import MainLayout from '../layouts/MainLayout';
+import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';

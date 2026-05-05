@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import ForgotPassword from '../components/auth/ForgotPassword';
-import AuthLayout from '../layouts/AuthLayout';
+import AuthLayout from '../components/layouts/AuthLayout';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import Loader from '../components/common/Loader';
 

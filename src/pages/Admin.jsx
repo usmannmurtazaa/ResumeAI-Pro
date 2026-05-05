@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../layouts/AdminLayout';
+import AdminLayout from '../components/layout/AdminLayout';
 import AdminDashboard from '../components/dashboard/AdminDashboard';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuth } from '../hooks/useAuth';

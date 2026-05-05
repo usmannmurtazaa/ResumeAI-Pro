@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiCheck, FiArrowRight } from 'react-icons/fi';
-import MainLayout from '../layouts/MainLayout';
+import MainLayout from '../components/layouts/MainLayout';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';

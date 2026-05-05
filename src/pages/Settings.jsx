@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import DashboardLayout from '../layouts/DashboardLayout';
+import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';
 import Switch from '../components/ui/Switch';
 import Button from '../components/ui/Button';

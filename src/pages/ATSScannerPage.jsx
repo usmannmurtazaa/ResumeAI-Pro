@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '../layouts/DashboardLayout';
+import DashboardLayout from '../components/layout/DashboardLayout';
 import ATSScanner from '../components/resume/ATSScanner';
 import Card from '../components/ui/Card';
 import { FiArrowLeft, FiInfo, FiAlertCircle } from 'react-icons/fi';

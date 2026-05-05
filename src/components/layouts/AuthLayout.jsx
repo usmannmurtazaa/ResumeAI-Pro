@@ -6,10 +6,10 @@ import {
   FiGithub, FiShield, FiStar, FiTarget, FiTrendingUp, FiUsers, FiZap,
 } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
-import ThemeToggle from '../components/common/ThemeToggle';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import { useAuth } from '../hooks/useAuth';
+import ThemeToggle from '../common/ThemeToggle';
+import Button from '../ui/Button';
+import Badge from '../ui/Badge';
+import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────

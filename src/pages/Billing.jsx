@@ -6,7 +6,7 @@ import {
   FiAward, FiRefreshCw, FiExternalLink, FiChevronRight,
   FiAlertCircle, FiShield, FiStar,
 } from 'react-icons/fi';
-import DashboardLayout from '../layouts/DashboardLayout';
+import DashboardLayout from '../components/layout/DashboardLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
