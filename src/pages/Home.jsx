@@ -14,7 +14,7 @@ import Badge from '../components/ui/Badge';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import { usePageTitle } from '../hooks/useDocumentTitle';
-import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
+import { useInView } from '../hooks/useIntersectionObserver';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -67,7 +67,8 @@ const Home = () => {
 
   const heroY = useTransform(scrollY, [0, 500], [0, 150]);
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.3]);
-  const [statsRef, statsInView] = useIntersectionObserver({ threshold: 0.3 });
+  /** useIntersectionObserver returns an object; useInView exposes the [ref, boolean] tuple. */
+  const [statsRef, statsInView] = useInView({ threshold: 0.3 });
 
   // ── Lifecycle ─────────────────────────────────────────────────────────
 
