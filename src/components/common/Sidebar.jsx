@@ -29,7 +29,7 @@ const Sidebar = ({
   isAdmin = false 
 }) => {
   const { user, logout, userRole } = useAuth();
-  const { stats } = useResumeContext?.() || { stats: { total: 0, avgScore: 0 } };
+  const { stats = { total: 0, avgScore: 0 } } = useResumeContext();
   const location = useLocation();
   
   const [expandedSections, setExpandedSections] = useState(() => {

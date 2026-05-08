@@ -1,10 +1,9 @@
-import React, { Suspense, lazy, useEffect, useRef, useState, useMemo } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -15,7 +14,7 @@ import PrivateRoute from './components/auth/PrivateRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import Loader from './components/common/Loader';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import RouteErrorBoundary from './components/common/ErrorBoundary';
+import RouteErrorBoundary from './components/common/RouteErrorBoundary';
 import { logAnalyticsEvent } from './services/firebase';
 import './styles/globals.css';
 import './styles/animations.css';
@@ -23,14 +22,12 @@ import './styles/animations.css';
 // ── Environment ──────────────────────────────────────────────────────────────
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-// ── React Query Devtools (dev only, lazy loaded) ────────────────────────────
-const ReactQueryDevtools = isDevelopment
-  ? lazy(() =>
-      import('@tanstack/react-query-devtools').then((module) => ({
-        default: module.ReactQueryDevtools,
-      }))
-    )
-  : null;
+/**
+ * TanStack Query was mounted at the tree root without any useQuery/useMutation usage
+ * in the app layer — it only inflated the bundle and suggested a caching layer we do
+ * not use (Firestore + contexts own data today). Restore `QueryClientProvider` when you
+ * adopt server-state hooks for API endpoints or callable-backed resources.
+ */
 
 // ── Lazy Page Factory ───────────────────────────────────────────────────────
 const createLazyPage = (loader) => {
@@ -73,27 +70,7 @@ const Preview = createLazyPage(() => import('./pages/Preview'));
 const Billing = createLazyPage(() => import('./pages/Billing'));
 const NotFound = createLazyPage(() => import('./pages/NotFound'));
 
-// ── React Query Client ──────────────────────────────────────────────────────
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 1000 * 60 * 5,
-        gcTime: 1000 * 60 * 30,
-        retry: 1,
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-        refetchOnWindowFocus: false,
-        refetchOnMount: true,
-        refetchOnReconnect: true,
-      },
-      mutations: {
-        retry: 1,
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      },
-    },
-  });
-
-// ── Route Definitions ───────────────────────────────────────────────────────
+// ── Route definitions (canonical metadata: src/config/routes.js) ────────────
 const PUBLIC_ROUTES = [
   { path: '/', component: Home },
   { path: '/features', component: Features },
@@ -541,32 +518,22 @@ const AppShell = () => {
 
 // ── Root Component ──────────────────────────────────────────────────────────
 function App() {
-  const queryClient = useMemo(() => createQueryClient(), []);
-
   return (
     <ErrorBoundary>
       <HelmetProvider>
-        <QueryClientProvider client={queryClient}>
-          <Router>
-            <ThemeProvider>
-              <AuthProvider>
-                <SettingsProvider>
-                  <NotificationProvider>
-                    <ResumeProvider>
-                      <AppShell />
-                    </ResumeProvider>
-                  </NotificationProvider>
-                </SettingsProvider>
-              </AuthProvider>
-            </ThemeProvider>
-          </Router>
-
-          {isDevelopment && ReactQueryDevtools && (
-            <Suspense fallback={null}>
-              <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />
-            </Suspense>
-          )}
-        </QueryClientProvider>
+        <Router>
+          <ThemeProvider>
+            <AuthProvider>
+              <SettingsProvider>
+                <NotificationProvider>
+                  <ResumeProvider>
+                    <AppShell />
+                  </ResumeProvider>
+                </NotificationProvider>
+              </SettingsProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </Router>
       </HelmetProvider>
     </ErrorBoundary>
   );

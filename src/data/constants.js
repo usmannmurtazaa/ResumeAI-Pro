@@ -242,6 +242,90 @@ export const LOCAL_STORAGE_KEYS = {
 };
 
 // ==========================================================================
+// Roles & domain enums (formerly src/utils/constants.js — single source here)
+// ==========================================================================
+
+export const USER_ROLES = {
+  USER: 'user',
+  PREMIUM: 'premium',
+  ADMIN: 'admin',
+};
+
+/** Slug map for filters — distinct from `TEMPLATE_CATEGORIES` (UI array for selector). */
+export const TEMPLATE_CATEGORY_SLUGS = {
+  PROFESSIONAL: 'professional',
+  CREATIVE: 'creative',
+  EXECUTIVE: 'executive',
+  MODERN: 'modern',
+  MINIMAL: 'minimal',
+};
+
+export const INDUSTRIES = [
+  'Technology',
+  'Marketing',
+  'Finance',
+  'Healthcare',
+  'Education',
+  'Sales',
+  'Engineering',
+  'Design',
+  'Consulting',
+  'Legal',
+  'Manufacturing',
+  'Retail',
+];
+
+export const JOB_LEVELS = [
+  'Entry Level',
+  'Mid Level',
+  'Senior Level',
+  'Manager',
+  'Director',
+  'Executive',
+  'Internship',
+];
+
+export const FILE_SIZE_LIMITS = {
+  AVATAR: MAX_PROFILE_IMAGE_SIZE,
+  RESUME_PDF: MAX_FILE_SIZE,
+  IMPORT: 2 * 1024 * 1024,
+};
+
+export const PAGINATION = {
+  DEFAULT_PAGE: 1,
+  DEFAULT_LIMIT: 10,
+  MAX_LIMIT: 100,
+};
+
+/** Human-readable date format tokens (settings UI uses `DATE_FORMATS` array below). */
+export const DATE_TEMPLATE_STRINGS = {
+  DISPLAY: 'MMM DD, YYYY',
+  API: 'YYYY-MM-DD',
+  MONTH_YEAR: 'MMM YYYY',
+};
+
+export const ANIMATION_DURATIONS = {
+  FAST: 200,
+  NORMAL: 300,
+  SLOW: 500,
+};
+
+export const TOAST_DURATIONS = {
+  SHORT: 2000,
+  NORMAL: 4000,
+  LONG: 6000,
+};
+
+/** Default Tailwind-style breakpoints for non-hook consumers. */
+export const STANDARD_BREAKPOINTS = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  '2xl': 1536,
+};
+
+// ==========================================================================
 // Route Paths
 // ==========================================================================
 
@@ -261,6 +345,8 @@ export const ROUTES = {
   ATS_SCANNER: '/ats-scanner',
   COVER_LETTER: '/cover-letter',
   ADMIN: '/admin',
+  ADMIN_USERS: '/admin/users',
+  ADMIN_RESUMES: '/admin/resumes',
   BLOG: '/blog',
   ABOUT: '/about',
   CONTACT: '/contact',
@@ -300,9 +386,11 @@ export default {
   MAX_EVENTS_TO_FETCH, MAX_NOTIFICATIONS_PER_PAGE, RESUMES_PER_PAGE, USERS_PER_PAGE,
   BATCH_CHUNK_SIZE, DEBOUNCE_AUTO_SAVE, DEBOUNCE_SEARCH, ADMIN_SESSION_TIMEOUT,
   RESUME_SECTIONS, RESUME_STATUS, SCORE_GRADES,
-  TEMPLATES, TEMPLATE_CATEGORIES, SOCIAL_PROVIDERS,
+  TEMPLATES, TEMPLATE_CATEGORIES, TEMPLATE_CATEGORY_SLUGS, SOCIAL_PROVIDERS,
   THEME_PRESETS, THEME_MODES, FIRESTORE_COLLECTIONS,
   NOTIFICATION_TYPES, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES,
-  DATE_FORMATS, TIME_FORMATS, LANGUAGES, RESTRICTED_PROFILE_FIELDS,
+  DATE_FORMATS, DATE_TEMPLATE_STRINGS, TIME_FORMATS, LANGUAGES, RESTRICTED_PROFILE_FIELDS,
   STORAGE_PATHS, LOCAL_STORAGE_KEYS, ROUTES, COMMON_PASSWORDS, QUICK_TIPS,
+  USER_ROLES, INDUSTRIES, JOB_LEVELS, FILE_SIZE_LIMITS, PAGINATION,
+  ANIMATION_DURATIONS, TOAST_DURATIONS, STANDARD_BREAKPOINTS,
 };

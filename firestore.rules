@@ -1,20 +1,62 @@
 rules_version = '2';
+
+/**
+ * IMPORTANT: Admin dashboards require custom claims matching the client —
+ * Prefer Firebase Admin SDK: setCustomUserClaims(uid, { admin: true })
+ * Optionally also set role: 'admin' for legacy checks (storage.rules).
+ */
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    /** Client AdminRoute verifies admin/superAdmin; rules must mirror JWT claims only. */
+    function isPrivilegedAdmin() {
+      return signedIn()
+        && (request.auth.token.admin == true
+            || request.auth.token.superAdmin == true
+            || request.auth.token.role == 'admin');
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isSelf(userId) || isPrivilegedAdmin();
+      allow create: if isSelf(userId);
+      allow update, delete: if isSelf(userId) || isPrivilegedAdmin();
     }
+
     match /resumes/{resumeId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null;
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isPrivilegedAdmin());
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow update, delete: if signedIn()
+        && (resource.data.userId == request.auth.uid || isPrivilegedAdmin());
     }
+
     match /settings/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isSelf(userId);
     }
+
     match /notifications/{notificationId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null;
+      allow read: if signedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow update, delete: if signedIn()
+        && resource.data.userId == request.auth.uid;
     }
+
     match /templates/{templateId} {
       allow read: if true;
     }

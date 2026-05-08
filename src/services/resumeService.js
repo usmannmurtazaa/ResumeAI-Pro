@@ -4,10 +4,7 @@ import {
   writeBatch, serverTimestamp, increment,
 } from 'firebase/firestore';
 import { db, logAnalyticsEvent } from './firebase';
-
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const FREE_RESUME_LIMIT = 5;
+import { FREE_RESUME_LIMIT } from '../data/constants';
 const MAX_BATCH_SIZE = 400;
 
 // ── Safe ATS Score Calculation ────────────────────────────────────────────
