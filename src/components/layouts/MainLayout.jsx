@@ -5,6 +5,7 @@ import {
   useScroll, useTransform,
 } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
+import { siteConfig } from '../../config/siteConfig';
 import {
   FiArrowUp, FiHelpCircle, FiMail, FiMessageCircle, FiSend,
   FiThumbsDown, FiThumbsUp, FiUser, FiX,
@@ -151,6 +152,12 @@ const MainLayout = ({
     () => (pageTitle ? `${pageTitle} | ResumeAI Pro` : 'ResumeAI Pro'),
     [pageTitle]
   );
+
+  const canonicalUrl = useMemo(() => {
+    const base = (siteConfig.url || '').replace(/\/$/, '');
+    const path = location.pathname || '/';
+    return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+  }, [location.pathname]);
 
   // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -302,6 +309,13 @@ const MainLayout = ({
       <Helmet>
         <title>{resolvedTitle}</title>
         {pageDescription && <meta name="description" content={pageDescription} />}
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={resolvedTitle} />
+        {pageDescription && <meta property="og:description" content={pageDescription} />}
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="ResumeAI Pro" />
+        <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
       <div className="flex min-h-screen flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
@@ -318,7 +332,12 @@ const MainLayout = ({
           <Navbar />
         </motion.div>
 
-        {/* Main Content */}
+        {/* Main Content — top ad slot reserves space without overlapping nav (inject third-party creatives here) */}
+        <div
+          id="ad-slot-top"
+          className="relative z-0 mx-auto w-full max-w-6xl px-4 pt-2 empty:hidden isolate [min-height:0]"
+          data-ad-slot="top-banner"
+        />
         <main className="relative flex-1">
           <AnimatePresence mode="wait">
             <motion.div
@@ -332,6 +351,12 @@ const MainLayout = ({
             </motion.div>
           </AnimatePresence>
         </main>
+
+        <div
+          id="ad-slot-bottom"
+          className="relative z-0 mx-auto mt-4 w-full max-w-6xl px-4 pb-2 empty:hidden isolate [min-height:0]"
+          data-ad-slot="bottom-banner"
+        />
 
         <Footer />
 

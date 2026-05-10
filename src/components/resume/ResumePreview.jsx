@@ -6,6 +6,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import toast from 'react-hot-toast';
+import { getResumeTemplateLoader } from './templates/resolveTemplate';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -208,14 +209,7 @@ const ResumePreview = ({ data, template }) => {
     }
 
     try {
-      // FIXED: Lazy load template components
-      const TemplateComponent = React.lazy(() => {
-        switch (template) {
-          case 'classic': return import('./templates/Template2');
-          case 'creative': return import('./templates/Template3');
-          default: return import('./templates/Template1');
-        }
-      });
+      const TemplateComponent = React.lazy(getResumeTemplateLoader(template));
 
       return (
         <React.Suspense fallback={<div className="p-8 text-center"><FiLoader className="w-8 h-8 animate-spin mx-auto" /></div>}>

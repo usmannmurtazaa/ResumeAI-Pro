@@ -224,7 +224,7 @@ const SearchBar = ({ isOpen, onClose }) => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (query.trim()) {
-      navigate(`/search?q=${encodeURIComponent(query)}`);
+      navigate(`/templates?q=${encodeURIComponent(query.trim())}`);
       onClose();
     }
   };
@@ -392,7 +392,6 @@ const Navbar = () => {
       navigate('/');
       setIsProfileOpen(false);
       setIsMenuOpen(false);
-      toast.success('Logged out successfully');
     } catch (error) {
       toast.error('Failed to log out');
     }
@@ -414,6 +413,14 @@ const Navbar = () => {
 
   return (
     <>
+      {isMenuOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] lg:hidden"
+          aria-label="Close navigation menu"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
       {/* Navigation Progress Bar */}
       <AnimatePresence>
         {isNavigating && (
@@ -431,9 +438,11 @@ const Navbar = () => {
         className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${
           scrollDirection === 'down' && !isMenuOpen ? '-translate-y-full' : 'translate-y-0'
         } ${
-          isScrolled || location.pathname !== '/'
-            ? 'glass border-b border-white/20 dark:border-gray-700/20 shadow-sm'
-            : 'bg-transparent'
+          isMenuOpen
+            ? 'border-b border-gray-200/80 bg-white/95 shadow-md backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-900/95'
+            : isScrolled || location.pathname !== '/'
+              ? 'glass border-b border-white/20 dark:border-gray-700/20 shadow-sm'
+              : 'bg-transparent'
         }`}
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -664,7 +673,7 @@ const Navbar = () => {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="lg:hidden py-2 border-t border-gray-200 dark:border-gray-700 max-h-[calc(100vh-4rem)] overflow-y-auto"
+                className="lg:hidden py-2 border-t border-gray-200 bg-white/98 dark:border-gray-700 dark:bg-gray-900/98 max-h-[calc(100vh-4rem)] overflow-y-auto"
               >
                 <div className="space-y-1 pb-2">
                   {[...navLinks, ...(user ? userLinks : [])].map(link => (

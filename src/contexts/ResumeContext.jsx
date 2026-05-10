@@ -14,7 +14,17 @@ import toast from 'react-hot-toast';
 const FREE_RESUME_LIMIT = 5;
 const RESUMES_PER_PAGE = 20;
 
-export const RESUME_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive', 'tech'];
+export const RESUME_TEMPLATES = [
+  'modern',
+  'classic',
+  'creative',
+  'minimal',
+  'executive',
+  'tech',
+  'elegant',
+  'corporate',
+  'startup',
+];
 
 export const RESUME_STATUS = {
   DRAFT: 'draft',

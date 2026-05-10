@@ -121,7 +121,7 @@ const PrivateRoute = ({
   onAccessDenied = null,
   requirePremium = false,
 }) => {
-  const { user, loading, isEmailVerified, userRole, sendVerificationEmail, refreshUser } = useAuth();
+  const { user, loading, initializing, isEmailVerified, userRole, sendVerificationEmail } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -145,45 +145,57 @@ const PrivateRoute = ({
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // FIXED: Monitor token expiration
+  // Proactive ID token refresh — do not treat transient errors as session loss
   useEffect(() => {
     if (!user) return;
-    
+
     const checkTokenExpiration = async () => {
       try {
+        await user.getIdToken(true);
         const token = await user.getIdTokenResult();
         const expirationTime = new Date(token.expirationTime).getTime();
         const now = Date.now();
         const timeUntilExpiry = expirationTime - now;
-        
-        // If token expires in less than 5 minutes, refresh it
-        if (timeUntilExpiry < 5 * 60 * 1000) {
-          await user.getIdToken(true);
-        }
-        
-        // If token is expired, force re-login
+
         if (timeUntilExpiry <= 0) {
           setTokenExpired(true);
           toast.error('Your session has expired. Please sign in again.');
         }
       } catch (error) {
+        const code = error?.code || '';
+        if (
+          code === 'auth/user-token-expired' ||
+          code === 'auth/user-disabled' ||
+          code === 'auth/invalid-user-token'
+        ) {
+          setTokenExpired(true);
+          toast.error('Your session has expired. Please sign in again.');
+          return;
+        }
         console.error('Token check failed:', error);
-        setTokenExpired(true);
       }
     };
-    
-    // Check immediately
+
     checkTokenExpiration();
-    
-    // Check every 10 minutes
     const interval = setInterval(checkTokenExpiration, 10 * 60 * 1000);
-    
     return () => clearInterval(interval);
   }, [user]);
 
+  const authBusy = loading || initializing;
+
+  // Toast once when redirecting unauthenticated users (avoid spam on re-renders)
+  useEffect(() => {
+    if (authBusy || user || tokenExpired) return;
+    toast.error('Please sign in to access this page', {
+      icon: '🔒',
+      id: 'auth-required',
+      duration: 4000,
+    });
+  }, [authBusy, user, tokenExpired]);
+
   // Log access attempt for analytics
   useEffect(() => {
-    if (!loading && user && !tokenExpired) {
+    if (!authBusy && user && !tokenExpired) {
       const logAccess = async () => {
         try {
           console.info(
@@ -206,7 +218,7 @@ const PrivateRoute = ({
       
       logAccess();
     }
-  }, [loading, user, location.pathname, tokenExpired]);
+  }, [authBusy, user, location.pathname, tokenExpired]);
 
   // FIXED: Enhanced role-based access check
   const hasRequiredRole = useCallback(() => {
@@ -289,8 +301,8 @@ const PrivateRoute = ({
 
   // ── Render States ──────────────────────────────────────────────────────────
 
-  // Loading state
-  if (loading) {
+  // Loading state — wait for Firebase auth + first profile hydration
+  if (authBusy) {
     return (
       <div 
         className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
@@ -343,12 +355,6 @@ const PrivateRoute = ({
   // Not authenticated - redirect to login with return path
   if (!user) {
     handleAccessDenied({ reason: 'not_authenticated', path: location.pathname });
-
-    toast.error('Please sign in to access this page', {
-      icon: '🔒',
-      id: 'auth-required',
-      duration: 4000,
-    });
 
     return (
       <Navigate 
@@ -650,11 +656,11 @@ export const withPrivateRoute = (WrappedComponent, options = {}) => {
 // ── Custom Hook ─────────────────────────────────────────────────────────────
 
 export const useRouteAccess = () => {
-  const { user, loading, isEmailVerified, userRole } = useAuth();
+  const { user, loading, initializing, isEmailVerified, userRole } = useAuth();
   
   return {
     isAuthenticated: !!user,
-    isLoading: loading,
+    isLoading: loading || initializing,
     isEmailVerified,
     userRole,
     canAccess: (options = {}) => {

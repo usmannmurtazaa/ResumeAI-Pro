@@ -1,6 +1,8 @@
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { getResumeTemplateLoader } from '../components/resume/templates/resolveTemplate';
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const DEFAULT_FILENAME = 'resume.pdf';
@@ -192,8 +194,9 @@ const mountResumePreview = async (resumeData, template) => {
   const root = createRoot(container);
 
   try {
-    const { default: ResumePreview } = await import('../components/resume/ResumePreview');
-    root.render(createElement(ResumePreview, { data: resumeData, template }));
+    const loader = getResumeTemplateLoader(template);
+    const { default: TemplateComponent } = await loader();
+    root.render(createElement(TemplateComponent, { data: resumeData }));
 
     await waitForFonts();
     await waitForNextPaint();

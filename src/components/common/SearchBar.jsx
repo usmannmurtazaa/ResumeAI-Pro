@@ -209,7 +209,7 @@ const SearchBar = ({ isOpen, onClose }) => {
       // Navigate to a generic search page or fallback
       addRecent(query);
       onClose();
-      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      navigate(`/templates?q=${encodeURIComponent(query.trim())}`);
     }
   }, [results, selectedIndex, query, handleSelect, addRecent, onClose, navigate]);
 

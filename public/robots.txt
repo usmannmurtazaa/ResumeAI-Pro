@@ -1,3 +1,8 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Disallow:
+
+# Public marketing and auth entry points are allowed (Disallow empty).
+# SPA app routes: crawlers receive index.html; client-side meta via react-helmet-async.
+
+Sitemap: https://resumeaixpro.netlify.app/sitemap.xml

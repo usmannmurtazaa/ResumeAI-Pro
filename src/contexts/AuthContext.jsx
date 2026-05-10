@@ -471,13 +471,7 @@ export const AuthProvider = ({ children }) => {
       if (!isActive || !firebaseUser) return;
 
       try {
-        // Refresh custom claims if using Firebase Admin SDK
-        const tokenResult = await getIdTokenResult(firebaseUser, false);
-        
-        // If you set custom claims via Admin SDK (e.g., admin: true),
-        // they'll be available here after token refresh
-        // const isAdmin = tokenResult.claims.admin === true;
-        
+        await getIdTokenResult(firebaseUser, false);
         if (process.env.NODE_ENV === 'development') {
           console.debug('Token refreshed for user:', firebaseUser.uid);
         }
@@ -593,6 +587,8 @@ export const AuthProvider = ({ children }) => {
   const loginWithProvider = useCallback(async (providerName) => {
     try {
       setAuthError(null);
+
+      await setPersistence(auth, browserLocalPersistence);
 
       const provider = createProvider(providerName);
       const result = await signInWithPopup(auth, provider);

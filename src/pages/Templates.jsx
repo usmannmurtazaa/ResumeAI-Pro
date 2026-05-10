@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';
@@ -76,11 +76,16 @@ const TEMPLATES = [
 
 const Templates = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { createResume } = useResume();
   const [selectedTemplate, setSelectedTemplate] = useState('modern');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  useEffect(() => {
+    setSearchTerm(searchParams.get('q') || '');
+  }, [searchParams]);
 
   usePageTitle({
     title: 'Resume Templates',
