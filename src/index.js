@@ -489,6 +489,11 @@ const removeInitialLoader = () => {
   const loader = document.getElementById('initial-loader');
   if (!loader) return;
 
+  const focused = document.activeElement;
+  if (focused instanceof Node && loader.contains(focused) && typeof focused.blur === 'function') {
+    focused.blur();
+  }
+
   // Hide from accessibility tree immediately
   loader.setAttribute('aria-hidden', 'true');
   

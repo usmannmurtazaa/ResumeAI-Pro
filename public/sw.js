@@ -97,31 +97,35 @@ const getResourceType = (request) => {
 const networkFirst = async (request, cacheName) => {
   try {
     const networkResponse = await fetch(request);
-    
+
     // Cache valid responses
     if (networkResponse && networkResponse.ok) {
       const cache = await caches.open(cacheName);
       cache.put(request, networkResponse.clone());
     }
-    
+
     return networkResponse;
   } catch (error) {
-    // Network failed, try cache
     const cachedResponse = await caches.match(request);
-    
     if (cachedResponse) {
       return cachedResponse;
     }
-    
-    // If it's a navigation request, show offline page
+
+    // SPA: serve cached shell for navigations (avoids synthetic 503 on flaky networks)
     if (request.mode === 'navigate') {
+      const indexShell =
+        (await caches.match('/index.html')) ||
+        (await caches.match(new URL('/index.html', self.location.origin).href));
+      if (indexShell) {
+        return indexShell;
+      }
+
       const offlinePage = await caches.match('/offline.html');
       if (offlinePage) {
         return offlinePage;
       }
     }
-    
-    // Nothing cached, return error
+
     return new Response('You are offline and this resource is not cached.', {
       status: 503,
       statusText: 'Service Unavailable',
@@ -159,12 +163,23 @@ const cacheFirst = async (request, cacheName) => {
  */
 const staleWhileRevalidate = async (request, cacheName) => {
   const cachedResponse = await caches.match(request);
-  
-  // Start network fetch in background (don't await)
   const fetchPromise = updateCache(request, cacheName);
-  
-  // Return cached response immediately, or wait for network
-  return cachedResponse || fetchPromise;
+
+  if (cachedResponse) {
+    void fetchPromise;
+    return cachedResponse;
+  }
+
+  const resolved = await fetchPromise;
+  if (resolved) {
+    return resolved;
+  }
+
+  return new Response('Resource unavailable while offline.', {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: new Headers({ 'Content-Type': 'text/plain' }),
+  });
 };
 
 /**
@@ -302,6 +317,17 @@ self.addEventListener('fetch', (event) => {
   if (!url.origin.includes(self.location.origin) && 
       !url.hostname.includes('fonts.googleapis.com') &&
       !url.hostname.includes('fonts.gstatic.com')) {
+    return;
+  }
+
+  // Critical: do not intercept webpack/React chunks — prevents SW from returning
+  // synthetic 503 Responses that show as "Failed to load resource: 503" for lazy routes.
+  if (
+    url.pathname.startsWith('/static/') ||
+    request.destination === 'script' ||
+    request.destination === 'style'
+  ) {
+    event.respondWith(fetch(request));
     return;
   }
   

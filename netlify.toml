@@ -38,12 +38,12 @@
     # FIXED: Content Security Policy with Google Analytics domains
     Content-Security-Policy = """
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com https://*.g.doubleclick.net;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://*.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://www.googletagservices.com https://*.googleadservices.com https://www.google-analytics.com https://*.g.doubleclick.net;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com data:;
-      img-src 'self' data: https: blob: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com;
-      connect-src 'self' https://*.sentry.io https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.netlify.app wss://*.firebaseio.com https://www.google-analytics.com https://*.google-analytics.com https://*.g.doubleclick.net https://www.google.com https://stats.g.doubleclick.net;
-      frame-src 'self' https://*.firebaseapp.com https://*.stripe.com;
+      img-src 'self' data: https: blob: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.googlesyndication.com https://*.g.doubleclick.net https://*.googleadservices.com;
+      connect-src 'self' https://*.sentry.io https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.netlify.app wss://*.firebaseio.com https://www.google-analytics.com https://*.google-analytics.com https://*.g.doubleclick.net https://www.google.com https://stats.g.doubleclick.net https://*.googlesyndication.com https://*.googleadservices.com https://googleads.g.doubleclick.net;
+      frame-src 'self' https://*.firebaseapp.com https://*.stripe.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.googlesyndication.com;
       media-src 'self';
       object-src 'none';
       base-uri 'self';

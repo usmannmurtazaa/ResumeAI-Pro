@@ -592,6 +592,22 @@ const Builder = () => {
     selectedTemplate,
   ]);
 
+  useEffect(() => {
+    const flushPendingSave = () => {
+      if (document.visibilityState !== 'hidden' || !id || !resume) return;
+      const snap = buildDataSnapshot(latestFormDataRef.current, latestTemplateRef.current);
+      if (snap === savedDataSnapshotRef.current) return;
+      void persistExistingResume({
+        dataOverride: latestFormDataRef.current,
+        templateOverride: latestTemplateRef.current,
+        silent: true,
+      });
+    };
+
+    document.addEventListener('visibilitychange', flushPendingSave);
+    return () => document.removeEventListener('visibilitychange', flushPendingSave);
+  }, [id, resume, persistExistingResume]);
+
   // ── Persist preview preference ──────────────────────────────────────
 
   useEffect(() => {

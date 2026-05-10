@@ -305,16 +305,16 @@ const ScrollToTop = () => {
 
 // ── Page Transition Variants ────────────────────────────────────────────────
 const basePageVariants = {
-  initial: { opacity: 0, y: 10 },
+  initial: { opacity: 0, y: 8 },
   animate: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.25, ease: 'easeOut' },
+    transition: { duration: 0.18, ease: 'easeOut' },
   },
   exit: {
     opacity: 0,
-    y: -8,
-    transition: { duration: 0.18, ease: 'easeIn' },
+    y: -6,
+    transition: { duration: 0.12, ease: 'easeIn' },
   },
 };
 
@@ -343,7 +343,7 @@ const PageLoader = () => {
       <motion.div
         initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: shouldReduceMotion ? 0 : 0.25 }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
         className="text-center"
       >
         <Loader size="lg" />

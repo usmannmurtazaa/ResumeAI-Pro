@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -219,6 +219,18 @@ const SearchBar = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSearch = (e) => {
@@ -315,6 +327,10 @@ const Navbar = () => {
   const profileMenuRef = useRef(null);
   const notificationsRef = useRef(null);
   const quickActionsRef = useRef(null);
+  const mobileMenuButtonRef = useRef(null);
+  const mobileNavPanelRef = useRef(null);
+  const prevMobileMenuOpenRef = useRef(false);
+  const suppressNextMobileFocusRestoreRef = useRef(false);
 
   const isPremium = userRole === 'premium' || userRole === 'admin';
 
@@ -378,6 +394,56 @@ const Navbar = () => {
     setShowQuickActions(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (isMenuOpen) {
+      prevMobileMenuOpenRef.current = true;
+      const id = window.requestAnimationFrame(() => {
+        const first = mobileNavPanelRef.current?.querySelector(
+          'a[href], button:not([disabled])'
+        );
+        first?.focus({ preventScroll: true });
+      });
+      return () => window.cancelAnimationFrame(id);
+    }
+
+    const wasOpen = prevMobileMenuOpenRef.current;
+    prevMobileMenuOpenRef.current = false;
+    if (!wasOpen) return;
+
+    if (suppressNextMobileFocusRestoreRef.current) {
+      suppressNextMobileFocusRestoreRef.current = false;
+      return;
+    }
+
+    mobileMenuButtonRef.current?.focus({ preventScroll: true });
+  }, [isMenuOpen]);
+
+  const closeMobileMenuAfterNavigate = useCallback(() => {
+    suppressNextMobileFocusRestoreRef.current = true;
+    setIsMenuOpen(false);
+  }, []);
+
   // Keyboard shortcuts
   useKeyboardShortcut('k', () => setShowCommandPalette(true), { meta: true });
   useKeyboardShortcut('/', (e) => { e.preventDefault(); setShowSearch(true); });
@@ -399,6 +465,7 @@ const Navbar = () => {
 
   const handleNavigate = useCallback((path) => {
     navigate(path);
+    suppressNextMobileFocusRestoreRef.current = true;
     setIsMenuOpen(false);
     setIsProfileOpen(false);
     setShowQuickActions(false);
@@ -656,10 +723,13 @@ const Navbar = () => {
 
               {/* Mobile Menu Toggle */}
               <button
+                ref={mobileMenuButtonRef}
+                type="button"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={isMenuOpen}
+                aria-controls={isMenuOpen ? 'mobile-primary-navigation' : undefined}
               >
                 {isMenuOpen ? <FiX className="w-5 h-5" /> : <FiMenu className="w-5 h-5" />}
               </button>
@@ -670,9 +740,23 @@ const Navbar = () => {
           <AnimatePresence>
             {isMenuOpen && (
               <motion.div
+                ref={mobileNavPanelRef}
+                id="mobile-primary-navigation"
+                role="region"
+                aria-label="Mobile navigation"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                onExitComplete={() => {
+                  const active = document.activeElement;
+                  if (
+                    active instanceof HTMLElement &&
+                    mobileNavPanelRef.current?.contains(active)
+                  ) {
+                    active.blur();
+                  }
+                }}
                 className="lg:hidden py-2 border-t border-gray-200 bg-white/98 dark:border-gray-700 dark:bg-gray-900/98 max-h-[calc(100vh-4rem)] overflow-y-auto"
               >
                 <div className="space-y-1 pb-2">
@@ -680,7 +764,7 @@ const Navbar = () => {
                     <Link
                       key={link.to}
                       to={link.to}
-                      onClick={() => setIsMenuOpen(false)}
+                      onClick={closeMobileMenuAfterNavigate}
                       className={`flex items-center gap-3 px-4 py-2.5 rounded-lg ${
                         link.highlight && user
                           ? 'text-white bg-gradient-to-r from-primary-500 to-accent-500'
@@ -699,7 +783,11 @@ const Navbar = () => {
                     <>
                       <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
                       <button
-                        onClick={handleLogout}
+                        type="button"
+                        onClick={() => {
+                          suppressNextMobileFocusRestoreRef.current = true;
+                          handleLogout();
+                        }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
                         <FiLogOut className="w-5 h-5" />
@@ -708,10 +796,23 @@ const Navbar = () => {
                     </>
                   ) : (
                     <div className="border-t border-gray-200 dark:border-gray-700 my-2 pt-2 px-2 space-y-2">
-                      <Button variant="outline" onClick={() => { navigate('/login'); setIsMenuOpen(false); }} className="w-full">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          closeMobileMenuAfterNavigate();
+                          navigate('/login');
+                        }}
+                        className="w-full"
+                      >
                         Sign In
                       </Button>
-                      <Button onClick={() => { navigate('/signup'); setIsMenuOpen(false); }} className="w-full">
+                      <Button
+                        onClick={() => {
+                          closeMobileMenuAfterNavigate();
+                          navigate('/signup');
+                        }}
+                        className="w-full"
+                      >
                         Get Started Free
                       </Button>
                     </div>

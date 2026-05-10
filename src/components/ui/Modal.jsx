@@ -46,13 +46,17 @@ const useFocusTrap = (containerRef, isActive) => {
     if (!isActive || !containerRef.current) return;
 
     const container = containerRef.current;
-    const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    
+    const previousActive =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const focusableSelector =
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
     const getFocusableElements = () => container.querySelectorAll(focusableSelector);
 
     const handleKeyDown = (e) => {
       if (e.key !== 'Tab') return;
-      
+
       const elements = getFocusableElements();
       if (elements.length === 0) return;
 
@@ -72,14 +76,23 @@ const useFocusTrap = (containerRef, isActive) => {
       }
     };
 
-    // Focus first element
     const elements = getFocusableElements();
     if (elements.length > 0) {
       elements[0].focus();
     }
 
     container.addEventListener('keydown', handleKeyDown);
-    return () => container.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      container.removeEventListener('keydown', handleKeyDown);
+      if (
+        previousActive &&
+        previousActive !== document.body &&
+        document.body.contains(previousActive) &&
+        typeof previousActive.focus === 'function'
+      ) {
+        previousActive.focus({ preventScroll: true });
+      }
+    };
   }, [isActive, containerRef]);
 };
 
