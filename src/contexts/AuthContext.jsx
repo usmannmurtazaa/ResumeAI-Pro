@@ -404,11 +404,15 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     let isActive = true;
+    let hydrationGeneration = 0;
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!isActive) return;
 
+      const generation = ++hydrationGeneration;
+
       setInitializing(true);
+      setLoading(true);
 
       try {
         if (!firebaseUser) {
@@ -420,7 +424,7 @@ export const AuthProvider = ({ children }) => {
 
         const { created, data } = await hydrateUserDocument(firebaseUser);
 
-        if (!isActive) return;
+        if (!isActive || generation !== hydrationGeneration) return;
 
         setUserData(data);
         setUserRole(data?.role || 'user');
@@ -429,7 +433,7 @@ export const AuthProvider = ({ children }) => {
           doc(db, COLLECTIONS.subscriptions, firebaseUser.uid)
         );
 
-        if (!isActive) return;
+        if (!isActive || generation !== hydrationGeneration) return;
 
         setSubscription(subscriptionSnapshot.exists() ? subscriptionSnapshot.data() : null);
 
@@ -447,9 +451,11 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Error syncing auth state:', error);
-        if (isActive) setAuthError(error);
+        if (isActive && generation === hydrationGeneration) {
+          setAuthError(error);
+        }
       } finally {
-        if (isActive) {
+        if (isActive && generation === hydrationGeneration) {
           setLoading(false);
           setInitializing(false);
         }

@@ -244,13 +244,18 @@ export const ResumeProvider = ({ children }) => {
     }
 
     try {
+      const initialScore =
+        typeof data.atsScore === 'number'
+          ? data.atsScore
+          : await calculateATSScoreSafe(data.data || {});
+
       const newResume = {
         userId: user.uid,
         name: data.name || 'Untitled Resume',
         template: data.template || 'modern',
         data: data.data || {},
         status: RESUME_STATUS.DRAFT,
-        atsScore: 0,
+        atsScore: initialScore,
         downloadCount: 0,
         viewCount: 0,
         createdAt: serverTimestamp(),

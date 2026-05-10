@@ -30,9 +30,25 @@ const isDevelopment = process.env.NODE_ENV === 'development';
  */
 
 // ── Lazy Page Factory ───────────────────────────────────────────────────────
+const retryDynamicImport = (importFn, retriesLeft = 2, delayMs = 600) =>
+  importFn().catch((error) => {
+    if (retriesLeft <= 0) {
+      if (isDevelopment) {
+        console.error('[lazy] Chunk load failed after retries', error);
+      }
+      throw error;
+    }
+    return new Promise((resolve, reject) => {
+      window.setTimeout(() => {
+        retryDynamicImport(importFn, retriesLeft - 1, delayMs).then(resolve, reject);
+      }, delayMs);
+    });
+  });
+
 const createLazyPage = (loader) => {
-  const Component = lazy(loader);
-  Component.preload = loader;
+  const load = () => retryDynamicImport(loader);
+  const Component = lazy(load);
+  Component.preload = load;
   Component.displayName = `LazyPage(${loader.name || 'Unknown'})`;
   return Component;
 };
@@ -388,7 +404,7 @@ const AnimatedRoutes = () => {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="sync" initial={false}>
       <Routes location={location} key={location.pathname}>
         {/* Public routes - Added null check with fallback empty array */}
         {(PUBLIC_ROUTES || []).map(({ path, component: Component }) => (

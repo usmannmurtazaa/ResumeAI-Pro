@@ -25,43 +25,6 @@ const useEmailVerificationPoller = (user, isEmailVerified) => {
   const pollIntervalRef = useRef(null);
   const mountedRef = useRef(true);
 
-  const startPolling = useCallback(() => {
-    if (isEmailVerified || pollCount >= EMAIL_VERIFICATION_MAX_POLLS) return;
-    
-    setIsPolling(true);
-    
-    pollIntervalRef.current = setInterval(async () => {
-      if (!mountedRef.current) return;
-      
-      try {
-        // Force refresh the user's ID token to get latest claims
-        if (user) {
-          await user.reload();
-          const updatedUser = user;
-          
-          setPollCount(prev => prev + 1);
-          
-          if (updatedUser.emailVerified) {
-            stopPolling();
-            // Force refresh the auth state
-            await user.getIdToken(true);
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('Email verification poll failed:', error);
-      }
-      
-      setPollCount(prev => {
-        if (prev >= EMAIL_VERIFICATION_MAX_POLLS) {
-          stopPolling();
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, EMAIL_VERIFICATION_POLL_INTERVAL);
-  }, [user, isEmailVerified, pollCount]);
-
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -69,6 +32,38 @@ const useEmailVerificationPoller = (user, isEmailVerified) => {
     }
     setIsPolling(false);
   }, []);
+
+  const startPolling = useCallback(() => {
+    if (isEmailVerified || pollIntervalRef.current) return;
+
+    setIsPolling(true);
+
+    pollIntervalRef.current = setInterval(async () => {
+      if (!mountedRef.current) return;
+
+      try {
+        if (user) {
+          await user.reload();
+
+          if (user.emailVerified) {
+            stopPolling();
+            await user.getIdToken(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Email verification poll failed:', error);
+      }
+
+      setPollCount((prev) => {
+        const next = prev + 1;
+        if (next >= EMAIL_VERIFICATION_MAX_POLLS) {
+          stopPolling();
+        }
+        return next;
+      });
+    }, EMAIL_VERIFICATION_POLL_INTERVAL);
+  }, [user, isEmailVerified, stopPolling]);
 
   const manualCheck = useCallback(async () => {
     if (!user) return;

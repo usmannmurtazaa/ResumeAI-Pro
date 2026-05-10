@@ -226,17 +226,20 @@ const ShortcutItem = ({ keys, description }) => (
 const Builder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isPremium } = useAuth();
+  const { user, isPremium } = useAuth();
   const {
-    resume,
-    loading,
-    error,
+    getResume,
     createResume,
     updateResume,
     autoSaveResume,
     duplicateResume,
     deleteResume,
-  } = useResume(id);
+  } = useResume();
+
+  const [activeResume, setActiveResume] = useState(null);
+  const [resumeLoading, setResumeLoading] = useState(() => Boolean(id));
+  const [resumeError, setResumeError] = useState(null);
+  const [loadRevision, setLoadRevision] = useState(0);
 
   const [formData, setFormData] = useState({});
   const [selectedTemplate, setSelectedTemplate] = useState('modern');
@@ -316,6 +319,66 @@ const Builder = () => {
     latestNameRef.current = normalizeResumeName(resumeName);
   }, [resumeName]);
 
+  useEffect(() => {
+    if (!id) {
+      setActiveResume(null);
+      setResumeLoading(false);
+      setResumeError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const load = async () => {
+      setResumeLoading(true);
+      setResumeError(null);
+
+      try {
+        const doc = await getResume(id);
+        if (cancelled) return;
+
+        if (!doc) {
+          setActiveResume(null);
+          setResumeError(
+            Object.assign(new Error('Resume not found or you no longer have access.'), {
+              code: 'not-found',
+            })
+          );
+          return;
+        }
+
+        if (user?.uid && doc.userId !== user.uid) {
+          setActiveResume(null);
+          setResumeError(
+            Object.assign(new Error('You do not have access to this resume.'), {
+              code: 'forbidden',
+            })
+          );
+          return;
+        }
+
+        setActiveResume(doc);
+        setResumeError(null);
+      } catch (loadErr) {
+        if (!cancelled) {
+          console.error('Builder: load resume failed', loadErr);
+          setActiveResume(null);
+          setResumeError(loadErr);
+        }
+      } finally {
+        if (!cancelled) {
+          setResumeLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, getResume, user?.uid, loadRevision]);
+
   // ── Sync unsaved state ──────────────────────────────────────────────
 
   const syncUnsavedState = useCallback(() => {
@@ -392,6 +455,18 @@ const Builder = () => {
           savedNameRef.current = nextName;
         }
 
+        setActiveResume((prev) =>
+          prev && prev.id === id
+            ? {
+                ...prev,
+                data: nextData,
+                template: nextTemplate,
+                atsScore: nextScore,
+                ...(saveName ? { name: nextName } : {}),
+              }
+            : prev
+        );
+
         syncUnsavedState();
         markSaveStatus('saved');
 
@@ -454,7 +529,7 @@ const Builder = () => {
       if (id) {
         try {
           await updateResume(id, {
-            downloadCount: (resume?.downloadCount || 0) + 1,
+            downloadCount: (activeResume?.downloadCount || 0) + 1,
             lastDownloaded: new Date().toISOString(),
           });
         } catch (updateError) {
@@ -469,7 +544,7 @@ const Builder = () => {
         setIsDownloading(false);
       }
     }
-  }, [id, resume?.downloadCount, updateResume]);
+  }, [id, activeResume?.downloadCount, updateResume]);
 
   // ── Preview handlers ────────────────────────────────────────────────
 
@@ -542,21 +617,23 @@ const Builder = () => {
   // ── Resume data sync ────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!resume) {
-      if (!id) {
-        setFormData({});
-        setSelectedTemplate('modern');
-        setResumeName('Untitled Resume');
-        savedDataSnapshotRef.current = buildDataSnapshot({}, 'modern');
-        savedNameRef.current = 'Untitled Resume';
-        setHasUnsavedChanges(false);
-      }
+    if (!id) {
+      setFormData({});
+      setSelectedTemplate('modern');
+      setResumeName('Untitled Resume');
+      savedDataSnapshotRef.current = buildDataSnapshot({}, 'modern');
+      savedNameRef.current = 'Untitled Resume';
+      setHasUnsavedChanges(false);
       return;
     }
 
-    const nextData = resume.data || {};
-    const nextTemplate = resume.template || 'modern';
-    const nextName = normalizeResumeName(resume.name || 'Untitled Resume');
+    if (!activeResume || activeResume.id !== id) {
+      return;
+    }
+
+    const nextData = activeResume.data || {};
+    const nextTemplate = activeResume.template || 'modern';
+    const nextName = normalizeResumeName(activeResume.name || 'Untitled Resume');
 
     setFormData(nextData);
     setSelectedTemplate(nextTemplate);
@@ -565,12 +642,12 @@ const Builder = () => {
 
     savedDataSnapshotRef.current = buildDataSnapshot(nextData, nextTemplate);
     savedNameRef.current = nextName;
-  }, [id, resume]);
+  }, [id, activeResume]);
 
   // ── Auto-save debounced ─────────────────────────────────────────────
 
   useEffect(() => {
-    if (!id || !resume) {
+    if (!id || !activeResume || activeResume.id !== id) {
       return;
     }
 
@@ -584,17 +661,24 @@ const Builder = () => {
       silent: true,
     });
   }, [
+    activeResume,
     debouncedFormData,
     debouncedSnapshot,
     id,
     persistExistingResume,
-    resume,
     selectedTemplate,
   ]);
 
   useEffect(() => {
     const flushPendingSave = () => {
-      if (document.visibilityState !== 'hidden' || !id || !resume) return;
+      if (
+        document.visibilityState !== 'hidden' ||
+        !id ||
+        !activeResume ||
+        activeResume.id !== id
+      ) {
+        return;
+      }
       const snap = buildDataSnapshot(latestFormDataRef.current, latestTemplateRef.current);
       if (snap === savedDataSnapshotRef.current) return;
       void persistExistingResume({
@@ -606,7 +690,7 @@ const Builder = () => {
 
     document.addEventListener('visibilitychange', flushPendingSave);
     return () => document.removeEventListener('visibilitychange', flushPendingSave);
-  }, [id, resume, persistExistingResume]);
+  }, [activeResume, id, persistExistingResume]);
 
   // ── Persist preview preference ──────────────────────────────────────
 
@@ -729,12 +813,12 @@ const Builder = () => {
   // ── Duplicate handler ───────────────────────────────────────────────
 
   const handleDuplicate = useCallback(async () => {
-    if (!id || !resume) {
+    if (!id || !activeResume) {
       return;
     }
 
     try {
-      const duplicatedResume = await duplicateResume(resume);
+      const duplicatedResume = await duplicateResume(activeResume);
       toast.success('Resume duplicated.');
       setShowActionsMenu(false);
       navigate(`/builder/${duplicatedResume.id}`, { replace: true });
@@ -742,7 +826,7 @@ const Builder = () => {
       console.error('Duplicate resume failed:', duplicateError);
       toast.error('Failed to duplicate resume.');
     }
-  }, [duplicateResume, id, navigate, resume]);
+  }, [activeResume, duplicateResume, id, navigate]);
 
   // ── Delete handler ──────────────────────────────────────────────────
 
@@ -767,13 +851,13 @@ const Builder = () => {
   // ── Error message ───────────────────────────────────────────────────
 
   const errorMessage =
-    typeof error === 'string'
-      ? error
-      : error?.message || 'Something went wrong while loading the resume.';
+    typeof resumeError === 'string'
+      ? resumeError
+      : resumeError?.message || 'Something went wrong while loading the resume.';
 
   // ── Loading State ────────────────────────────────────────────────────
 
-  if (loading) {
+  if (id && resumeLoading) {
     return (
       <DashboardLayout title="Resume Builder" showWelcome={false}>
         <div className="flex min-h-[60vh] items-center justify-center">
@@ -785,14 +869,25 @@ const Builder = () => {
 
   // ── Error State ──────────────────────────────────────────────────────
 
-  if (error) {
+  if (id && resumeError && !activeResume) {
     return (
       <DashboardLayout title="Resume Builder" showWelcome={false}>
         <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
           <FiAlertCircle className="mb-4 h-16 w-16 text-red-500" />
           <h2 className="mb-2 text-xl font-semibold">Failed to load resume</h2>
           <p className="mb-4 max-w-md text-gray-500 dark:text-gray-400">{errorMessage}</p>
-          <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setResumeError(null);
+                setLoadRevision((n) => n + 1);
+              }}
+            >
+              Try again
+            </Button>
+            <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+          </div>
         </div>
       </DashboardLayout>
     );
