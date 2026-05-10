@@ -1,5 +1,17 @@
-import { collection, addDoc, query, where, getDocs, orderBy, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { db, logAnalyticsEvent as firebaseAnalyticsEvent } from './firebase';
+import { getAuth } from 'firebase/auth';
+import {
+  collection,
+  doc,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+  writeBatch,
+  serverTimestamp,
+} from 'firebase/firestore';
+
+import { app, db, logAnalyticsEvent as firebaseAnalyticsEvent } from './firebase';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -119,6 +131,9 @@ export const analyticsService = {
     // Skip GA4-only events
     if (GA4_ONLY_EVENTS.includes(eventName)) return;
 
+    const resolvedUserId = userId || getAuth(app).currentUser?.uid;
+    if (!resolvedUserId) return;
+
     // Apply sampling for high-frequency events
     const sampleRate = SAMPLED_EVENTS[eventName];
     if (sampleRate !== undefined && Math.random() > sampleRate) return;
@@ -127,7 +142,7 @@ export const analyticsService = {
     eventQueue.push({
       name: eventName,
       data: eventData,
-      userId: userId || null,
+      userId: resolvedUserId,
       url: window.location.pathname,
       referrer: document.referrer || null,
       userAgent: navigator.userAgent?.substring(0, 200) || null, // Truncate

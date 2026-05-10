@@ -409,12 +409,257 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                 </div>
 
                 <div className="flex items-center gap-1 sm:gap-2">
-                  {isPremium && <Badge variant="warning" className="hidden sm:inline-flex"><FiAward className="h-3 w-3 mr-1" />PRO</Badge>}
-                  <Tooltip content="Command Palette (Ctrl+K)"><button onClick={openCommandPalette} className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"><FiCommand className="h-5 w-5" /></button></Tooltip>
-                  <Tooltip content="Refresh"><button onClick={handleRefresh} disabled={isRefreshing} className="rounded-lg p-2 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800"><FiRefreshCw className={cn('h-5 w-5', isRefreshing && 'animate-spin')} /></button></Tooltip>
+                  {isPremium && (
+                    <Badge variant="warning" className="hidden sm:inline-flex">
+                      <FiAward className="mr-1 h-3 w-3" />
+                      PRO
+                    </Badge>
+                  )}
+                  <Tooltip content="Command Palette (Ctrl+K)">
+                    <button
+                      type="button"
+                      onClick={openCommandPalette}
+                      className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      aria-label="Open command palette"
+                    >
+                      <FiCommand className="h-5 w-5" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="Refresh">
+                    <button
+                      type="button"
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      className="rounded-lg p-2 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800"
+                      aria-label="Refresh"
+                    >
+                      <FiRefreshCw className={cn('h-5 w-5', isRefreshing && 'animate-spin')} />
+                    </button>
+                  </Tooltip>
 
-                  {/* Quick Actions, Notifications, Theme, User Menu - abbreviated for brevity */}
-                  {/* ... (same structure as original, kept for production use) ... */}
+                  <div className="relative" ref={quickActionsRef}>
+                    <Tooltip content="Quick actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNotifications(false);
+                          setShowUserMenu(false);
+                          setShowQuickActions((prev) => !prev);
+                        }}
+                        className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        aria-label="Quick actions"
+                        aria-expanded={showQuickActions}
+                      >
+                        <FiZap className="h-5 w-5" />
+                      </button>
+                    </Tooltip>
+                    <AnimatePresence>
+                      {showQuickActions && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.96, y: -8 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.96, y: -8 }}
+                          className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                          role="menu"
+                        >
+                          <div className="p-2">
+                            <p className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">Quick Actions</p>
+                            {quickActions.map((action) => (
+                              <button
+                                key={action.id}
+                                type="button"
+                                onClick={() => {
+                                  action.action();
+                                  setShowQuickActions(false);
+                                }}
+                                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                                role="menuitem"
+                              >
+                                <span className="flex items-center gap-3">
+                                  <action.icon className={cn('h-4 w-4', action.iconClassName)} />
+                                  <span className="text-sm text-gray-900 dark:text-white">{action.label}</span>
+                                </span>
+                                {action.shortcut && (
+                                  <span className="text-xs text-gray-400">{action.shortcut}</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="relative" ref={notificationsRef}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowQuickActions(false);
+                        setShowUserMenu(false);
+                        setShowNotifications((prev) => !prev);
+                      }}
+                      className="relative rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      aria-label="Notifications"
+                      aria-expanded={showNotifications}
+                    >
+                      <FiBell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <Badge variant="danger" size="sm" className="absolute -right-1 -top-1 min-w-[1.25rem] justify-center px-1">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </Badge>
+                      )}
+                    </button>
+                    <AnimatePresence>
+                      {showNotifications && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.96, y: -8 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.96, y: -8 }}
+                          className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                          role="menu"
+                        >
+                          <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                            {unreadCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => markAllAsRead?.()}
+                                className="text-xs text-primary-500 hover:text-primary-600"
+                              >
+                                Mark all read
+                              </button>
+                            )}
+                          </div>
+                          <div className="max-h-96 overflow-y-auto">
+                            {notifications.length > 0 ? (
+                              notifications.slice(0, 8).map((notif) => {
+                                const meta = getNotificationMeta(notif.type);
+                                const Icon = meta.icon;
+                                return (
+                                  <button
+                                    key={notif.id}
+                                    type="button"
+                                    onClick={() => markAsRead?.(notif.id)}
+                                    className={cn(
+                                      'flex w-full items-start gap-3 border-b border-gray-100 p-4 text-left hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-700/50',
+                                      !notif.read && 'bg-blue-50/40 dark:bg-blue-900/10'
+                                    )}
+                                    role="menuitem"
+                                  >
+                                    <div className={cn('rounded-lg p-2', meta.className)}>
+                                      <Icon className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">{notif.title}</p>
+                                      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{notif.message}</p>
+                                    </div>
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <div className="p-8 text-center">
+                                <FiBell className="mx-auto mb-2 h-8 w-8 text-gray-300 dark:text-gray-600" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No notifications yet</p>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <Tooltip content={isDark ? 'Light mode' : 'Dark mode'}>
+                    <button
+                      type="button"
+                      onClick={toggleTheme}
+                      className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                    >
+                      {isDark ? <FiSun className="h-5 w-5" /> : <FiMoon className="h-5 w-5" />}
+                    </button>
+                  </Tooltip>
+
+                  <div className="relative" ref={userMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowQuickActions(false);
+                        setShowNotifications(false);
+                        setShowUserMenu((prev) => !prev);
+                      }}
+                      className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      aria-label="User menu"
+                      aria-expanded={showUserMenu}
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-sm font-semibold text-white">
+                        {user?.photoURL ? (
+                          <img src={user.photoURL} alt="" className="h-8 w-8 object-cover" />
+                        ) : (
+                          (user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()
+                        )}
+                      </div>
+                      <div className="hidden text-left lg:block">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user?.displayName || 'Account'}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{accountLabel}</p>
+                      </div>
+                      <FiChevronDown className="hidden h-4 w-4 text-gray-400 lg:block" />
+                    </button>
+                    <AnimatePresence>
+                      {showUserMenu && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.96, y: -8 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.96, y: -8 }}
+                          className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                          role="menu"
+                        >
+                          <div className="border-b border-gray-200 p-3 dark:border-gray-700">
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {greeting}, {firstName}
+                            </p>
+                            <p className="truncate text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+                            <Badge variant="default" size="sm" className="mt-2">
+                              {accountLabel}
+                            </Badge>
+                          </div>
+                          <div className="p-2">
+                            {[
+                              { id: 'profile', icon: FiUser, label: 'Profile', path: '/profile' },
+                              { id: 'settings', icon: FiSettings, label: 'Settings', path: '/settings' },
+                              { id: 'billing', icon: FiCreditCard, label: 'Billing', path: '/billing' },
+                            ].map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                  setShowUserMenu(false);
+                                  navigate(item.path);
+                                }}
+                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                                role="menuitem"
+                              >
+                                <item.icon className="h-4 w-4" />
+                                <span className="text-sm">{item.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="border-t border-gray-200 p-2 dark:border-gray-700">
+                            <button
+                              type="button"
+                              onClick={handleLogout}
+                              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                              role="menuitem"
+                            >
+                              <FiLogOut className="h-4 w-4" />
+                              <span className="text-sm">Sign out</span>
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
             </div>
@@ -446,7 +691,88 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
           </footer>
         </div>
 
-        {/* Create Modal & Command Palette (abbreviated) */}
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          title="Create a new resume"
+          size="lg"
+        >
+          <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            Pick a template to start. You can change it later in the builder.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                disabled={isCreatingResume}
+                onClick={() => handleCreateResume(t.id)}
+                className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left transition hover:border-primary-400 hover:shadow-md disabled:opacity-50 dark:border-gray-700 dark:hover:border-primary-500"
+              >
+                <div
+                  className={cn(
+                    'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-lg text-white',
+                    t.class
+                  )}
+                  aria-hidden
+                >
+                  {t.icon}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 dark:text-white">{t.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </Modal>
+
+        <Modal
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          title="Go to…"
+          size="md"
+        >
+          <Input
+            id={COMMAND_INPUT_ID}
+            icon={<FiSearch />}
+            placeholder="Search commands…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={handleCommandKeyDown}
+            autoComplete="off"
+          />
+          <div className="mt-3 max-h-80 overflow-y-auto">
+            {filteredCommands.length > 0 ? (
+              filteredCommands.map((cmd, i) => (
+                <button
+                  key={cmd.id}
+                  type="button"
+                  onClick={() => handleCommandSelect(cmd.action)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors',
+                    i === activeCommandIndex
+                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <cmd.icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <span className="text-sm">{cmd.label}</span>
+                  </span>
+                  {cmd.shortcut && <kbd className="text-xs text-gray-400">{cmd.shortcut}</kbd>}
+                </button>
+              ))
+            ) : (
+              <p className="py-6 text-center text-sm text-gray-500">No commands match.</p>
+            )}
+          </div>
+          <p className="mt-3 border-t border-gray-200 pt-2 text-center text-xs text-gray-400 dark:border-gray-700">
+            <kbd className="rounded border px-1">↑↓</kbd> navigate ·{' '}
+            <kbd className="rounded border px-1">Enter</kbd> select ·{' '}
+            <kbd className="rounded border px-1">Esc</kbd> close
+          </p>
+        </Modal>
       </div>
     </ErrorBoundary>
   );

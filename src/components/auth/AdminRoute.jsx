@@ -33,8 +33,10 @@ const verifyAdminServerSide = async (user) => {
     // In production, set these claims via Firebase Admin SDK or your backend
     const isAdmin = decodedToken.claims.admin === true;
     const isSuperAdmin = decodedToken.claims.superAdmin === true;
-    
-    if (!isAdmin && !isSuperAdmin) {
+    const roleClaim = decodedToken.claims.role;
+    const isAdminRole = roleClaim === 'admin';
+
+    if (!isAdmin && !isSuperAdmin && !isAdminRole) {
       console.warn('Admin access denied: Missing admin claims in token');
       return false;
     }
@@ -120,7 +122,7 @@ const AdminRoute = ({
   allowImpersonation = false, // For support staff to view as admin
   sessionTimeout = ADMIN_SESSION_TIMEOUT,
 }) => {
-  const { user, userRole, loading, isEmailVerified, signOut } = useAuth();
+  const { user, userRole, loading, isEmailVerified, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -246,7 +248,7 @@ const AdminRoute = ({
     });
     
     toast.error('Admin session expired due to inactivity');
-    await signOut();
+    await logout();
     navigate('/login', { 
       state: { 
         from: location,
@@ -254,7 +256,7 @@ const AdminRoute = ({
       },
       replace: true 
     });
-  }, [user, signOut, navigate, location]);
+  }, [user, logout, navigate, location]);
 
   // ── Unauthorized Handling ──────────────────────────────────────────────
 
@@ -294,7 +296,7 @@ const AdminRoute = ({
   const handleSignOutAndLogin = useCallback(async () => {
     try {
       await logAdminActivity(user, 'admin_signout_unauthorized');
-      await signOut();
+      await logout();
       navigate('/login', {
         state: {
           from: location,
@@ -306,7 +308,7 @@ const AdminRoute = ({
       console.error('Sign out failed:', error);
       toast.error('Failed to sign out');
     }
-  }, [user, signOut, navigate, location]);
+  }, [user, logout, navigate, location]);
 
   const handleContactSupport = useCallback(async () => {
     await logAdminActivity(user, 'support_contacted', {
@@ -552,7 +554,7 @@ const AdminRoute = ({
                     </button>
                     
                     <button
-                      onClick={() => navigate('/help/admin-access')}
+                      onClick={() => navigate('/help', { state: { focus: 'admin-access' } })}
                       className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg transition-colors"
                     >
                       Learn More

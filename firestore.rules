@@ -60,5 +60,34 @@ service cloud.firestore {
     match /templates/{templateId} {
       allow read: if true;
     }
+
+    /** Billing / Stripe mirror — client reads own doc; writes via Admin SDK or privileged admin */
+    match /subscriptions/{userId} {
+      allow read: if isSelf(userId) || isPrivilegedAdmin();
+      allow create, update: if isPrivilegedAdmin();
+      allow delete: if isSelf(userId) || isPrivilegedAdmin();
+    }
+
+    /** Product analytics — authenticated events only; userId on document must match caller */
+    match /analytics/{docId} {
+      allow read: if isPrivilegedAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(['userId', 'name'])
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isPrivilegedAdmin();
+    }
+
+    /** Session list under user profile (authService) */
+    match /users/{userId}/sessions/{sessionId} {
+      allow read, create, update, delete: if isSelf(userId);
+    }
+
+    /** Soft-delete audit trail */
+    match /deletedAccounts/{docId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isPrivilegedAdmin();
+    }
   }
 }

@@ -8,7 +8,7 @@ import {
   FiCheckCircle, FiZap, FiTarget, FiBriefcase,
   FiMessageCircle, FiFileText, FiAlertCircle,
 } from 'react-icons/fi';
-	import MainLayout from '../components/layouts/MainLayout';
+import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
