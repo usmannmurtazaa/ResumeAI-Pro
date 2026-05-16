@@ -264,7 +264,7 @@ export const ResumeProvider = ({ children }) => {
 
       const docRef = await addDoc(collection(db, 'resumes'), newResume);
 
-      notify?.resumeCreated?.(newResume.name);
+      try { notify?.resumeCreated?.(newResume.name); } catch { /* notification non-critical */ }
 
       return {
         id: docRef.id,
@@ -336,7 +336,12 @@ export const ResumeProvider = ({ children }) => {
     }
   }, []);
 
-  const autoSaveResume = useDebounce(autoSaveHandler, 1500);
+  // FIX: Removed the redundant debounce wrapper here.
+  // Builder already debounces calls via its own useDebounce(formData, 1500) effect.
+  // Having a second debounce here meant: the write was delayed 1.5s AFTER the builder
+  // had already waited 1.5s (total 3s delay), and `await autoSaveResume()` returned
+  // undefined immediately (debounced fns are fire-and-forget), breaking save status tracking.
+  const autoSaveResume = autoSaveHandler;
 
   // ── Delete Resume ────────────────────────────────────────────────────
 

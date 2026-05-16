@@ -1,8 +1,35 @@
-# https://www.robotstxt.org/robotstxt.html
-User-agent: *
-Disallow:
+# robots.txt — ResumeAI Pro
+# https://resumeaixpro.netlify.app
 
-# Public marketing and auth entry points are allowed (Disallow empty).
-# SPA app routes: crawlers receive index.html; client-side meta via react-helmet-async.
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /builder
+Disallow: /profile
+Disallow: /settings
+Disallow: /billing
+Disallow: /my-resumes
+Disallow: /preview/
+Disallow: /ats-scanner
+Disallow: /analytics
+Disallow: /cover-letter
+Disallow: /admin
+Disallow: /verify-email
+
+# Public marketing routes: all allowed (no Disallow means allow)
+# /
+# /features
+# /pricing
+# /templates
+# /blog
+# /about
+# /careers
+# /contact
+# /help
+# /faq
+# /privacy
+# /terms
+# /login (allow for SEO signal but private in practice)
+# /signup
 
 Sitemap: https://resumeaixpro.netlify.app/sitemap.xml

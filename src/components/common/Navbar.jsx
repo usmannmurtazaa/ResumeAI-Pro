@@ -28,19 +28,25 @@ import toast from 'react-hot-toast';
 const useScrollDirection = () => {
   const [scrollDirection, setScrollDirection] = useState('up');
   const lastScrollY = useRef(0);
+  // FIX: Use a ref to track current direction to avoid stale closure.
+  // Previously scrollDirection was in the useEffect deps which caused the
+  // listener to be removed/re-added on every direction change (inefficient)
+  // and could produce stale reads under rapid scrolling.
+  const directionRef = useRef('up');
 
   useEffect(() => {
     let ticking = false;
 
     const updateScrollDir = () => {
       const scrollY = window.scrollY;
-      const direction = scrollY > lastScrollY.current ? 'down' : 'up';
-      
-      if (direction !== scrollDirection && 
-          (scrollY - lastScrollY.current > 10 || scrollY - lastScrollY.current < -10)) {
-        setScrollDirection(direction);
+      const nextDirection = scrollY > lastScrollY.current ? 'down' : 'up';
+      const delta = Math.abs(scrollY - lastScrollY.current);
+
+      if (nextDirection !== directionRef.current && delta > 10) {
+        directionRef.current = nextDirection;
+        setScrollDirection(nextDirection);
       }
-      
+
       lastScrollY.current = scrollY > 0 ? scrollY : 0;
       ticking = false;
     };
@@ -54,7 +60,7 @@ const useScrollDirection = () => {
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [scrollDirection]);
+  }, []); // No deps - uses refs to avoid stale closures
 
   return scrollDirection;
 };
@@ -63,10 +69,15 @@ const useScrollDirection = () => {
  * Registers a keyboard shortcut.
  */
 const useKeyboardShortcut = (key, callback, options = {}) => {
+  // FIX: Destructure options to primitives before passing to deps array.
+  // Passing the options object directly caused infinite re-registrations because
+  // a new object reference is created on every render.
+  const { ctrl = false, meta = false, shift = false, alt = false } = options;
+  const callbackRef = useRef(callback);
+  useLayoutEffect(() => { callbackRef.current = callback; });
+
   useEffect(() => {
     const handler = (event) => {
-      const { ctrl = false, meta = false, shift = false, alt = false } = options;
-      
       if (
         event.key.toLowerCase() === key.toLowerCase() &&
         event.ctrlKey === ctrl &&
@@ -75,13 +86,13 @@ const useKeyboardShortcut = (key, callback, options = {}) => {
         event.altKey === alt
       ) {
         event.preventDefault();
-        callback(event);
+        callbackRef.current(event);
       }
     };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [key, callback, options]);
+  }, [key, ctrl, meta, shift, alt]); // primitives only — stable refs
 };
 
 /**
@@ -743,6 +754,7 @@ const Navbar = () => {
                 ref={mobileNavPanelRef}
                 id="mobile-primary-navigation"
                 role="region"
+          aria-hidden={!isMenuOpen}
                 aria-label="Mobile navigation"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}

@@ -13,11 +13,9 @@ import {
   getAuth,
   GithubAuthProvider,
   GoogleAuthProvider,
-  inMemoryPersistence,
   OAuthProvider,
   PhoneAuthProvider,
-  setPersistence,
-  browserLocalPersistence,
+  TwitterAuthProvider,
   connectAuthEmulator,
 } from 'firebase/auth';
 import {
@@ -139,21 +137,15 @@ const initializeFirebase = () => {
 
 export const app = initializeFirebase();
 
-// ── Auth ─────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────
+// FIX: Removed the async fire-and-forget initializeAuthPersistence() call.
+// Firebase Web SDK v9+ already uses browserLocalPersistence by default.
+// Calling setPersistence() asynchronously at module init while login() also
+// calls it creates a race condition that intermittently drops auth state and
+// causes Google Sign-In popups to fail or be blocked by browsers.
+// Persistence is now set explicitly only in AuthContext.login() (for
+// rememberMe control) where it is awaited before the sign-in call.
 export const auth = getAuth(app);
-
-const initializeAuthPersistence = async () => {
-  if (!isBrowser) return;
-  try {
-    await setPersistence(auth, browserLocalPersistence);
-  } catch (error) {
-    warnDev('browserLocalPersistence failed, falling back to in-memory.', error);
-    try { await setPersistence(auth, inMemoryPersistence); } catch (fallbackError) {
-      errorDev('All auth persistence methods failed.', fallbackError);
-    }
-  }
-};
-void initializeAuthPersistence();
 
 // ── Auth Providers ───────────────────────────────────────────────────────
 export const googleProvider = new GoogleAuthProvider();
@@ -175,16 +167,9 @@ microsoftProvider.addScope('email');
 
 export const phoneProvider = new PhoneAuthProvider(auth);
 
-// FIXED: Conditionally export Twitter provider (deprecated)
-let _twitterProvider = null;
-try {
-  // Dynamic import to avoid build errors when Twitter provider is removed
-  const { TwitterAuthProvider: TwProv } = require('firebase/auth');
-  _twitterProvider = new TwProv();
-} catch {
-  warnDev('TwitterAuthProvider is not available in this Firebase SDK version.');
-}
-export const twitterProvider = _twitterProvider;
+// FIX: TwitterAuthProvider is available in all current firebase/auth versions.
+// Removed the fragile dynamic require() fallback which caused build warnings.
+export const twitterProvider = new TwitterAuthProvider();
 
 // ── Firestore ────────────────────────────────────────────────────────────
 let firestoreCacheMode = 'memory';
@@ -203,7 +188,13 @@ const createFirestore = () => {
   } catch (error) {
     warnDev('Persistent Firestore cache unavailable (private browsing?).', error);
     firestoreCacheMode = 'memory';
-    return getFirestore(app);
+    // FIX: Use memoryLocalCache explicitly to avoid initializeFirestore vs getFirestore
+    // ambiguity when the first initializeFirestore call already registered the app.
+    try {
+      return initializeFirestore(app, { localCache: memoryLocalCache() });
+    } catch {
+      return getFirestore(app);
+    }
   }
 };
 
@@ -271,7 +262,6 @@ const initializePerformance = () => {
   if (!isBrowser) return null;
   try {
     performance = getPerformance(app);
-    // FIXED: Add performance logging in development
     if (isDevelopment) {
       performance.dataCollectionEnabled = false;
     }

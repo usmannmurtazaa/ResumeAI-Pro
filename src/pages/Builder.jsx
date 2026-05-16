@@ -430,17 +430,14 @@ const Builder = () => {
       markSaveStatus('saving');
 
       try {
-        // Auto-save data
-        if (typeof autoSaveResume === 'function') {
-          await autoSaveResume(id, nextData);
-        } else {
-          await updateResume(id, { data: nextData });
-        }
-
-        // Update metadata
+        // FIX: Merged two separate Firestore writes into a single updateDoc call.
+        // Previously: autoSaveResume() wrote data+atsScore, then updateResume() wrote
+        // template+atsScore again - doubling Firestore writes and billing costs.
         const updatePayload = {
+          data: nextData,
           template: nextTemplate,
           atsScore: nextScore,
+          status: nextScore >= 80 ? 'completed' : 'draft',
         };
 
         if (saveName) {
@@ -488,7 +485,7 @@ const Builder = () => {
         isPersistingRef.current = false;
       }
     },
-    [autoSaveResume, id, markSaveStatus, syncUnsavedState, updateResume]
+    [id, markSaveStatus, syncUnsavedState, updateResume]
   );
 
   // ── Manual save handler ─────────────────────────────────────────────
@@ -646,6 +643,8 @@ const Builder = () => {
 
   // ── Auto-save debounced ─────────────────────────────────────────────
 
+  // FIX: Autosave effect — single debounced write via persistExistingResume (merged).
+  // No longer calls autoSaveResume separately (that caused double writes).
   useEffect(() => {
     if (!id || !activeResume || activeResume.id !== id) {
       return;
@@ -662,11 +661,11 @@ const Builder = () => {
     });
   }, [
     activeResume,
-    debouncedFormData,
     debouncedSnapshot,
     id,
     persistExistingResume,
     selectedTemplate,
+    // debouncedFormData used via debouncedSnapshot comparison — no direct dep needed
   ]);
 
   useEffect(() => {

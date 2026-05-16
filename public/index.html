@@ -5,30 +5,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
     
-    <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://*.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://www.googletagservices.com https://*.googleadservices.com;
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      img-src 'self' data: https: blob: https://*.google-analytics.com https://*.googletagmanager.com https://*.googlesyndication.com https://*.g.doubleclick.net https://*.googleadservices.com;
-      connect-src 'self' 
-        https://*.sentry.io 
-        https://*.googleapis.com 
-        https://*.firebaseio.com 
-        https://*.cloudfunctions.net 
-        https://*.netlify.app 
-        wss://*.firebaseio.com
-        https://www.google-analytics.com 
-        https://*.google-analytics.com 
-        https://*.g.doubleclick.net
-        https://www.google.com https://*.googlesyndication.com https://*.googleadservices.com https://googleads.g.doubleclick.net;
-      frame-src 'self' https://*.firebaseapp.com https://*.stripe.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.googlesyndication.com;
-      media-src 'self';
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-    " />
+    <!-- Security Headers: CSP is set via Netlify HTTP header (netlify.toml) for full coverage -->
+    <!-- Meta CSP removed: HTTP header CSP takes precedence and covers workers/iframes correctly -->
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-DNS-Prefetch-Control" content="on" />

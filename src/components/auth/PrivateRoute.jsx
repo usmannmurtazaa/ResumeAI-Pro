@@ -140,41 +140,12 @@ const PrivateRoute = ({
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // Proactive ID token refresh — do not treat transient errors as session loss
-  useEffect(() => {
-    if (!user) return;
-
-    const checkTokenExpiration = async () => {
-      try {
-        await user.getIdToken(true);
-        const token = await user.getIdTokenResult();
-        const expirationTime = new Date(token.expirationTime).getTime();
-        const now = Date.now();
-        const timeUntilExpiry = expirationTime - now;
-
-        if (timeUntilExpiry <= 0) {
-          setTokenExpired(true);
-          toast.error('Your session has expired. Please sign in again.');
-        }
-      } catch (error) {
-        const code = error?.code || '';
-        if (
-          code === 'auth/user-token-expired' ||
-          code === 'auth/user-disabled' ||
-          code === 'auth/invalid-user-token'
-        ) {
-          setTokenExpired(true);
-          toast.error('Your session has expired. Please sign in again.');
-          return;
-        }
-        console.error('Token check failed:', error);
-      }
-    };
-
-    checkTokenExpiration();
-    const interval = setInterval(checkTokenExpiration, 10 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [user]);
+  // FIX: Removed aggressive getIdToken(true) force-refresh on every route mount.
+  // Firebase SDK auto-refreshes tokens internally (5 min before expiry).
+  // Forcing a refresh on every PrivateRoute mount added 500-1000ms latency and
+  // could cause intermittent auth failures under poor connectivity.
+  // Session expiry is handled by the Firebase SDK + onIdTokenChanged in AuthContext.
+  // tokenExpired state is kept but only triggered via auth errors, not proactively.
 
   const authBusy = loading || initializing;
 

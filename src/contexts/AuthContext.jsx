@@ -429,13 +429,10 @@ export const AuthProvider = ({ children }) => {
         setUserData(data);
         setUserRole(data?.role || 'user');
 
-        const subscriptionSnapshot = await getDoc(
-          doc(db, COLLECTIONS.subscriptions, firebaseUser.uid)
-        );
-
-        if (!isActive || generation !== hydrationGeneration) return;
-
-        setSubscription(subscriptionSnapshot.exists() ? subscriptionSnapshot.data() : null);
+        // FIX: Removed one-time getDoc for subscriptions here.
+        // The real-time onSnapshot listener (useEffect below) fires immediately after
+        // `user` state is set, providing the same data without the extra read.
+        // This eliminates a duplicate Firestore read on every login.
 
         safeTrackEvent('user_session_started', {
           userId: firebaseUser.uid,
@@ -569,11 +566,13 @@ export const AuthProvider = ({ children }) => {
     try {
       setAuthError(null);
 
-      // Set persistence based on rememberMe
-      await setPersistence(
-        auth,
-        rememberMe ? browserLocalPersistence : browserSessionPersistence
-      );
+      // FIX: Only call setPersistence() when the user explicitly opts out of
+      // "remember me". Firebase SDK defaults to browserLocalPersistence so we
+      // only need to switch to sessionPersistence for the "don't remember" case.
+      // This avoids the redundant round-trip on the happy path.
+      if (!rememberMe) {
+        await setPersistence(auth, browserSessionPersistence);
+      }
 
       const normalizedEmail = email.trim().toLowerCase();
       const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
@@ -594,8 +593,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setAuthError(null);
 
-      await setPersistence(auth, browserLocalPersistence);
-
+      // FIX: Removed setPersistence() call here. Firebase SDK v9+ defaults to
+      // browserLocalPersistence. Calling setPersistence() immediately before
+      // signInWithPopup() added async latency that caused browsers to classify
+      // the popup as non-user-initiated and block it intermittently.
       const provider = createProvider(providerName);
       const result = await signInWithPopup(auth, provider);
       const additionalUserInfo = getAdditionalUserInfo(result);
@@ -661,14 +662,23 @@ export const AuthProvider = ({ children }) => {
 
       if (currentUser) {
         try {
-          await updateDoc(doc(db, COLLECTIONS.users, currentUser.uid), {
-            lastLogout: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
+          // FIX: Use Promise.race with a 2s timeout so a hanging Firestore write
+          // (offline, permission error, network issue) never blocks signOut.
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Logout metadata update timed out')), 2000)
+          );
+          await Promise.race([
+            updateDoc(doc(db, COLLECTIONS.users, currentUser.uid), {
+              lastLogout: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }),
+            timeoutPromise,
+          ]);
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            console.warn('Failed to update logout timestamp', error);
+            console.warn('Failed to update logout timestamp (non-critical):', error.message);
           }
+          // Non-critical: always proceed to signOut regardless
         }
 
         safeTrackEvent('logout', { userId: currentUser.uid });
