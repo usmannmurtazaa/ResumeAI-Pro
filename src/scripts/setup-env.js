@@ -4,7 +4,7 @@ const readline = require('readline');
 
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 const envTemplate = `REACT_APP_FIREBASE_API_KEY=
@@ -21,9 +21,15 @@ const questions = [
   { name: 'REACT_APP_FIREBASE_AUTH_DOMAIN', message: 'Enter Firebase Auth Domain: ' },
   { name: 'REACT_APP_FIREBASE_PROJECT_ID', message: 'Enter Firebase Project ID: ' },
   { name: 'REACT_APP_FIREBASE_STORAGE_BUCKET', message: 'Enter Firebase Storage Bucket: ' },
-  { name: 'REACT_APP_FIREBASE_MESSAGING_SENDER_ID', message: 'Enter Firebase Messaging Sender ID: ' },
+  {
+    name: 'REACT_APP_FIREBASE_MESSAGING_SENDER_ID',
+    message: 'Enter Firebase Messaging Sender ID: ',
+  },
   { name: 'REACT_APP_FIREBASE_APP_ID', message: 'Enter Firebase App ID: ' },
-  { name: 'REACT_APP_FIREBASE_MEASUREMENT_ID', message: 'Enter Firebase Measurement ID (optional): ' }
+  {
+    name: 'REACT_APP_FIREBASE_MEASUREMENT_ID',
+    message: 'Enter Firebase Measurement ID (optional): ',
+  },
 ];
 
 const envPath = path.join(process.cwd(), '.env');
@@ -33,7 +39,7 @@ console.log('\n🔥 Firebase Configuration Setup\n');
 const askQuestion = (index, envVars = {}) => {
   if (index >= questions.length) {
     let envContent = '';
-    Object.keys(envVars).forEach(key => {
+    Object.keys(envVars).forEach((key) => {
       envContent += `${key}=${envVars[key] || ''}\n`;
     });
 

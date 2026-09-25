@@ -1,13 +1,21 @@
 // ── Common Password Lists ──────────────────────────────────────────────────
 
 const COMMON_PASSWORDS = new Set([
-  'password', 'password1', 'password123', '12345678', 'qwerty123',
-  'admin123', 'letmein123', 'welcome123', 'abc123456', 'Password1',
-  'Password123', 'password123!',
+  'password',
+  'password1',
+  'password123',
+  '12345678',
+  'qwerty123',
+  'admin123',
+  'letmein123',
+  'welcome123',
+  'abc123456',
+  'Password1',
+  'Password123',
+  'password123!',
 ]);
 
-const isCommonPassword = (pwd) =>
-  COMMON_PASSWORDS.has(pwd.toLowerCase());
+const isCommonPassword = (pwd) => COMMON_PASSWORDS.has(pwd.toLowerCase());
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

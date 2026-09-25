@@ -520,7 +520,7 @@ self.addEventListener('push', (event) => {
 
     event.waitUntil(
       self.registration.showNotification(
-        data.title || 'ResumeAI Pro',
+        data.title || 'Resume Ai Pro',
         options
       )
     );
@@ -529,13 +529,13 @@ self.addEventListener('push', (event) => {
     
     // Fallback: show basic notification
     const fallbackOptions = {
-      body: 'You have a new notification from ResumeAI Pro',
+      body: 'You have a new notification from Resume Ai Pro',
       icon: '/icon-192x192.png',
       badge: '/badge-72x72.png',
     };
     
     event.waitUntil(
-      self.registration.showNotification('ResumeAI Pro', fallbackOptions)
+      self.registration.showNotification('Resume Ai Pro', fallbackOptions)
     );
   }
 });

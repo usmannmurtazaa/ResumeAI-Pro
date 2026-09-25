@@ -7,17 +7,7 @@ import {
   setAnalyticsCollectionEnabled,
   setUserProperties,
 } from 'firebase/analytics';
-import {
-  EmailAuthProvider,
-  FacebookAuthProvider,
-  getAuth,
-  GithubAuthProvider,
-  GoogleAuthProvider,
-  OAuthProvider,
-  PhoneAuthProvider,
-  TwitterAuthProvider,
-  connectAuthEmulator,
-} from 'firebase/auth';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import {
   CACHE_SIZE_UNLIMITED,
   connectFirestoreEmulator,
@@ -30,11 +20,7 @@ import {
   persistentMultipleTabManager,
   waitForPendingWrites,
 } from 'firebase/firestore';
-import {
-  connectFunctionsEmulator,
-  getFunctions,
-  httpsCallable,
-} from 'firebase/functions';
+import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
 import { getPerformance, trace } from 'firebase/performance';
 import { fetchAndActivate, getRemoteConfig } from 'firebase/remote-config';
 import {
@@ -85,14 +71,25 @@ const REMOTE_CONFIG_DEFAULTS = {
 };
 
 // ── Developer Logging ────────────────────────────────────────────────────
-const logDev = (...args) => { if (isDevelopment) console.log(...args); };
-const warnDev = (...args) => { if (isDevelopment) console.warn(...args); };
-const errorDev = (...args) => { if (isDevelopment) console.error(...args); };
+const logDev = (...args) => {
+  if (isDevelopment) console.log(...args);
+};
+const warnDev = (...args) => {
+  if (isDevelopment) console.warn(...args);
+};
+const errorDev = (...args) => {
+  if (isDevelopment) console.error(...args);
+};
 
 // ── Configuration Validation ─────────────────────────────────────────────
 const getMissingFirebaseEnvVars = () =>
   REQUIRED_FIREBASE_ENV_VARS.filter((key) => !process.env[key]);
 
+/**
+ * Validates that all required Firebase environment variables are present.
+ * In production, missing variables will throw an error to prevent a broken deployment.
+ * In development, a warning is logged to the console.
+ */
 const validateConfig = () => {
   const missing = getMissingFirebaseEnvVars();
   if (missing.length === 0) return true;
@@ -113,21 +110,6 @@ export const firebaseConfig = {
   measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
-// ── Firebase UI Configuration ────────────────────────────────────────────
-export const firebaseUIConfig = {
-  signInFlow: 'popup',
-  signInOptions: [
-    { provider: GoogleAuthProvider.PROVIDER_ID, scopes: ['profile', 'email'], customParameters: { prompt: 'select_account' } },
-    { provider: GithubAuthProvider.PROVIDER_ID, scopes: ['user:email', 'read:user'] },
-    { provider: FacebookAuthProvider.PROVIDER_ID, scopes: ['email', 'public_profile'] },
-    { provider: EmailAuthProvider.PROVIDER_ID, requireDisplayName: true, signInMethod: 'password' },
-    { provider: PhoneAuthProvider.PROVIDER_ID, defaultCountry: 'US' },
-  ],
-  tosUrl: '/terms',
-  privacyPolicyUrl: '/privacy',
-  siteName: 'ResumeAI Pro',
-};
-
 // ── Firebase Initialization ──────────────────────────────────────────────
 const initializeFirebase = () => {
   validateConfig();
@@ -138,46 +120,23 @@ const initializeFirebase = () => {
 export const app = initializeFirebase();
 
 // ── Auth ──────────────────────────────────────────────────────────────────
-// FIX: Removed the async fire-and-forget initializeAuthPersistence() call.
-// Firebase Web SDK v9+ already uses browserLocalPersistence by default.
-// Calling setPersistence() asynchronously at module init while login() also
-// calls it creates a race condition that intermittently drops auth state and
-// causes Google Sign-In popups to fail or be blocked by browsers.
-// Persistence is now set explicitly only in AuthContext.login() (for
-// rememberMe control) where it is awaited before the sign-in call.
+// Firebase Web SDK v9+ uses browserLocalPersistence by default.
+// Persistence is explicitly set only in AuthContext.login() when
+// the user opts out of "remember me" (switching to session persistence).
 export const auth = getAuth(app);
-
-// ── Auth Providers ───────────────────────────────────────────────────────
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-googleProvider.addScope('profile');
-googleProvider.addScope('email');
-
-export const githubProvider = new GithubAuthProvider();
-githubProvider.addScope('user:email');
-githubProvider.addScope('read:user');
-
-export const facebookProvider = new FacebookAuthProvider();
-facebookProvider.addScope('email');
-facebookProvider.addScope('public_profile');
-
-export const microsoftProvider = new OAuthProvider('microsoft.com');
-microsoftProvider.addScope('User.Read');
-microsoftProvider.addScope('email');
-
-export const phoneProvider = new PhoneAuthProvider(auth);
-
-// FIX: TwitterAuthProvider is available in all current firebase/auth versions.
-// Removed the fragile dynamic require() fallback which caused build warnings.
-export const twitterProvider = new TwitterAuthProvider();
 
 // ── Firestore ────────────────────────────────────────────────────────────
 let firestoreCacheMode = 'memory';
 
+/**
+ * Creates a Firestore instance with the best available caching strategy.
+ * Attempts persistent cache first; falls back to memory cache.
+ */
 const createFirestore = () => {
   if (!isBrowser) {
     return initializeFirestore(app, { localCache: memoryLocalCache() });
   }
+
   try {
     const browserCache = persistentLocalCache({
       tabManager: persistentMultipleTabManager(),
@@ -188,11 +147,11 @@ const createFirestore = () => {
   } catch (error) {
     warnDev('Persistent Firestore cache unavailable (private browsing?).', error);
     firestoreCacheMode = 'memory';
-    // FIX: Use memoryLocalCache explicitly to avoid initializeFirestore vs getFirestore
-    // ambiguity when the first initializeFirestore call already registered the app.
+
     try {
       return initializeFirestore(app, { localCache: memoryLocalCache() });
     } catch {
+      // If already initialized by the persistent attempt, fall back to getFirestore
       return getFirestore(app);
     }
   }
@@ -225,26 +184,36 @@ export let messaging = null;
 // ── Analytics Event Queue ────────────────────────────────────────────────
 const MAX_QUEUED_EVENTS = 50;
 const pendingAnalyticsEvents = [];
-let analyticsReadyPromise = Promise.resolve(null);
 
+/**
+ * Flushes all queued analytics events now that analytics is ready.
+ * Called once after analytics initialization succeeds.
+ */
 const flushAnalyticsQueue = () => {
   if (!analytics || pendingAnalyticsEvents.length === 0) return;
   logDev(`Flushing ${pendingAnalyticsEvents.length} queued analytics events.`);
-  while (pendingAnalyticsEvents.length > 0) {
-    const nextEvent = pendingAnalyticsEvents.shift();
-    if (!nextEvent) continue;
-    try { logEvent(analytics, nextEvent.name, nextEvent.params); } catch (error) {
+
+  // Process and clear the queue in one pass
+  const eventsToSend = pendingAnalyticsEvents.splice(0, pendingAnalyticsEvents.length);
+  eventsToSend.forEach((event) => {
+    try {
+      logEvent(analytics, event.name, event.params);
+    } catch (error) {
       warnDev('Failed to send queued analytics event:', error);
     }
-  }
+  });
 };
 
 // ── Service Initializers ─────────────────────────────────────────────────
+
 const initializeAnalytics = async () => {
   if (!isBrowser || !analyticsEnabledByEnv) return null;
   try {
     const supported = await isAnalyticsSupported();
-    if (!supported) { logDev('Analytics not supported.'); return null; }
+    if (!supported) {
+      logDev('Analytics not supported.');
+      return null;
+    }
     analytics = getAnalytics(app);
     setAnalyticsCollectionEnabled(analytics, isProduction);
     setUserProperties(analytics, {
@@ -255,7 +224,10 @@ const initializeAnalytics = async () => {
     flushAnalyticsQueue();
     logDev('Analytics initialized.');
     return analytics;
-  } catch (error) { warnDev('Analytics init failed.', error); return null; }
+  } catch (error) {
+    warnDev('Analytics init failed.', error);
+    return null;
+  }
 };
 
 const initializePerformance = () => {
@@ -267,7 +239,10 @@ const initializePerformance = () => {
     }
     logDev('Performance initialized.');
     return performance;
-  } catch (error) { warnDev('Performance not supported.', error); return null; }
+  } catch (error) {
+    warnDev('Performance not supported.', error);
+    return null;
+  }
 };
 
 const initializeRemoteConfigService = () => {
@@ -281,22 +256,31 @@ const initializeRemoteConfigService = () => {
     remoteConfig.defaultConfig = REMOTE_CONFIG_DEFAULTS;
     logDev('Remote Config initialized.');
     return remoteConfig;
-  } catch (error) { warnDev('Remote Config init failed.', error); return null; }
+  } catch (error) {
+    warnDev('Remote Config init failed.', error);
+    return null;
+  }
 };
 
 const initializeMessaging = async () => {
   if (!isBrowser || !('serviceWorker' in navigator) || !('Notification' in window)) return null;
   try {
     const supported = await isMessagingSupported();
-    if (!supported) { logDev('Messaging not supported.'); return null; }
+    if (!supported) {
+      logDev('Messaging not supported.');
+      return null;
+    }
     messaging = getMessaging(app);
     logDev('Messaging initialized.');
     return messaging;
-  } catch (error) { warnDev('Messaging init failed.', error); return null; }
+  } catch (error) {
+    warnDev('Messaging init failed.', error);
+    return null;
+  }
 };
 
 if (isBrowser) {
-  analyticsReadyPromise = initializeAnalytics();
+  initializeAnalytics();
   initializePerformance();
   initializeRemoteConfigService();
   initializeMessaging();
@@ -307,19 +291,79 @@ const useEmulators = isDevelopment && process.env.REACT_APP_USE_EMULATORS === 't
 if (useEmulators) {
   const host = (svc) => process.env[`REACT_APP_FIREBASE_${svc}_EMULATOR_HOST`] || '127.0.0.1';
   try {
-    connectAuthEmulator(auth, `http://${host('AUTH')}:${process.env.REACT_APP_FIREBASE_AUTH_EMULATOR_PORT || 9099}`, { disableWarnings: true });
-    connectFirestoreEmulator(db, host('FIRESTORE'), Number(process.env.REACT_APP_FIREBASE_FIRESTORE_EMULATOR_PORT || 8080));
-    connectStorageEmulator(storage, host('STORAGE'), Number(process.env.REACT_APP_FIREBASE_STORAGE_EMULATOR_PORT || 9199));
-    connectFunctionsEmulator(functions, host('FUNCTIONS'), Number(process.env.REACT_APP_FIREBASE_FUNCTIONS_EMULATOR_PORT || 5001));
+    connectAuthEmulator(
+      auth,
+      `http://${host('AUTH')}:${process.env.REACT_APP_FIREBASE_AUTH_EMULATOR_PORT || 9099}`,
+      { disableWarnings: true }
+    );
+    connectFirestoreEmulator(
+      db,
+      host('FIRESTORE'),
+      Number(process.env.REACT_APP_FIREBASE_FIRESTORE_EMULATOR_PORT || 8080)
+    );
+    connectStorageEmulator(
+      storage,
+      host('STORAGE'),
+      Number(process.env.REACT_APP_FIREBASE_STORAGE_EMULATOR_PORT || 9199)
+    );
+    connectFunctionsEmulator(
+      functions,
+      host('FUNCTIONS'),
+      Number(process.env.REACT_APP_FIREBASE_FUNCTIONS_EMULATOR_PORT || 5001)
+    );
     console.log('🔧 Firebase Emulators Connected');
-  } catch (error) { errorDev('Emulator connection failed.', error); }
+  } catch (error) {
+    errorDev('Emulator connection failed.', error);
+  }
 }
 
 // ── Public API ───────────────────────────────────────────────────────────
+
+/**
+ * Indicates whether Firestore is using persistent offline cache.
+ */
 export const isOfflinePersistenceEnabled = () => firestoreCacheMode === 'persistent';
-export const goOffline = async () => { try { await disableNetwork(db); return true; } catch (e) { console.error(e); return false; } };
-export const goOnline = async () => { try { await enableNetwork(db); await waitForPendingWrites(db); return true; } catch (e) { console.error(e); return false; } };
-export const fetchRemoteConfig = async () => { if (!remoteConfig) return null; try { await fetchAndActivate(remoteConfig); return remoteConfig; } catch (e) { console.error(e); return null; } };
+
+/**
+ * Disables the Firestore network, switching to offline mode.
+ */
+export const goOffline = async () => {
+  try {
+    await disableNetwork(db);
+    return true;
+  } catch (e) {
+    console.error('goOffline failed:', e);
+    return false;
+  }
+};
+
+/**
+ * Enables the Firestore network and waits for pending writes.
+ */
+export const goOnline = async () => {
+  try {
+    await enableNetwork(db);
+    await waitForPendingWrites(db);
+    return true;
+  } catch (e) {
+    console.error('goOnline failed:', e);
+    return false;
+  }
+};
+
+/**
+ * Fetches and activates Remote Config values from the server.
+ */
+export const fetchRemoteConfig = async () => {
+  if (!remoteConfig) return null;
+  try {
+    await fetchAndActivate(remoteConfig);
+    return remoteConfig;
+  } catch (e) {
+    console.error('fetchRemoteConfig failed:', e);
+    return null;
+  }
+};
 
 export const getRemoteConfigValue = (key) => remoteConfig?.getValue(key) ?? null;
 export const getRemoteConfigBoolean = (key) => getRemoteConfigValue(key)?.asBoolean() ?? null;
@@ -327,84 +371,205 @@ export const getRemoteConfigString = (key) => getRemoteConfigValue(key)?.asStrin
 export const getRemoteConfigNumber = (key) => getRemoteConfigValue(key)?.asNumber() ?? null;
 export const getAllRemoteConfig = () => remoteConfig?.getAll() ?? {};
 
+/**
+ * Requests push notification permission and returns the device token.
+ */
 export const requestNotificationPermission = async () => {
   if (!messaging || !process.env.REACT_APP_FIREBASE_VAPID_KEY) return null;
   try {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return null;
-    return await getToken(messaging, { vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY });
-  } catch (e) { console.error(e); return null; }
+    return await getToken(messaging, {
+      vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
+    });
+  } catch (e) {
+    console.error('requestNotificationPermission failed:', e);
+    return null;
+  }
 };
 
 export const deleteNotificationToken = async () => {
   if (!messaging) return false;
-  try { await deleteToken(messaging); return true; } catch (e) { console.error(e); return false; }
+  try {
+    await deleteToken(messaging);
+    return true;
+  } catch (e) {
+    console.error('deleteNotificationToken failed:', e);
+    return false;
+  }
 };
 
 export const onMessageListener = (callback) => {
-  if (!messaging) { warnDev('onMessageListener: messaging not initialized.'); return () => {}; }
+  if (!messaging) {
+    warnDev('onMessageListener: messaging not initialized.');
+    return () => {};
+  }
   return onMessage(messaging, callback);
 };
 
+/**
+ * Logs an analytics event. If analytics is not yet initialized, the event
+ * is queued and flushed once initialization completes.
+ *
+ * @param {string} eventName - The name of the event to log.
+ * @param {Object} [eventParams={}] - Additional parameters for the event.
+ * @returns {boolean} Whether the event was immediately sent.
+ */
 export const logAnalyticsEvent = (eventName, eventParams = {}) => {
-  const params = { ...eventParams, ...(isBrowser && !('page_path' in eventParams) ? { page_path: window.location.pathname } : {}) };
+  const params = {
+    ...eventParams,
+    ...(isBrowser && !('page_path' in eventParams) ? { page_path: window.location.pathname } : {}),
+  };
+
   if (!analytics) {
     if (pendingAnalyticsEvents.length < MAX_QUEUED_EVENTS) {
       pendingAnalyticsEvents.push({ name: eventName, params });
-    } else if (isDevelopment) { warnDev(`Analytics queue full. Dropping: ${eventName}`); }
-    void analyticsReadyPromise;
+    } else if (isDevelopment) {
+      warnDev(`Analytics queue full. Dropping: ${eventName}`);
+    }
     return false;
   }
+
   logEvent(analytics, eventName, params);
   return true;
 };
 
 export const startTrace = async (traceName) => {
   if (!performance) return null;
-  try { const t = trace(performance, traceName); t.start(); return t; } catch (e) { console.error(e); return null; }
+  try {
+    const t = trace(performance, traceName);
+    t.start();
+    return t;
+  } catch (e) {
+    console.error('startTrace failed:', e);
+    return null;
+  }
 };
 
 export const stopTrace = async (t) => {
   if (!t) return false;
-  try { t.stop(); return true; } catch (e) { console.error(e); return false; }
+  try {
+    t.stop();
+    return true;
+  } catch (e) {
+    console.error('stopTrace failed:', e);
+    return false;
+  }
 };
 
+/**
+ * Calls a Firebase Cloud Function.
+ * @param {string} name - The function name.
+ * @param {Object} [data={}] - The data to send to the function.
+ * @returns {Promise<any>} The function's response data.
+ */
 export const callFunction = async (name, data = {}) => {
-  try { return (await httpsCallable(functions, name)(data)).data; } catch (e) { throw e; }
+  try {
+    const result = await httpsCallable(functions, name)(data);
+    return result.data;
+  } catch (e) {
+    console.error(`callFunction "${name}" failed:`, e);
+    throw e;
+  }
 };
 
 export const isFirebaseInitialized = () => getApps().length > 0;
 
+/**
+ * Returns a health report of all Firebase services.
+ */
 export const checkFirebaseHealth = async () => ({
-  app: Boolean(app), auth: Boolean(auth), firestore: Boolean(db),
-  storage: Boolean(storage), functions: Boolean(functions),
-  analytics: Boolean(analytics), performance: Boolean(performance),
-  remoteConfig: Boolean(remoteConfig), messaging: Boolean(messaging),
+  app: Boolean(app),
+  auth: Boolean(auth),
+  firestore: Boolean(db),
+  storage: Boolean(storage),
+  functions: Boolean(functions),
+  analytics: Boolean(analytics),
+  performance: Boolean(performance),
+  remoteConfig: Boolean(remoteConfig),
+  messaging: Boolean(messaging),
   appCheck: Boolean(appCheck),
 });
 
+/**
+ * Uploads a file to Firebase Storage with progress tracking.
+ * @param {string} path - The storage path.
+ * @param {File|Blob} file - The file to upload.
+ * @param {Function} [onProgress] - Callback receiving percentage (0-100).
+ * @returns {Promise<{downloadURL: string, metadata: Object}>}
+ */
 export const uploadFile = (path, file, onProgress) => {
   const storageRef = ref(storage, path);
-  const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file?.type });
+  const uploadTask = uploadBytesResumable(storageRef, file, {
+    contentType: file?.type,
+  });
+
   return new Promise((resolve, reject) => {
-    uploadTask.on('state_changed',
-      (snap) => onProgress?.(snap.totalBytes > 0 ? (snap.bytesTransferred / snap.totalBytes) * 100 : 0),
+    uploadTask.on(
+      'state_changed',
+      (snap) => {
+        if (onProgress && snap.totalBytes > 0) {
+          onProgress((snap.bytesTransferred / snap.totalBytes) * 100);
+        }
+      },
       reject,
-      async () => { try { resolve({ downloadURL: await getDownloadURL(uploadTask.snapshot.ref), metadata: uploadTask.snapshot.metadata }); } catch (e) { reject(e); } }
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve({
+            downloadURL,
+            metadata: uploadTask.snapshot.metadata,
+          });
+        } catch (e) {
+          reject(e);
+        }
+      }
     );
   });
 };
 
-export const deleteFile = async (path) => { try { await deleteObject(ref(storage, path)); return true; } catch (e) { console.error(e); return false; } };
+export const deleteFile = async (path) => {
+  try {
+    await deleteObject(ref(storage, path));
+    return true;
+  } catch (e) {
+    console.error('deleteFile failed:', e);
+    return false;
+  }
+};
 
 // ── Unified Export ───────────────────────────────────────────────────────
 const firebaseServices = {
-  get app() { return app; }, get auth() { return auth; }, get db() { return db; },
-  get storage() { return storage; }, get functions() { return functions; },
-  get analytics() { return analytics; }, get performance() { return performance; },
-  get remoteConfig() { return remoteConfig; }, get messaging() { return messaging; },
-  get appCheck() { return appCheck; },
-  providers: { google: googleProvider, github: githubProvider, twitter: twitterProvider, facebook: facebookProvider, microsoft: microsoftProvider, phone: phoneProvider },
+  get app() {
+    return app;
+  },
+  get auth() {
+    return auth;
+  },
+  get db() {
+    return db;
+  },
+  get storage() {
+    return storage;
+  },
+  get functions() {
+    return functions;
+  },
+  get analytics() {
+    return analytics;
+  },
+  get performance() {
+    return performance;
+  },
+  get remoteConfig() {
+    return remoteConfig;
+  },
+  get messaging() {
+    return messaging;
+  },
+  get appCheck() {
+    return appCheck;
+  },
 };
 
 export default firebaseServices;

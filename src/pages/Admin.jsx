@@ -34,7 +34,7 @@ const AdminHome = () => (
 const Admin = () => {
   const { user, loading, initializing, hasRole } = useAuth();
 
-  useDocumentTitle('Admin | ResumeAI Pro');
+  useDocumentTitle('Admin | Resume Ai Pro');
 
   if (loading || initializing) {
     return (

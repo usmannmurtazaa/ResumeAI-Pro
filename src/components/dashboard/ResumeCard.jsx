@@ -1,10 +1,23 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiEdit, FiTrash2, FiCopy, FiDownload, FiCalendar,
-  FiMoreVertical, FiEye, FiShare2, FiStar,
-  FiAlertCircle, FiCheckCircle, FiTarget, FiUser,
-  FiBriefcase, FiTag, FiChevronRight, FiClock,
+import {
+  FiEdit,
+  FiTrash2,
+  FiCopy,
+  FiDownload,
+  FiCalendar,
+  FiMoreVertical,
+  FiEye,
+  FiShare2,
+  FiStar,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiTarget,
+  FiUser,
+  FiBriefcase,
+  FiTag,
+  FiChevronRight,
+  FiClock,
 } from 'react-icons/fi';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
@@ -15,8 +28,12 @@ import { format, formatDistanceToNow } from 'date-fns';
 // ── Constants & Utilities ──────────────────────────────────────────────────
 
 const TEMPLATE_ICONS = {
-  modern: '🎨', classic: '📄', creative: '✨',
-  minimal: '◻️', executive: '👔', tech: '💻',
+  modern: '🎨',
+  classic: '📄',
+  creative: '✨',
+  minimal: '◻️',
+  executive: '👔',
+  tech: '💻',
 };
 
 const RESUME_SECTIONS = ['personal', 'education', 'experience', 'skills'];
@@ -26,29 +43,29 @@ const RESUME_SECTIONS = ['personal', 'education', 'experience', 'skills'];
  */
 const calculateCompletion = (resume) => {
   if (!resume?.data) return 0;
-  
+
   const data = resume.data;
-  const completed = RESUME_SECTIONS.filter(section => {
+  const completed = RESUME_SECTIONS.filter((section) => {
     const sectionData = data[section];
     if (!sectionData) return false;
-    
+
     switch (section) {
       case 'personal':
         return !!(sectionData.fullName || sectionData.email);
       case 'skills':
-        return Array.isArray(sectionData.technical) 
-          ? sectionData.technical.length > 0 
+        return Array.isArray(sectionData.technical)
+          ? sectionData.technical.length > 0
           : Object.keys(sectionData).length > 0;
       case 'education':
       case 'experience':
-        return Array.isArray(sectionData) 
-          ? sectionData.length > 0 
+        return Array.isArray(sectionData)
+          ? sectionData.length > 0
           : Object.keys(sectionData).length > 0;
       default:
         return false;
     }
   });
-  
+
   return (completed.length / RESUME_SECTIONS.length) * 100;
 };
 
@@ -73,7 +90,7 @@ const getScoreGrade = (score) => {
     { min: 50, grade: 'D', color: 'text-orange-600' },
     { min: 0, grade: 'F', color: 'text-red-600' },
   ];
-  return grades.find(g => score >= g.min) || grades[grades.length - 1];
+  return grades.find((g) => score >= g.min) || grades[grades.length - 1];
 };
 
 /**
@@ -81,7 +98,7 @@ const getScoreGrade = (score) => {
  */
 const getStatusInfo = (resume) => {
   const score = resume?.atsScore || 0;
-  
+
   if (score >= 80) {
     return { icon: FiCheckCircle, color: 'text-green-500', label: 'Ready to Apply' };
   }
@@ -123,11 +140,15 @@ const CompactResumeCard = ({ resume, selected, onSelect, onEdit, onDownload, onP
         )}
 
         <div className="flex items-center gap-3">
-          <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${
-            score >= 80 ? 'from-green-500 to-emerald-500' :
-            score >= 60 ? 'from-yellow-500 to-orange-500' :
-            'from-red-500 to-pink-500'
-          } flex items-center justify-center text-white text-xl`}>
+          <div
+            className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${
+              score >= 80
+                ? 'from-green-500 to-emerald-500'
+                : score >= 60
+                  ? 'from-yellow-500 to-orange-500'
+                  : 'from-red-500 to-pink-500'
+            } flex items-center justify-center text-white text-xl`}
+          >
             {TEMPLATE_ICONS[resume?.template?.toLowerCase()] || '📄'}
           </div>
 
@@ -139,12 +160,14 @@ const CompactResumeCard = ({ resume, selected, onSelect, onEdit, onDownload, onP
                   <p className="text-sm text-gray-500 truncate">{personal.fullName}</p>
                 )}
               </div>
-              <Badge variant={getScoreVariant(score)} size="sm">{score}%</Badge>
+              <Badge variant={getScoreVariant(score)} size="sm">
+                {score}%
+              </Badge>
             </div>
             <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
               <span className="flex items-center gap-1">
                 <FiClock className="w-3 h-3" />
-                {resume?.updatedAt 
+                {resume?.updatedAt
                   ? formatDistanceToNow(new Date(resume.updatedAt), { addSuffix: true })
                   : 'Never'}
               </span>
@@ -162,7 +185,10 @@ const CompactResumeCard = ({ resume, selected, onSelect, onEdit, onDownload, onP
               >
                 {onEdit && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); onEdit(resume); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(resume);
+                    }}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                     aria-label="Edit resume"
                   >
@@ -171,7 +197,10 @@ const CompactResumeCard = ({ resume, selected, onSelect, onEdit, onDownload, onP
                 )}
                 {onDownload && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); onDownload(resume); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDownload(resume);
+                    }}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                     aria-label="Download resume"
                   >
@@ -189,9 +218,16 @@ const CompactResumeCard = ({ resume, selected, onSelect, onEdit, onDownload, onP
 
 // ── Grid View ──────────────────────────────────────────────────────────────
 
-const GridResumeCard = ({ 
-  resume, selected, onSelect, 
-  onEdit, onDelete, onDuplicate, onDownload, onPreview, onShare 
+const GridResumeCard = ({
+  resume,
+  selected,
+  onSelect,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  onDownload,
+  onPreview,
+  onShare,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuDirection, setMenuDirection] = useState('up');
@@ -213,19 +249,19 @@ const GridResumeCard = ({
       const menuHeight = 120; // Approximate menu height
       setMenuDirection(spaceAbove > menuHeight ? 'up' : 'down');
     }
-    setShowMenu(prev => !prev);
+    setShowMenu((prev) => !prev);
   }, [showMenu]);
 
   // Close menu on click outside
   useEffect(() => {
     if (!showMenu) return;
-    
+
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setShowMenu(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showMenu]);
@@ -237,9 +273,11 @@ const GridResumeCard = ({
       whileHover={{ y: -4 }}
       className="group relative"
     >
-      <Card className={`p-5 transition-all duration-300 hover:shadow-xl ${
-        selected ? 'ring-2 ring-primary-500' : ''
-      }`}>
+      <Card
+        className={`p-5 transition-all duration-300 hover:shadow-xl ${
+          selected ? 'ring-2 ring-primary-500' : ''
+        }`}
+      >
         {/* Selection Checkbox */}
         {onSelect && (
           <div className="absolute top-3 left-3 z-10">
@@ -272,10 +310,12 @@ const GridResumeCard = ({
                 {resume?.name || 'Untitled Resume'}
               </h3>
               {resume?.status === 'draft' && (
-                <Badge variant="secondary" size="sm">Draft</Badge>
+                <Badge variant="secondary" size="sm">
+                  Draft
+                </Badge>
               )}
             </div>
-            
+
             {personal.fullName && (
               <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
                 <FiUser className="w-3 h-3 flex-shrink-0" />
@@ -291,9 +331,7 @@ const GridResumeCard = ({
           </div>
 
           <div className="text-right ml-4 flex-shrink-0">
-            <span className={`text-xl font-bold ${scoreGrade.color}`}>
-              {score}%
-            </span>
+            <span className={`text-xl font-bold ${scoreGrade.color}`}>{score}%</span>
             <p className="text-xs text-gray-400">ATS</p>
           </div>
         </div>
@@ -302,7 +340,7 @@ const GridResumeCard = ({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-3">
           <span className="flex items-center gap-1">
             <FiCalendar className="w-3 h-3" />
-            {resume?.updatedAt 
+            {resume?.updatedAt
               ? formatDistanceToNow(new Date(resume.updatedAt), { addSuffix: true })
               : 'Never updated'}
           </span>
@@ -339,10 +377,14 @@ const GridResumeCard = ({
             <p className="text-xs text-gray-500 mb-1.5">Top Skills</p>
             <div className="flex flex-wrap gap-1">
               {skills.slice(0, 3).map((skill, i) => (
-                <Badge key={i} variant="secondary" size="sm">{skill}</Badge>
+                <Badge key={i} variant="secondary" size="sm">
+                  {skill}
+                </Badge>
               ))}
               {skills.length > 3 && (
-                <Badge variant="secondary" size="sm">+{skills.length - 3}</Badge>
+                <Badge variant="secondary" size="sm">
+                  +{skills.length - 3}
+                </Badge>
               )}
             </div>
           </div>
@@ -355,18 +397,19 @@ const GridResumeCard = ({
             { onClick: onPreview, icon: FiEye, color: 'purple', label: 'Preview' },
             { onClick: onDownload, icon: FiDownload, color: 'green', label: 'Download' },
             { onClick: onDuplicate, icon: FiCopy, color: 'blue', label: 'Duplicate' },
-          ].map(({ onClick, icon: Icon, color, label }) => (
-            onClick && (
-              <button
-                key={label}
-                onClick={() => onClick(resume)}
-                className={`flex-1 p-2 bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400 rounded-lg hover:bg-${color}-100 dark:hover:bg-${color}-900/30 transition-all hover:scale-105`}
-                aria-label={`${label} resume`}
-              >
-                <Icon className="w-4 h-4 mx-auto" />
-              </button>
-            )
-          ))}
+          ].map(
+            ({ onClick, icon: Icon, color, label }) =>
+              onClick && (
+                <button
+                  key={label}
+                  onClick={() => onClick(resume)}
+                  className={`flex-1 p-2 bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400 rounded-lg hover:bg-${color}-100 dark:hover:bg-${color}-900/30 transition-all hover:scale-105`}
+                  aria-label={`${label} resume`}
+                >
+                  <Icon className="w-4 h-4 mx-auto" />
+                </button>
+              )
+          )}
 
           {/* More Menu */}
           <div className="relative">
@@ -379,7 +422,7 @@ const GridResumeCard = ({
             >
               <FiMoreVertical className="w-4 h-4 mx-auto" />
             </button>
-            
+
             <AnimatePresence>
               {showMenu && (
                 <motion.div
@@ -394,14 +437,20 @@ const GridResumeCard = ({
                   <div className="py-1">
                     {onShare && (
                       <button
-                        onClick={() => { onShare(resume); setShowMenu(false); }}
+                        onClick={() => {
+                          onShare(resume);
+                          setShowMenu(false);
+                        }}
                         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                       >
                         <FiShare2 className="w-4 h-4" /> Share
                       </button>
                     )}
                     <button
-                      onClick={() => { onDelete(resume); setShowMenu(false); }}
+                      onClick={() => {
+                        onDelete(resume);
+                        setShowMenu(false);
+                      }}
                       className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 flex items-center gap-2"
                     >
                       <FiTrash2 className="w-4 h-4" /> Delete

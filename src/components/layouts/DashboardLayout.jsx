@@ -2,12 +2,39 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  FiActivity, FiAlertCircle, FiAward, FiBell, FiCheckCircle,
-  FiChevronDown, FiChevronLeft, FiChevronRight, FiCommand,
-  FiCreditCard, FiDownload, FiFileText, FiHelpCircle, FiHome,
-  FiInfo, FiLayout, FiLogOut, FiMenu, FiMoon, FiPlus,
-  FiRefreshCw, FiSearch, FiSettings, FiStar, FiSun,
-  FiTarget, FiTrendingUp, FiUser, FiX, FiZap,
+  FiActivity,
+  FiAlertCircle,
+  FiAward,
+  FiBell,
+  FiCheckCircle,
+  FiChevronDown,
+  FiChevronLeft,
+  FiChevronRight,
+  FiCommand,
+  FiCpu,
+  FiCreditCard,
+  FiDownload,
+  FiFileText,
+  FiHeart,
+  FiHelpCircle,
+  FiHome,
+  FiInfo,
+  FiLayout,
+  FiLogOut,
+  FiMenu,
+  FiMoon,
+  FiPlus,
+  FiRefreshCw,
+  FiSearch,
+  FiSettings,
+  FiSquare,
+  FiStar,
+  FiSun,
+  FiTarget,
+  FiTrendingUp,
+  FiUser,
+  FiX,
+  FiZap,
 } from 'react-icons/fi';
 import Sidebar from '../../components/common/Sidebar';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
@@ -28,26 +55,83 @@ const SIDEBAR_STORAGE_KEY = 'dashboardSidebarCollapsed';
 const COMMAND_INPUT_ID = 'dashboard-command-palette-input';
 
 const NOTIFICATION_META = {
-  success: { icon: FiCheckCircle, className: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
-  warning: { icon: FiAlertCircle, className: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
-  error: { icon: FiAlertCircle, className: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' },
-  info: { icon: FiInfo, className: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
+  success: {
+    icon: FiCheckCircle,
+    className: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+  },
+  warning: {
+    icon: FiAlertCircle,
+    className: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+  },
+  error: {
+    icon: FiAlertCircle,
+    className: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+  },
+  info: {
+    icon: FiInfo,
+    className: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+  },
 };
 
 const STAT_TONES = {
   blue: { surface: 'bg-blue-100 dark:bg-blue-900/30', icon: 'text-blue-600 dark:text-blue-400' },
-  green: { surface: 'bg-green-100 dark:bg-green-900/30', icon: 'text-green-600 dark:text-green-400' },
-  purple: { surface: 'bg-purple-100 dark:bg-purple-900/30', icon: 'text-purple-600 dark:text-purple-400' },
-  orange: { surface: 'bg-orange-100 dark:bg-orange-900/30', icon: 'text-orange-600 dark:text-orange-400' },
+  green: {
+    surface: 'bg-green-100 dark:bg-green-900/30',
+    icon: 'text-green-600 dark:text-green-400',
+  },
+  purple: {
+    surface: 'bg-purple-100 dark:bg-purple-900/30',
+    icon: 'text-purple-600 dark:text-purple-400',
+  },
+  orange: {
+    surface: 'bg-orange-100 dark:bg-orange-900/30',
+    icon: 'text-orange-600 dark:text-orange-400',
+  },
 };
 
 const TEMPLATES = [
-  { id: 'modern', name: 'Modern', icon: '🎨', class: 'from-blue-500 to-cyan-500', desc: 'Clean and contemporary' },
-  { id: 'classic', name: 'Classic', icon: '📄', class: 'from-gray-600 to-gray-800', desc: 'Traditional format' },
-  { id: 'creative', name: 'Creative', icon: '✨', class: 'from-purple-500 to-pink-500', desc: 'Stand out design' },
-  { id: 'minimal', name: 'Minimal', icon: '◻️', class: 'from-green-500 to-emerald-500', desc: 'Simple and elegant' },
-  { id: 'executive', name: 'Executive', icon: '👔', class: 'from-slate-700 to-slate-900', desc: 'Senior positions' },
-  { id: 'tech', name: 'Tech', icon: '💻', class: 'from-indigo-500 to-blue-600', desc: 'Tech industry focus' },
+  {
+    id: 'modern',
+    name: 'Modern',
+    icon: FiLayout,
+    class: 'from-blue-500 to-cyan-500',
+    desc: 'Clean and contemporary',
+  },
+  {
+    id: 'classic',
+    name: 'Classic',
+    icon: FiFileText,
+    class: 'from-gray-600 to-gray-800',
+    desc: 'Traditional format',
+  },
+  {
+    id: 'creative',
+    name: 'Creative',
+    icon: FiStar,
+    class: 'from-purple-500 to-pink-500',
+    desc: 'Stand out design',
+  },
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    icon: FiSquare,
+    class: 'from-green-500 to-emerald-500',
+    desc: 'Simple and elegant',
+  },
+  {
+    id: 'executive',
+    name: 'Executive',
+    icon: FiUser,
+    class: 'from-slate-700 to-slate-900',
+    desc: 'Senior positions',
+  },
+  {
+    id: 'tech',
+    name: 'Tech',
+    icon: FiCpu,
+    class: 'from-indigo-500 to-blue-600',
+    desc: 'Tech industry focus',
+  },
 ];
 
 // ── Utilities ────────────────────────────────────────────────────────────
@@ -98,42 +182,61 @@ const QuickStat = React.memo(({ icon: Icon, label, value, tone = 'blue' }) => {
 
 QuickStat.displayName = 'QuickStat';
 
-const WelcomeCard = React.memo(({ greeting, firstName, stats, resumes, onCreateResume, onContinue }) => {
-  const totalResumes = stats?.total ?? resumes.length;
-  const completedResumes = stats?.completed ?? 0;
-  const averageScore = stats?.avgScore ?? 0;
-  const totalDownloads = stats?.totalDownloads ?? 0;
+const WelcomeCard = React.memo(
+  ({ greeting, firstName, stats, resumes, onCreateResume, onContinue }) => {
+    const totalResumes = stats?.total ?? resumes.length;
+    const completedResumes = stats?.completed ?? 0;
+    const averageScore = stats?.avgScore ?? 0;
+    const totalDownloads = stats?.totalDownloads ?? 0;
 
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mb-6 rounded-2xl border border-gray-200/60 bg-gradient-to-br from-primary-50/70 to-accent-50/50 p-6 shadow-sm backdrop-blur-sm dark:border-gray-700/60 dark:from-primary-900/20 dark:to-accent-900/10"
-      aria-label="Dashboard welcome summary"
-    >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-2xl">
-          <h2 className="mb-1 text-2xl font-bold gradient-text">{greeting}, {firstName}! 👋</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 sm:text-base">
-            {totalResumes > 0
-              ? `You have ${totalResumes} resume${totalResumes !== 1 ? 's' : ''} with an average ATS score of ${averageScore}%.`
-              : 'Ready to create your first professional, ATS-friendly resume?'}
-          </p>
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6 rounded-2xl border border-gray-200/60 bg-gradient-to-br from-primary-50/70 to-accent-50/50 p-6 shadow-sm backdrop-blur-sm dark:border-gray-700/60 dark:from-primary-900/20 dark:to-accent-900/10"
+        aria-label="Dashboard welcome summary"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <h2 className="mb-1 text-2xl font-bold gradient-text">
+              {greeting}, {firstName}! <FiHeart className="inline-block h-6 w-6 text-primary-500" />
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 sm:text-base">
+              {totalResumes > 0
+                ? `You have ${totalResumes} resume${totalResumes !== 1 ? 's' : ''} with an average ATS score of ${averageScore}%.`
+                : 'Ready to create your first professional, ATS-friendly resume?'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              onClick={onCreateResume}
+              icon={<FiPlus />}
+              className="bg-gradient-to-r from-primary-500 to-accent-500"
+            >
+              Create New Resume
+            </Button>
+            {resumes.length > 0 && (
+              <Button variant="outline" onClick={onContinue}>
+                Continue Editing
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button onClick={onCreateResume} icon={<FiPlus />} className="bg-gradient-to-r from-primary-500 to-accent-500">Create New Resume</Button>
-          {resumes.length > 0 && <Button variant="outline" onClick={onContinue}>Continue Editing</Button>}
+        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <QuickStat icon={FiFileText} label="Total Resumes" value={totalResumes} tone="blue" />
+          <QuickStat icon={FiCheckCircle} label="Completed" value={completedResumes} tone="green" />
+          <QuickStat
+            icon={FiTarget}
+            label="Avg ATS Score"
+            value={`${averageScore}%`}
+            tone="purple"
+          />
+          <QuickStat icon={FiDownload} label="Downloads" value={totalDownloads} tone="orange" />
         </div>
-      </div>
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <QuickStat icon={FiFileText} label="Total Resumes" value={totalResumes} tone="blue" />
-        <QuickStat icon={FiCheckCircle} label="Completed" value={completedResumes} tone="green" />
-        <QuickStat icon={FiTarget} label="Avg ATS Score" value={`${averageScore}%`} tone="purple" />
-        <QuickStat icon={FiDownload} label="Downloads" value={totalDownloads} tone="orange" />
-      </div>
-    </motion.section>
-  );
-});
+      </motion.section>
+    );
+  }
+);
 
 WelcomeCard.displayName = 'WelcomeCard';
 
@@ -168,7 +271,10 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
   const { resumes = [], stats = {}, createResume } = useResume();
 
   const greeting = useMemo(() => getGreeting(), []);
-  const firstName = useMemo(() => user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'there', [user]);
+  const firstName = useMemo(
+    () => user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'there',
+    [user]
+  );
   const accountLabel = useMemo(() => {
     if (userRole === 'admin') return 'Admin';
     if (isPremium || userRole === 'premium') return 'Premium';
@@ -194,17 +300,24 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
     setShowUserMenu(false);
   }, []);
 
-  const openCreateModal = useCallback(() => { closeFloatingPanels(); setShowCreateModal(true); }, [closeFloatingPanels]);
-  const openCommandPalette = useCallback(() => { closeFloatingPanels(); setShowCommandPalette(true); }, [closeFloatingPanels]);
+  const openCreateModal = useCallback(() => {
+    closeFloatingPanels();
+    setShowCreateModal(true);
+  }, [closeFloatingPanels]);
+  const openCommandPalette = useCallback(() => {
+    closeFloatingPanels();
+    setShowCommandPalette(true);
+  }, [closeFloatingPanels]);
 
   // ── Handlers ─────────────────────────────────────────────────────────
 
   const handleRefresh = useCallback(() => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    // FIXED: Cleanup timeout on unmount
     refreshTimeoutRef.current = setTimeout(() => {
-      if (mountedRef.current) window.location.reload();
+      if (mountedRef.current) {
+        window.location.reload();
+      }
     }, 250);
   }, [isRefreshing]);
 
@@ -218,20 +331,23 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
     }
   }, [closeFloatingPanels, logout, navigate]);
 
-  const handleCreateResume = useCallback(async (template = 'modern') => {
-    try {
-      setIsCreatingResume(true);
-      setShowCreateModal(false);
-      const newResume = await createResume({ template });
-      if (mountedRef.current && newResume?.id) {
-        navigate(`/builder/${newResume.id}`);
+  const handleCreateResume = useCallback(
+    async (template = 'modern') => {
+      try {
+        setIsCreatingResume(true);
+        setShowCreateModal(false);
+        const newResume = await createResume({ template });
+        if (mountedRef.current && newResume?.id) {
+          navigate(`/builder/${newResume.id}`);
+        }
+      } catch {
+        toast.error('Unable to create a new resume right now.');
+      } finally {
+        if (mountedRef.current) setIsCreatingResume(false);
       }
-    } catch {
-      toast.error('Unable to create a new resume right now.');
-    } finally {
-      if (mountedRef.current) setIsCreatingResume(false);
-    }
-  }, [createResume, navigate]);
+    },
+    [createResume, navigate]
+  );
 
   const handleCommandSelect = useCallback((action) => {
     action();
@@ -242,53 +358,134 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
 
   // ── Command Options ──────────────────────────────────────────────────
 
-  const commandOptions = useMemo(() => [
-    { id: 'new-resume', label: 'Create New Resume', icon: FiPlus, action: openCreateModal, shortcut: 'Ctrl+N' },
-    { id: 'dashboard', label: 'Go to Dashboard', icon: FiHome, action: () => navigate('/dashboard') },
-    { id: 'builder', label: 'Resume Builder', icon: FiFileText, action: () => navigate('/builder') },
-    { id: 'templates', label: 'Browse Templates', icon: FiLayout, action: () => navigate('/templates') },
-    { id: 'ats-scanner', label: 'ATS Scanner', icon: FiActivity, action: () => navigate('/ats-scanner') },
-    { id: 'profile', label: 'Profile Settings', icon: FiUser, action: () => navigate('/profile') },
-    { id: 'settings', label: 'Account Settings', icon: FiSettings, action: () => navigate('/settings') },
-    { id: 'pricing', label: 'View Pricing', icon: FiCreditCard, action: () => navigate('/pricing') },
-    { id: 'help', label: 'Help Center', icon: FiHelpCircle, action: () => navigate('/help') },
-  ], [navigate, openCreateModal]);
+  const commandOptions = useMemo(
+    () => [
+      {
+        id: 'new-resume',
+        label: 'Create New Resume',
+        icon: FiPlus,
+        action: openCreateModal,
+        shortcut: 'Ctrl+N',
+      },
+      {
+        id: 'dashboard',
+        label: 'Go to Dashboard',
+        icon: FiHome,
+        action: () => navigate('/dashboard'),
+      },
+      {
+        id: 'builder',
+        label: 'Resume Builder',
+        icon: FiFileText,
+        action: () => navigate('/builder'),
+      },
+      {
+        id: 'templates',
+        label: 'Browse Templates',
+        icon: FiLayout,
+        action: () => navigate('/templates'),
+      },
+      {
+        id: 'ats-scanner',
+        label: 'ATS Scanner',
+        icon: FiActivity,
+        action: () => navigate('/ats-scanner'),
+      },
+      {
+        id: 'profile',
+        label: 'Profile Settings',
+        icon: FiUser,
+        action: () => navigate('/profile'),
+      },
+      {
+        id: 'settings',
+        label: 'Account Settings',
+        icon: FiSettings,
+        action: () => navigate('/settings'),
+      },
+      {
+        id: 'pricing',
+        label: 'View Pricing',
+        icon: FiCreditCard,
+        action: () => navigate('/pricing'),
+      },
+      {
+        id: 'help',
+        label: 'Help Center',
+        icon: FiHelpCircle,
+        action: () => navigate('/help'),
+      },
+    ],
+    [navigate, openCreateModal]
+  );
 
   const filteredCommands = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return commandOptions;
-    return commandOptions.filter(cmd => cmd.label.toLowerCase().includes(term));
+    return commandOptions.filter((cmd) => cmd.label.toLowerCase().includes(term));
   }, [commandOptions, searchTerm]);
 
   // ── Quick Actions ───────────────────────────────────────────────────
 
-  const quickActions = useMemo(() => [
-    { id: 'new-resume', icon: FiPlus, label: 'New Resume', action: openCreateModal, iconClassName: 'text-blue-500', shortcut: 'Ctrl+N' },
-    { id: 'ats-scanner', icon: FiActivity, label: 'ATS Scanner', action: () => navigate('/ats-scanner'), iconClassName: 'text-purple-500' },
-    { id: 'templates', icon: FiLayout, label: 'Templates', action: () => navigate('/templates'), iconClassName: 'text-green-500' },
-    { id: 'analytics', icon: FiTrendingUp, label: 'Analytics', action: () => navigate('/analytics'), iconClassName: 'text-orange-500', premium: true },
-  ], [navigate, openCreateModal]);
+  const quickActions = useMemo(
+    () => [
+      {
+        id: 'new-resume',
+        icon: FiPlus,
+        label: 'New Resume',
+        action: openCreateModal,
+        iconClassName: 'text-blue-500',
+        shortcut: 'Ctrl+N',
+      },
+      {
+        id: 'ats-scanner',
+        icon: FiActivity,
+        label: 'ATS Scanner',
+        action: () => navigate('/ats-scanner'),
+        iconClassName: 'text-purple-500',
+      },
+      {
+        id: 'templates',
+        icon: FiLayout,
+        label: 'Templates',
+        action: () => navigate('/templates'),
+        iconClassName: 'text-green-500',
+      },
+      {
+        id: 'analytics',
+        icon: FiTrendingUp,
+        label: 'Analytics',
+        action: () => navigate('/analytics'),
+        iconClassName: 'text-orange-500',
+        premium: true,
+      },
+    ],
+    [navigate, openCreateModal]
+  );
 
   // ── Effects ─────────────────────────────────────────────────────────
 
-  // Persist sidebar state
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    try { localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(sidebarCollapsed)); } catch {}
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(sidebarCollapsed));
+    } catch {}
   }, [sidebarCollapsed]);
 
-  // Close sidebar on route change
-  useEffect(() => { setSidebarOpen(false); closeFloatingPanels(); }, [location.pathname, closeFloatingPanels]);
+  useEffect(() => {
+    setSidebarOpen(false);
+    closeFloatingPanels();
+  }, [location.pathname, closeFloatingPanels]);
 
-  // Lock body scroll
   useEffect(() => {
     if (!sidebarOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prevOverflow; };
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
   }, [sidebarOpen]);
 
-  // FIXED: Combined command palette effects
   useEffect(() => {
     if (!showCommandPalette) {
       setSearchTerm('');
@@ -296,7 +493,6 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
       return;
     }
     setActiveCommandIndex(0);
-    // Focus input
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.getElementById(COMMAND_INPUT_ID)?.focus();
@@ -304,15 +500,17 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
     });
   }, [showCommandPalette]);
 
-  // Reset index on search
-  useEffect(() => { setActiveCommandIndex(0); }, [searchTerm]);
+  useEffect(() => {
+    setActiveCommandIndex(0);
+  }, [searchTerm]);
 
-  // Click outside
   useEffect(() => {
     const handler = (e) => {
       const target = e.target;
-      if (quickActionsRef.current && !quickActionsRef.current.contains(target)) setShowQuickActions(false);
-      if (notificationsRef.current && !notificationsRef.current.contains(target)) setShowNotifications(false);
+      if (quickActionsRef.current && !quickActionsRef.current.contains(target))
+        setShowQuickActions(false);
+      if (notificationsRef.current && !notificationsRef.current.contains(target))
+        setShowNotifications(false);
       if (userMenuRef.current && !userMenuRef.current.contains(target)) setShowUserMenu(false);
     };
     document.addEventListener('mousedown', handler);
@@ -323,7 +521,6 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
     };
   }, []);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (event) => {
       const hasModifier = event.ctrlKey || event.metaKey;
@@ -336,45 +533,97 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
         setShowCommandPalette(false);
         return;
       }
+
       if (typing && !hasModifier) return;
-      if (hasModifier && event.key.toLowerCase() === 'k') { event.preventDefault(); openCommandPalette(); }
-      if (hasModifier && event.key.toLowerCase() === 'n') { event.preventDefault(); openCreateModal(); }
-      if (hasModifier && event.key.toLowerCase() === 'b') { event.preventDefault(); setSidebarCollapsed(prev => !prev); }
-      if (hasModifier && event.key === '/') { event.preventDefault(); document.getElementById('global-search')?.focus(); }
+
+      if (hasModifier && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        openCommandPalette();
+      }
+      if (hasModifier && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        openCreateModal();
+      }
+      if (hasModifier && event.key.toLowerCase() === 'b') {
+        event.preventDefault();
+        setSidebarCollapsed((prev) => !prev);
+      }
+      if (hasModifier && event.key === '/') {
+        event.preventDefault();
+        document.getElementById('global-search')?.focus();
+      }
     };
+
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [closeFloatingPanels, openCommandPalette, openCreateModal]);
 
-  // Command palette keyboard nav
-  const handleCommandKeyDown = useCallback((event) => {
-    if (filteredCommands.length === 0) return;
-    if (event.key === 'ArrowDown') { event.preventDefault(); setActiveCommandIndex(prev => prev >= filteredCommands.length - 1 ? 0 : prev + 1); }
-    if (event.key === 'ArrowUp') { event.preventDefault(); setActiveCommandIndex(prev => prev <= 0 ? filteredCommands.length - 1 : prev - 1); }
-    if (event.key === 'Enter') { event.preventDefault(); const cmd = filteredCommands[activeCommandIndex]; if (cmd) handleCommandSelect(cmd.action); }
-  }, [activeCommandIndex, filteredCommands, handleCommandSelect]);
+  const handleCommandKeyDown = useCallback(
+    (event) => {
+      if (filteredCommands.length === 0) return;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveCommandIndex((prev) => (prev >= filteredCommands.length - 1 ? 0 : prev + 1));
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveCommandIndex((prev) => (prev <= 0 ? filteredCommands.length - 1 : prev + 1));
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const cmd = filteredCommands[activeCommandIndex];
+        if (cmd) handleCommandSelect(cmd.action);
+      }
+    },
+    [activeCommandIndex, filteredCommands, handleCommandSelect]
+  );
 
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        {/* Skip to main content */}
+        <a
+          href="#dashboard-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:bg-primary-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
+
         {/* Mobile Sidebar Overlay */}
         <AnimatePresence>
           {sidebarOpen && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
-              onClick={() => setSidebarOpen(false)} aria-hidden="true">
-              <motion.aside initial={{ x: -320 }} animate={{ x: 0 }} exit={{ x: -320 }}
+              onClick={() => setSidebarOpen(false)}
+              aria-hidden="true"
+            >
+              <motion.aside
+                initial={{ x: -320 }}
+                animate={{ x: 0 }}
+                exit={{ x: -320 }}
                 transition={{ type: 'spring', damping: 24, stiffness: 240 }}
-                className="relative flex h-full w-72 flex-col bg-white shadow-xl dark:bg-gray-800"
-                onClick={(e) => e.stopPropagation()}>
+                className="relative flex h-72 w-full flex-col bg-white shadow-xl dark:bg-gray-800"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
-                  <Link to="/dashboard" className="flex items-center gap-2" onClick={() => setSidebarOpen(false)}>
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center gap-2"
+                    onClick={() => setSidebarOpen(false)}
+                  >
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500" />
-                    <span className="text-lg font-bold gradient-text">ResumeAI Pro</span>
+                    <span className="text-lg font-bold gradient-text">Resume Ai Pro</span>
                   </Link>
-                  <button onClick={() => setSidebarOpen(false)} className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close menu">
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    aria-label="Close menu"
+                  >
                     <FiX className="h-5 w-5" />
                   </button>
                 </div>
@@ -385,26 +634,57 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
         </AnimatePresence>
 
         {/* Desktop Sidebar */}
-        <aside className={cn('fixed left-0 top-0 z-30 hidden h-full transition-all duration-300 lg:block', sidebarCollapsed ? 'w-20' : 'w-64')}>
-          <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(prev => !prev)} />
+        <aside
+          className={cn(
+            'fixed left-0 top-0 z-30 hidden h-full transition-all duration-300 lg:block',
+            sidebarCollapsed ? 'w-20' : 'w-64'
+          )}
+        >
+          <Sidebar
+            isCollapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed((prev) => !prev)}
+          />
         </aside>
 
         {/* Main Content */}
-        <div className={cn('transition-all duration-300', sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64')}>
+        <div
+          id="dashboard-content"
+          className={cn('transition-all duration-300', sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64')}
+        >
           {/* Header */}
           <header className="sticky top-0 z-20 border-b border-gray-200/50 glass dark:border-gray-700/50">
             <div className="px-4 sm:px-6 lg:px-8">
               <div className="flex h-16 items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                  <button onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden" aria-label="Open menu"><FiMenu className="h-5 w-5" /></button>
-                  <button onClick={() => setSidebarCollapsed(prev => !prev)} className="hidden rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800 lg:flex" aria-label="Toggle sidebar">
-                    {sidebarCollapsed ? <FiChevronRight className="h-5 w-5" /> : <FiChevronLeft className="h-5 w-5" />}
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
+                    aria-label="Open menu"
+                  >
+                    <FiMenu className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setSidebarCollapsed((prev) => !prev)}
+                    className="hidden rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800 lg:flex"
+                    aria-label="Toggle sidebar"
+                  >
+                    {sidebarCollapsed ? (
+                      <FiChevronRight className="h-5 w-5" />
+                    ) : (
+                      <FiChevronLeft className="h-5 w-5" />
+                    )}
                   </button>
                   <div className="relative hidden md:block">
                     <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <input id="global-search" type="search" placeholder="Search dashboard..."
-                      className="w-64 rounded-xl border border-gray-200 bg-white/70 py-2 pl-10 pr-16 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-800/60 lg:w-80" />
-                    <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Ctrl+/</kbd>
+                    <input
+                      id="global-search"
+                      type="search"
+                      placeholder="Search dashboard..."
+                      className="w-64 rounded-xl border border-gray-200 bg-white/70 py-2 pl-10 pr-16 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-800/60 lg:w-80"
+                    />
+                    <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                      Ctrl+/
+                    </kbd>
                   </div>
                 </div>
 
@@ -463,7 +743,9 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                           role="menu"
                         >
                           <div className="p-2">
-                            <p className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">Quick Actions</p>
+                            <p className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                              Quick Actions
+                            </p>
                             {quickActions.map((action) => (
                               <button
                                 key={action.id}
@@ -477,7 +759,9 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                               >
                                 <span className="flex items-center gap-3">
                                   <action.icon className={cn('h-4 w-4', action.iconClassName)} />
-                                  <span className="text-sm text-gray-900 dark:text-white">{action.label}</span>
+                                  <span className="text-sm text-gray-900 dark:text-white">
+                                    {action.label}
+                                  </span>
                                 </span>
                                 {action.shortcut && (
                                   <span className="text-xs text-gray-400">{action.shortcut}</span>
@@ -504,7 +788,11 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                     >
                       <FiBell className="h-5 w-5" />
                       {unreadCount > 0 && (
-                        <Badge variant="danger" size="sm" className="absolute -right-1 -top-1 min-w-[1.25rem] justify-center px-1">
+                        <Badge
+                          variant="danger"
+                          size="sm"
+                          className="absolute -right-1 -top-1 min-w-[1.25rem] justify-center px-1"
+                        >
                           {unreadCount > 9 ? '9+' : unreadCount}
                         </Badge>
                       )}
@@ -519,7 +807,9 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                           role="menu"
                         >
                           <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                              Notifications
+                            </h3>
                             {unreadCount > 0 && (
                               <button
                                 type="button"
@@ -550,8 +840,12 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                                       <Icon className="h-4 w-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium text-gray-900 dark:text-white">{notif.title}</p>
-                                      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{notif.message}</p>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {notif.title}
+                                      </p>
+                                      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                        {notif.message}
+                                      </p>
                                     </div>
                                   </button>
                                 );
@@ -559,7 +853,9 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                             ) : (
                               <div className="p-8 text-center">
                                 <FiBell className="mx-auto mb-2 h-8 w-8 text-gray-300 dark:text-gray-600" />
-                                <p className="text-sm text-gray-500 dark:text-gray-400">No notifications yet</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  No notifications yet
+                                </p>
                               </div>
                             )}
                           </div>
@@ -619,7 +915,9 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                             <p className="font-medium text-gray-900 dark:text-white">
                               {greeting}, {firstName}
                             </p>
-                            <p className="truncate text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+                            <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+                              {user?.email}
+                            </p>
                             <Badge variant="default" size="sm" className="mt-2">
                               {accountLabel}
                             </Badge>
@@ -627,8 +925,18 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                           <div className="p-2">
                             {[
                               { id: 'profile', icon: FiUser, label: 'Profile', path: '/profile' },
-                              { id: 'settings', icon: FiSettings, label: 'Settings', path: '/settings' },
-                              { id: 'billing', icon: FiCreditCard, label: 'Billing', path: '/billing' },
+                              {
+                                id: 'settings',
+                                icon: FiSettings,
+                                label: 'Settings',
+                                path: '/settings',
+                              },
+                              {
+                                id: 'billing',
+                                icon: FiCreditCard,
+                                label: 'Billing',
+                                path: '/billing',
+                              },
                             ].map((item) => (
                               <button
                                 key={item.id}
@@ -667,25 +975,40 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
 
           <main className="p-4 sm:p-6 lg:p-8">
             {showWelcome && location.pathname === '/dashboard' && (
-              <WelcomeCard greeting={greeting} firstName={firstName} stats={stats} resumes={resumes}
+              <WelcomeCard
+                greeting={greeting}
+                firstName={firstName}
+                stats={stats}
+                resumes={resumes}
                 onCreateResume={openCreateModal}
-                onContinue={() => navigate(latestResumeId ? `/builder/${latestResumeId}` : '/builder')} />
+                onContinue={() =>
+                  navigate(latestResumeId ? `/builder/${latestResumeId}` : '/builder')
+                }
+              />
             )}
-            <motion.div key={location.pathname}
+            <motion.div
+              key={location.pathname}
               initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}>
+              transition={{ duration: 0.25 }}
+            >
               {children}
             </motion.div>
           </main>
 
           <footer className="border-t border-gray-200 px-6 py-4 dark:border-gray-800">
             <div className="flex flex-col items-center justify-between gap-2 text-center text-xs text-gray-500 sm:flex-row sm:text-left">
-              <p>© {new Date().getFullYear()} ResumeAI Pro</p>
+              <p>© {new Date().getFullYear()} Resume Ai Pro</p>
               <div className="flex items-center gap-4">
-                <Link to="/privacy" className="hover:text-primary-500">Privacy</Link>
-                <Link to="/terms" className="hover:text-primary-500">Terms</Link>
-                <Link to="/help" className="hover:text-primary-500">Help</Link>
+                <Link to="/privacy" className="hover:text-primary-500">
+                  Privacy
+                </Link>
+                <Link to="/terms" className="hover:text-primary-500">
+                  Terms
+                </Link>
+                <Link to="/help" className="hover:text-primary-500">
+                  Help
+                </Link>
               </div>
             </div>
           </footer>
@@ -711,12 +1034,12 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
               >
                 <div
                   className={cn(
-                    'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-lg text-white',
+                    'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white',
                     t.class
                   )}
-                  aria-hidden
+                  aria-hidden="true"
                 >
-                  {t.icon}
+                  <t.icon className="h-6 w-6" />
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-gray-900 dark:text-white">{t.name}</p>
@@ -768,8 +1091,8 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
             )}
           </div>
           <p className="mt-3 border-t border-gray-200 pt-2 text-center text-xs text-gray-400 dark:border-gray-700">
-            <kbd className="rounded border px-1">↑↓</kbd> navigate ·{' '}
-            <kbd className="rounded border px-1">Enter</kbd> select ·{' '}
+            <kbd className="rounded border px-1">↑↓</kbd> navigate{' '}
+            <kbd className="rounded border px-1">Enter</kbd> select{' '}
             <kbd className="rounded border px-1">Esc</kbd> close
           </p>
         </Modal>

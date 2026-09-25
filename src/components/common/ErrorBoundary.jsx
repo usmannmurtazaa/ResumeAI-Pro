@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
-import { 
-  FiAlertTriangle, 
-  FiRefreshCw, 
-  FiHome, 
-  FiCopy, 
-  FiCheck, 
+import {
+  FiAlertTriangle,
+  FiRefreshCw,
+  FiHome,
+  FiCopy,
+  FiCheck,
   FiSend,
   FiChevronDown,
   FiChevronUp,
@@ -33,7 +33,7 @@ class ErrorBoundary extends Component {
       recoveryAttempts: 0,
       isRecovering: false,
     };
-    
+
     this.errorCount = 0;
     this.lastErrorTime = 0;
   }
@@ -46,7 +46,7 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     // Generate unique error ID
     const errorId = `err_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
+
     // Track error frequency
     this.errorCount++;
     this.lastErrorTime = Date.now();
@@ -161,27 +161,27 @@ class ErrorBoundary extends Component {
 
   handleReset = () => {
     const maxAttempts = this.props.maxRecoveryAttempts ?? 3;
-    
+
     if (this.state.recoveryAttempts >= maxAttempts) {
       // Too many recovery attempts, reload page
       toast.error('Unable to recover. Reloading page...', {
         id: 'error-recovery-failed',
       });
-      
+
       setTimeout(() => {
         window.location.reload();
       }, 1000);
       return;
     }
 
-    this.setState(prev => ({
+    this.setState((prev) => ({
       isRecovering: true,
       recoveryAttempts: prev.recoveryAttempts + 1,
     }));
 
     // Try to reset without reload first
     this.resetError();
-    
+
     // Call optional onReset callback
     if (typeof this.props.onReset === 'function') {
       try {
@@ -194,7 +194,7 @@ class ErrorBoundary extends Component {
     }
 
     this.setState({ isRecovering: false });
-    
+
     toast.success('Attempting to recover...', {
       id: 'error-recovery',
       duration: 2000,
@@ -213,7 +213,7 @@ class ErrorBoundary extends Component {
 
   handleCopyError = async () => {
     const { error, errorInfo, errorId } = this.state;
-    
+
     const errorReport = [
       `Error ID: ${errorId}`,
       `Type: ${error?.name || 'Error'}`,
@@ -242,7 +242,7 @@ class ErrorBoundary extends Component {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        
+
         this.setState({ copied: true });
         toast.success('Error details copied to clipboard');
         setTimeout(() => this.setState({ copied: false }), 2000);
@@ -254,57 +254,51 @@ class ErrorBoundary extends Component {
 
   handleReportError = () => {
     const { error, errorId } = this.state;
-    
-    const subject = encodeURIComponent(`Error Report: ${errorId}`);
-    const body = encodeURIComponent([
-      `Error ID: ${errorId}`,
-      `Message: ${error?.message || 'Unknown'}`,
-      `URL: ${window.location?.href || ''}`,
-      `Timestamp: ${new Date().toISOString()}`,
-      '',
-      'Please describe what you were doing when this error occurred:',
-      '',
-      '',
-    ].join('\n'));
 
-    window.location.href = `mailto:support@resumeaipro.com?subject=${subject}&body=${body}`;
+    const subject = encodeURIComponent(`Error Report: ${errorId}`);
+    const body = encodeURIComponent(
+      [
+        `Error ID: ${errorId}`,
+        `Message: ${error?.message || 'Unknown'}`,
+        `URL: ${window.location?.href || ''}`,
+        `Timestamp: ${new Date().toISOString()}`,
+        '',
+        'Please describe what you were doing when this error occurred:',
+        '',
+        '',
+      ].join('\n')
+    );
+
+    window.location.href = `mailto:support@maniestaresumeai.com?subject=${subject}&body=${body}`;
   };
 
   toggleDetails = () => {
-    this.setState(prev => ({ showDetails: !prev.showDetails }));
+    this.setState((prev) => ({ showDetails: !prev.showDetails }));
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
 
   render() {
-    const { 
-      hasError, 
-      error, 
-      errorInfo, 
-      errorId, 
-      copied, 
-      showDetails, 
-      isRecovering 
-    } = this.state;
-    
-    const { 
-      fallback, 
-      showHomeButton = true, 
+    const { hasError, error, errorInfo, errorId, copied, showDetails, isRecovering } = this.state;
+
+    const {
+      fallback,
+      showHomeButton = true,
       showReportButton = true,
       showReloadButton = true,
       title = 'Something went wrong',
-      message = "We apologize for the inconvenience. Our team has been automatically notified.",
+      message = 'We apologize for the inconvenience. Our team has been automatically notified.',
       resetLabel = 'Try Again',
     } = this.props;
 
     if (hasError) {
       // Use custom fallback if provided
       if (fallback) {
-        return fallback({ 
-          error, 
-          errorInfo, 
-          errorId, 
-          reset: this.handleReset, 
+        return fallback({
+          error,
+          errorInfo,
+          errorId,
+          reset: this.handleReset,
           reload: this.handleReload,
         });
       }
@@ -321,12 +315,8 @@ class ErrorBoundary extends Component {
             </div>
 
             {/* Error Message */}
-            <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-              {title}
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {message}
-            </p>
+            <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">{title}</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
 
             {/* Error ID (Production) */}
             {errorId && IS_PRODUCTION && (
@@ -358,7 +348,7 @@ class ErrorBoundary extends Component {
                     </>
                   )}
                 </button>
-                
+
                 {showDetails && (
                   <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg text-left border border-red-200 dark:border-red-800 max-h-60 overflow-y-auto">
                     <div className="flex items-center justify-between mb-3 sticky top-0 bg-red-50 dark:bg-red-900/20 pb-2">
@@ -380,27 +370,33 @@ class ErrorBoundary extends Component {
                         </button>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Error:</p>
+                        <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">
+                          Error:
+                        </p>
                         <p className="text-sm font-mono text-red-700 dark:text-red-300 break-all">
                           {error.toString()}
                         </p>
                       </div>
-                      
+
                       {error.stack && (
                         <div>
-                          <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Stack Trace:</p>
+                          <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">
+                            Stack Trace:
+                          </p>
                           <pre className="text-xs text-gray-600 dark:text-gray-400 overflow-auto max-h-32 p-2 bg-black/5 dark:bg-white/5 rounded whitespace-pre-wrap break-all">
                             {error.stack}
                           </pre>
                         </div>
                       )}
-                      
+
                       {errorInfo?.componentStack && (
                         <div>
-                          <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Component Stack:</p>
+                          <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">
+                            Component Stack:
+                          </p>
                           <pre className="text-xs text-gray-600 dark:text-gray-400 overflow-auto max-h-32 p-2 bg-black/5 dark:bg-white/5 rounded whitespace-pre-wrap">
                             {errorInfo.componentStack}
                           </pre>
@@ -415,49 +411,37 @@ class ErrorBoundary extends Component {
             {/* Recovery Attempts Warning */}
             {this.state.recoveryAttempts > 1 && (
               <p className="text-xs text-yellow-600 dark:text-yellow-400 mb-4">
-                Recovery attempted {this.state.recoveryAttempts} times. 
+                Recovery attempted {this.state.recoveryAttempts} times.
                 {this.state.recoveryAttempts >= 3 && ' Consider reloading the page.'}
               </p>
             )}
 
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 justify-center">
-              <Button 
-                onClick={this.handleReset} 
-                icon={<FiRefreshCw className={isRecovering ? 'animate-spin' : ''} />} 
+              <Button
+                onClick={this.handleReset}
+                icon={<FiRefreshCw className={isRecovering ? 'animate-spin' : ''} />}
                 variant="primary"
                 loading={isRecovering}
                 disabled={isRecovering}
               >
                 {isRecovering ? 'Recovering...' : resetLabel}
               </Button>
-              
+
               {showReloadButton && (
-                <Button 
-                  onClick={this.handleReload} 
-                  variant="outline"
-                  icon={<FiRefreshCw />}
-                >
+                <Button onClick={this.handleReload} variant="outline" icon={<FiRefreshCw />}>
                   Reload Page
                 </Button>
               )}
-              
+
               {showHomeButton && (
-                <Button 
-                  onClick={this.handleGoHome} 
-                  variant="outline" 
-                  icon={<FiHome />}
-                >
+                <Button onClick={this.handleGoHome} variant="outline" icon={<FiHome />}>
                   Go Home
                 </Button>
               )}
-              
+
               {showReportButton && (
-                <Button 
-                  onClick={this.handleReportError} 
-                  variant="ghost" 
-                  icon={<FiSend />}
-                >
+                <Button onClick={this.handleReportError} variant="ghost" icon={<FiSend />}>
                   Report Issue
                 </Button>
               )}
@@ -466,14 +450,20 @@ class ErrorBoundary extends Component {
             {/* Help Text */}
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-6">
               If the problem persists, please contact{' '}
-              <a 
-                href="mailto:support@resumeaipro.com" 
+              <a
+                href="mailto:support@maniestaresumeai.com"
                 className="text-primary-500 hover:text-primary-600 dark:text-primary-400 hover:underline"
               >
-                support@resumeaipro.com
+                support@maniestaresumeai.com
               </a>
               {errorId && IS_PRODUCTION && (
-                <> and reference ID: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs">{errorId}</code></>
+                <>
+                  {' '}
+                  and reference ID:{' '}
+                  <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs">
+                    {errorId}
+                  </code>
+                </>
               )}
             </p>
           </Card>
@@ -489,7 +479,7 @@ class ErrorBoundary extends Component {
 
 /**
  * Wraps a component with ErrorBoundary.
- * 
+ *
  * @example
  * export default withErrorBoundary(MyComponent, {
  *   title: 'MyComponent Error',
@@ -504,11 +494,11 @@ export const withErrorBoundary = (WrappedComponent, errorBoundaryProps = {}) => 
       </ErrorBoundary>
     );
   };
-  
+
   WithErrorBoundary.displayName = `WithErrorBoundary(${
     WrappedComponent.displayName || WrappedComponent.name || 'Component'
   })`;
-  
+
   return WithErrorBoundary;
 };
 

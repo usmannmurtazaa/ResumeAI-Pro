@@ -13,7 +13,8 @@ const VARIANTS = {
   elevated: 'bg-white dark:bg-gray-800 shadow-lg',
   flat: 'bg-gray-50 dark:bg-gray-900',
   outlined: 'bg-transparent border-2 border-gray-200 dark:border-gray-700',
-  gradient: 'bg-gradient-to-br from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20',
+  gradient:
+    'bg-gradient-to-br from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20',
   primary: 'bg-gradient-to-br from-primary-500 to-accent-500 text-white',
 };
 
@@ -28,98 +29,120 @@ const HOVER_EFFECTS = {
 };
 
 const PADDINGS = {
-  none: 'p-0', xs: 'p-3', sm: 'p-4', md: 'p-6', lg: 'p-8', xl: 'p-10',
+  none: 'p-0',
+  xs: 'p-3',
+  sm: 'p-4',
+  md: 'p-6',
+  lg: 'p-8',
+  xl: 'p-10',
 };
 
 const SHADOWS = {
-  none: '', sm: 'shadow-sm', md: 'shadow-md', lg: 'shadow-lg', xl: 'shadow-xl', '2xl': 'shadow-2xl',
+  none: '',
+  sm: 'shadow-sm',
+  md: 'shadow-md',
+  lg: 'shadow-lg',
+  xl: 'shadow-xl',
+  '2xl': 'shadow-2xl',
 };
 
 const ROUNDED = {
-  none: 'rounded-none', sm: 'rounded-lg', md: 'rounded-xl', lg: 'rounded-2xl', xl: 'rounded-3xl', full: 'rounded-full',
+  none: 'rounded-none',
+  sm: 'rounded-lg',
+  md: 'rounded-xl',
+  lg: 'rounded-2xl',
+  xl: 'rounded-3xl',
+  full: 'rounded-full',
 };
 
 // ── Card Component ────────────────────────────────────────────────────────
 
-const Card = forwardRef(({ 
-  children, 
-  className = '', 
-  hover = true,
-  variant = 'default',
-  padding = 'md',
-  bordered = false,
-  shadow = 'md',
-  rounded = 'xl',
-  clickable = false,
-  selected = false,
-  disabled = false,
-  animate = true,
-  onClick,
-  as: Component = 'div',
-  ...props 
-}, ref) => {
-  const cardClasses = cn(
-    'transition-all duration-300',
-    VARIANTS[variant] || VARIANTS.default,
-    PADDINGS[padding] || PADDINGS.md,
-    bordered && 'border border-gray-200 dark:border-gray-700',
-    SHADOWS[shadow] || '',
-    ROUNDED[rounded] || ROUNDED.xl,
-    clickable && 'cursor-pointer',
-    selected && 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900',
-    disabled && 'opacity-50 pointer-events-none',
-    hover && !disabled && (HOVER_EFFECTS[variant] || ''),
-    className
-  );
+const Card = forwardRef(
+  (
+    {
+      children,
+      className = '',
+      hover = true,
+      variant = 'default',
+      padding = 'md',
+      bordered = false,
+      shadow = 'md',
+      rounded = 'xl',
+      clickable = false,
+      selected = false,
+      disabled = false,
+      animate = true,
+      onClick,
+      as: Component = 'div',
+      ...props
+    },
+    ref
+  ) => {
+    const cardClasses = cn(
+      'transition-all duration-300',
+      VARIANTS[variant] || VARIANTS.default,
+      PADDINGS[padding] || PADDINGS.md,
+      bordered && 'border border-gray-200 dark:border-gray-700',
+      SHADOWS[shadow] || '',
+      ROUNDED[rounded] || ROUNDED.xl,
+      clickable && 'cursor-pointer',
+      selected && 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900',
+      disabled && 'opacity-50 pointer-events-none',
+      hover && !disabled && (HOVER_EFFECTS[variant] || ''),
+      className
+    );
 
-  // ── Keyboard support for clickable cards ────────────────────────────
+    const handleKeyDown = useCallback(
+      (e) => {
+        if (clickable && !disabled && onClick && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onClick(e);
+        }
+      },
+      [clickable, disabled, onClick]
+    );
 
-  const handleKeyDown = useCallback((e) => {
-    if (clickable && !disabled && onClick && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault();
-      onClick(e);
-    }
-  }, [clickable, disabled, onClick]);
+    const motionProps = animate
+      ? {
+          whileHover: hover && !disabled && !clickable ? { y: -4 } : undefined,
+          whileTap: clickable && !disabled ? { scale: 0.98 } : undefined,
+          initial: { opacity: 0, y: 20 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.3 },
+        }
+      : {};
 
-  // ── Use motion.div only when animating ──────────────────────────────
+    const Tag = animate ? motion.div : 'div';
 
-  const motionProps = animate ? {
-    whileHover: hover && !disabled && !clickable ? { y: -4 } : undefined,
-    whileTap: clickable && !disabled ? { scale: 0.98 } : undefined,
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.3 },
-  } : {};
-
-  // Use plain div when not animating (better performance)
-  const Tag = animate ? motion.div : 'div';
-
-  return (
-    <Tag
-      ref={ref}
-      className={cardClasses}
-      onClick={disabled ? undefined : onClick}
-      onKeyDown={clickable ? handleKeyDown : undefined}
-      tabIndex={clickable && !disabled ? 0 : undefined}
-      role={clickable ? 'button' : undefined}
-      {...motionProps}
-      {...props}
-    >
-      {children}
-    </Tag>
-  );
-});
+    return (
+      <Tag
+        ref={ref}
+        className={cardClasses}
+        onClick={disabled ? undefined : onClick}
+        onKeyDown={clickable ? handleKeyDown : undefined}
+        tabIndex={clickable && !disabled ? 0 : undefined}
+        role={clickable ? 'button' : undefined}
+        {...motionProps}
+        {...props}
+      >
+        {children}
+      </Tag>
+    );
+  }
+);
 
 Card.displayName = 'Card';
 
 // ── Sub-Components ────────────────────────────────────────────────────────
 
 export const CardHeader = ({ children, className = '', action, divider = true }) => (
-  <div className={cn(
-    'flex items-center justify-between',
-    divider && 'pb-4 mb-4 border-b border-gray-200 dark:border-gray-700',
-    className
-  )}>
+  <div
+    className={cn(
+      'flex items-center justify-between',
+      divider && 'pb-4 mb-4 border-b border-gray-200 dark:border-gray-700',
+      className
+    )}
+  >
     <div className="flex-1 min-w-0">{children}</div>
     {action && <div className="flex-shrink-0 ml-4">{action}</div>}
   </div>
@@ -128,7 +151,9 @@ export const CardHeader = ({ children, className = '', action, divider = true })
 CardHeader.displayName = 'CardHeader';
 
 export const CardTitle = ({ children, className = '', as: Component = 'h3' }) => (
-  <Component className={cn('text-lg font-semibold text-gray-900 dark:text-white', className)}>{children}</Component>
+  <Component className={cn('text-lg font-semibold text-gray-900 dark:text-white', className)}>
+    {children}
+  </Component>
 );
 
 CardTitle.displayName = 'CardTitle';
@@ -146,19 +171,35 @@ export const CardBody = ({ children, className = '' }) => (
 CardBody.displayName = 'CardBody';
 
 export const CardFooter = ({ children, className = '', divider = true }) => (
-  <div className={cn(
-    'flex items-center justify-end gap-3',
-    divider && 'pt-4 mt-4 border-t border-gray-200 dark:border-gray-700',
-    className
-  )}>{children}</div>
+  <div
+    className={cn(
+      'flex items-center justify-end gap-3',
+      divider && 'pt-4 mt-4 border-t border-gray-200 dark:border-gray-700',
+      className
+    )}
+  >
+    {children}
+  </div>
 );
 
 CardFooter.displayName = 'CardFooter';
 
 // ── Specialized Cards ─────────────────────────────────────────────────────
 
-export const StatCard = ({ title, value, icon: Icon, change, changeType = 'neutral', className = '', ...props }) => {
-  const changeColors = { positive: 'text-green-500', negative: 'text-red-500', neutral: 'text-gray-500' };
+export const StatCard = ({
+  title,
+  value,
+  icon: Icon,
+  change,
+  changeType = 'neutral',
+  className = '',
+  ...props
+}) => {
+  const changeColors = {
+    positive: 'text-green-500',
+    negative: 'text-red-500',
+    neutral: 'text-gray-500',
+  };
   return (
     <Card className={className} {...props}>
       <div className="flex items-start justify-between">
@@ -167,11 +208,16 @@ export const StatCard = ({ title, value, icon: Icon, change, changeType = 'neutr
           <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{value}</p>
           {change && (
             <p className={cn('text-sm mt-2 flex items-center gap-1', changeColors[changeType])}>
-              {changeType === 'positive' ? '↑' : changeType === 'negative' ? '↓' : ''}{change}
+              {changeType === 'positive' ? '↑' : changeType === 'negative' ? '↓' : ''}
+              {change}
             </p>
           )}
         </div>
-        {Icon && <div className="p-3 rounded-xl bg-primary-50 dark:bg-primary-900/30"><Icon className="w-6 h-6 text-primary-500" /></div>}
+        {Icon && (
+          <div className="p-3 rounded-xl bg-primary-50 dark:bg-primary-900/30">
+            <Icon className="w-6 h-6 text-primary-500" />
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -179,7 +225,14 @@ export const StatCard = ({ title, value, icon: Icon, change, changeType = 'neutr
 
 StatCard.displayName = 'StatCard';
 
-export const InfoCard = ({ title, description, icon: Icon, variant = 'default', className = '', ...props }) => {
+export const InfoCard = ({
+  title,
+  description,
+  icon: Icon,
+  variant = 'default',
+  className = '',
+  ...props
+}) => {
   const iconColors = {
     default: 'bg-primary-50 dark:bg-primary-900/30 text-primary-500',
     success: 'bg-green-50 dark:bg-green-900/30 text-green-500',
@@ -189,10 +242,16 @@ export const InfoCard = ({ title, description, icon: Icon, variant = 'default', 
   };
   return (
     <Card className={cn('flex items-start gap-4', className)} {...props}>
-      {Icon && <div className={cn('p-3 rounded-xl', iconColors[variant] || iconColors.default)}><Icon className="w-6 h-6" /></div>}
+      {Icon && (
+        <div className={cn('p-3 rounded-xl', iconColors[variant] || iconColors.default)}>
+          <Icon className="w-6 h-6" />
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         {title && <h4 className="font-semibold text-gray-900 dark:text-white">{title}</h4>}
-        {description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</p>}
+        {description && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</p>
+        )}
       </div>
     </Card>
   );
@@ -200,14 +259,27 @@ export const InfoCard = ({ title, description, icon: Icon, variant = 'default', 
 
 InfoCard.displayName = 'InfoCard';
 
-export const ActionCard = ({ title, description, icon: Icon, action, className = '', ...props }) => (
+export const ActionCard = ({
+  title,
+  description,
+  icon: Icon,
+  action,
+  className = '',
+  ...props
+}) => (
   <Card clickable={!!action} onClick={action?.onClick} className={className} {...props}>
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-4 min-w-0">
-        {Icon && <div className="p-3 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex-shrink-0"><Icon className="w-6 h-6 text-primary-500" /></div>}
+        {Icon && (
+          <div className="p-3 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex-shrink-0">
+            <Icon className="w-6 h-6 text-primary-500" />
+          </div>
+        )}
         <div className="min-w-0">
           <h4 className="font-semibold text-gray-900 dark:text-white truncate">{title}</h4>
-          {description && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{description}</p>}
+          {description && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{description}</p>
+          )}
         </div>
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}
@@ -228,7 +300,11 @@ export const LoadingCard = ({ className = '', lines = 3 }) => (
     </div>
     <div className="space-y-2 mt-4">
       {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className="h-3 bg-gray-200 dark:bg-gray-700 rounded" style={{ width: `${85 - i * 10}%` }} />
+        <div
+          key={i}
+          className="h-3 bg-gray-200 dark:bg-gray-700 rounded"
+          style={{ width: `${85 - i * 10}%` }}
+        />
       ))}
     </div>
   </Card>

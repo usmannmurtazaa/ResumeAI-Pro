@@ -23,19 +23,26 @@ const POSITIONS = {
   'right-end': 'left-full bottom-0',
 };
 
-// Arrow border direction for each position
 const ARROW_DIRECTIONS = {
-  top: 'bottom', 'top-start': 'bottom', 'top-end': 'bottom',
-  bottom: 'top', 'bottom-start': 'top', 'bottom-end': 'top',
-  left: 'right', 'left-start': 'right', 'left-end': 'right',
-  right: 'left', 'right-start': 'left', 'right-end': 'left',
+  top: 'bottom',
+  'top-start': 'bottom',
+  'top-end': 'bottom',
+  bottom: 'top',
+  'bottom-start': 'top',
+  'bottom-end': 'top',
+  left: 'right',
+  'left-start': 'right',
+  'left-end': 'right',
+  right: 'left',
+  'right-start': 'left',
+  'right-end': 'left',
 };
 
 // ── Tooltip Component ─────────────────────────────────────────────────────
 
-const Tooltip = ({ 
-  children, 
-  content, 
+const Tooltip = ({
+  children,
+  content,
   position = 'top',
   delay = 200,
   disabled = false,
@@ -43,7 +50,7 @@ const Tooltip = ({
   maxWidth = 200,
   className = '',
   tooltipClassName = '',
-  trigger = 'hover', // 'hover' | 'click' | 'focus'
+  trigger = 'hover',
   interactive = false,
   portal = false,
 }) => {
@@ -54,19 +61,15 @@ const Tooltip = ({
   const prefersReducedMotion = useReducedMotion();
   const isTouchDevice = useRef(false);
 
-  // ── Detect touch device ────────────────────────────────────────────
-
   useEffect(() => {
     isTouchDevice.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }, []);
 
-  // ── Show/Hide ──────────────────────────────────────────────────────
-
   const show = useCallback(() => {
     if (disabled || (isTouchDevice.current && trigger === 'hover')) return;
-    
+
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    
+
     if (delay > 0) {
       timeoutRef.current = setTimeout(() => setIsVisible(true), delay);
     } else {
@@ -80,10 +83,8 @@ const Tooltip = ({
   }, []);
 
   const toggle = useCallback(() => {
-    setIsVisible(prev => !prev);
+    setIsVisible((prev) => !prev);
   }, []);
-
-  // ── Cleanup ───────────────────────────────────────────────────────
 
   useEffect(() => {
     return () => {
@@ -91,16 +92,12 @@ const Tooltip = ({
     };
   }, []);
 
-  // ── Hide on scroll (unless interactive) ──────────────────────────
-
   useEffect(() => {
     if (!isVisible || interactive) return;
     const handler = () => hide();
     window.addEventListener('scroll', handler, { capture: true });
     return () => window.removeEventListener('scroll', handler, { capture: true });
   }, [isVisible, interactive, hide]);
-
-  // ── Trigger Props ─────────────────────────────────────────────────
 
   const getTriggerProps = () => {
     const props = { ref: triggerRef };
@@ -120,26 +117,22 @@ const Tooltip = ({
     return props;
   };
 
-  // ── Arrow Component ───────────────────────────────────────────────
-
   const Arrow = () => {
     if (!arrow) return null;
     const arrowDir = ARROW_DIRECTIONS[position] || 'bottom';
     return (
-      <div 
+      <div
         className={cn(
           'absolute w-2 h-2 rotate-45',
           'bg-gray-900 dark:bg-gray-100',
           arrowDir === 'top' && 'bottom-[-4px] left-1/2 -translate-x-1/2',
           arrowDir === 'bottom' && 'top-[-4px] left-1/2 -translate-x-1/2',
           arrowDir === 'left' && 'right-[-4px] top-1/2 -translate-y-1/2',
-          arrowDir === 'right' && 'left-[-4px] top-1/2 -translate-y-1/2',
+          arrowDir === 'right' && 'left-[-4px] top-1/2 -translate-y-1/2'
         )}
       />
     );
   };
-
-  // ── Tooltip Content ───────────────────────────────────────────────
 
   const tooltipContent = (
     <motion.div
@@ -151,16 +144,20 @@ const Tooltip = ({
       className={cn(
         'absolute z-[9999]',
         POSITIONS[position] || POSITIONS.top,
-        position.startsWith('top') ? 'mb-2' : 
-        position.startsWith('bottom') ? 'mt-2' :
-        position.startsWith('left') ? 'mr-2' : 'ml-2',
+        position.startsWith('top')
+          ? 'mb-2'
+          : position.startsWith('bottom')
+            ? 'mt-2'
+            : position.startsWith('left')
+              ? 'mr-2'
+              : 'ml-2',
         tooltipClassName
       )}
       onMouseEnter={interactive ? show : undefined}
       onMouseLeave={interactive ? hide : undefined}
       role="tooltip"
     >
-      <div 
+      <div
         className={cn(
           'px-3 py-1.5 text-sm text-white bg-gray-900 dark:text-gray-900 dark:bg-gray-100',
           'rounded-lg shadow-lg whitespace-nowrap',
@@ -180,20 +177,18 @@ const Tooltip = ({
       <div className="relative inline-flex" {...getTriggerProps()}>
         {children}
         <AnimatePresence>
-          {isVisible && (
-            portal 
-              ? createPortal(tooltipContent, document.body) 
-              : tooltipContent
-          )}
+          {isVisible && (portal ? createPortal(tooltipContent, document.body) : tooltipContent)}
         </AnimatePresence>
       </div>
     </>
   );
 };
 
+Tooltip.displayName = 'Tooltip';
+
 // ── Popover Component ─────────────────────────────────────────────────────
 
-export const Popover = ({ 
+export const Popover = ({
   children,
   content,
   title,
@@ -204,7 +199,7 @@ export const Popover = ({
   onOpen,
   onClose,
   className = '',
-  ...props 
+  ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef(null);
@@ -231,7 +226,7 @@ export const Popover = ({
   }, [isOpen]);
 
   const toggle = useCallback(() => {
-    setIsOpen(prev => {
+    setIsOpen((prev) => {
       const next = !prev;
       if (next) onOpen?.();
       else onClose?.();
@@ -253,9 +248,7 @@ export const Popover = ({
 
   return (
     <div className="relative inline-block" ref={popoverRef}>
-      <div onClick={trigger === 'click' ? toggle : undefined}>
-        {children}
-      </div>
+      <div onClick={trigger === 'click' ? toggle : undefined}>{children}</div>
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -263,7 +256,11 @@ export const Popover = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95, y: -5 }}
             transition={{ duration: 0.15 }}
-            className={cn('absolute z-50', positionClasses[position] || positionClasses.bottom, className)}
+            className={cn(
+              'absolute z-50',
+              positionClasses[position] || positionClasses.bottom,
+              className
+            )}
             style={{ width }}
             role="dialog"
             aria-label={title}
@@ -272,11 +269,27 @@ export const Popover = ({
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(title || showClose) && (
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  {title && <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{title}</h4>}
+                  {title && (
+                    <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{title}</h4>
+                  )}
                   {showClose && (
-                    <button onClick={close} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <button
+                      onClick={close}
+                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                      aria-label="Close"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   )}
@@ -290,5 +303,7 @@ export const Popover = ({
     </div>
   );
 };
+
+Popover.displayName = 'Popover';
 
 export default React.memo(Tooltip);

@@ -13,21 +13,14 @@ import { ResumeProvider } from './contexts/ResumeContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import Loader from './components/common/Loader';
-import ErrorBoundary from './components/common/ErrorBoundary';
 import RouteErrorBoundary from './components/common/RouteErrorBoundary';
+import SessionTimeoutWarning from './components/common/SessionTimeoutWarning';
 import { logAnalyticsEvent } from './services/firebase';
 import './styles/globals.css';
 import './styles/animations.css';
 
 // ── Environment ──────────────────────────────────────────────────────────────
 const isDevelopment = process.env.NODE_ENV === 'development';
-
-/**
- * TanStack Query was mounted at the tree root without any useQuery/useMutation usage
- * in the app layer — it only inflated the bundle and suggested a caching layer we do
- * not use (Firestore + contexts own data today). Restore `QueryClientProvider` when you
- * adopt server-state hooks for API endpoints or callable-backed resources.
- */
 
 // ── Lazy Page Factory ───────────────────────────────────────────────────────
 const retryDynamicImport = (importFn, retriesLeft = 2, delayMs = 600) =>
@@ -54,6 +47,7 @@ const createLazyPage = (loader) => {
 };
 
 // ── Lazy-loaded Pages ───────────────────────────────────────────────────────
+// Critical pages are prefetched on idle to reduce perceived load times.
 const Home = createLazyPage(() => import(/* webpackPrefetch: true */ './pages/Home'));
 const Dashboard = createLazyPage(() => import(/* webpackPrefetch: true */ './pages/Dashboard'));
 const Builder = createLazyPage(() => import(/* webpackPrefetch: true */ './pages/Builder'));
@@ -86,7 +80,7 @@ const Preview = createLazyPage(() => import('./pages/Preview'));
 const Billing = createLazyPage(() => import('./pages/Billing'));
 const NotFound = createLazyPage(() => import('./pages/NotFound'));
 
-// ── Route definitions (canonical metadata: src/config/routes.js) ────────────
+// ── Route Definitions ───────────────────────────────────────────────────────
 const PUBLIC_ROUTES = [
   { path: '/', component: Home },
   { path: '/features', component: Features },
@@ -133,23 +127,20 @@ const subscribeToMediaQuery = (mediaQuery, listener) => {
   return () => mediaQuery.removeListener(listener);
 };
 
-const resolveIsDark = (savedTheme, systemPrefersDark) => {
-  return savedTheme === 'dark' || ((savedTheme === null || savedTheme === 'system') && systemPrefersDark);
-};
+const resolveIsDark = (savedTheme, systemPrefersDark) =>
+  savedTheme === 'dark' || ((savedTheme === null || savedTheme === 'system') && systemPrefersDark);
 
 // ── Custom Hooks ────────────────────────────────────────────────────────────
+
 const useInitialThemeClass = () => {
   React.useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
-
     const root = document.documentElement;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
     const applyTheme = (isDark) => {
       root.classList.toggle('dark', isDark);
       root.style.colorScheme = isDark ? 'dark' : 'light';
     };
-
     const syncTheme = () => {
       try {
         const savedTheme = localStorage.getItem('theme');
@@ -158,9 +149,7 @@ const useInitialThemeClass = () => {
         applyTheme(mediaQuery.matches);
       }
     };
-
     syncTheme();
-
     const unsubscribe = subscribeToMediaQuery(mediaQuery, (event) => {
       try {
         const savedTheme = localStorage.getItem('theme');
@@ -171,7 +160,6 @@ const useInitialThemeClass = () => {
         // Silently handle localStorage errors
       }
     });
-
     return unsubscribe;
   }, []);
 };
@@ -179,7 +167,6 @@ const useInitialThemeClass = () => {
 const useChunkPrefetch = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const preloadCriticalPages = () => {
       try {
         void Dashboard.preload?.();
@@ -191,9 +178,7 @@ const useChunkPrefetch = () => {
         }
       }
     };
-
     let cleanup;
-
     if ('requestIdleCallback' in window) {
       const idleId = window.requestIdleCallback(preloadCriticalPages, {
         timeout: 1500,
@@ -203,7 +188,6 @@ const useChunkPrefetch = () => {
       const timeoutId = window.setTimeout(preloadCriticalPages, 1200);
       cleanup = () => window.clearTimeout(timeoutId);
     }
-
     return cleanup;
   }, []);
 };
@@ -217,18 +201,13 @@ const useOnlineStatusFeedback = () => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const syncStatus = (nextOnline, { notify = true } = {}) => {
       setIsOnline(nextOnline);
       document.body.classList.toggle('offline', !nextOnline);
-
       if (!notify || !hasInitialized.current) {
-        if (!hasInitialized.current) {
-          hasInitialized.current = true;
-        }
+        if (!hasInitialized.current) hasInitialized.current = true;
         return;
       }
-
       if (nextOnline) {
         toast.dismiss(toastIdRef.current);
         toast.success('Connection restored.', {
@@ -242,16 +221,12 @@ const useOnlineStatusFeedback = () => {
         });
       }
     };
-
     syncStatus(navigator.onLine, { notify: false });
     hasInitialized.current = true;
-
     const handleOnline = () => syncStatus(true);
     const handleOffline = () => syncStatus(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -263,6 +238,7 @@ const useOnlineStatusFeedback = () => {
 };
 
 // ── Route-Level Components ──────────────────────────────────────────────────
+
 const AnalyticsTracker = () => {
   const { pathname, search, hash } = useLocation();
   const lastTrackedUrl = useRef('');
@@ -270,15 +246,9 @@ const AnalyticsTracker = () => {
 
   useEffect(() => {
     const currentUrl = `${pathname}${search}${hash}`;
-
     if (lastTrackedUrl.current === currentUrl) return;
-
     lastTrackedUrl.current = currentUrl;
-
-    if (timeoutRef.current) {
-      window.clearTimeout(timeoutRef.current);
-    }
-
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     timeoutRef.current = window.setTimeout(() => {
       try {
         logAnalyticsEvent('page_view', {
@@ -292,11 +262,8 @@ const AnalyticsTracker = () => {
         }
       }
     }, 150);
-
     return () => {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     };
   }, [pathname, search, hash]);
 
@@ -305,17 +272,10 @@ const AnalyticsTracker = () => {
 
 const ScrollToTop = () => {
   const { pathname, hash } = useLocation();
-
   useEffect(() => {
     if (hash) return;
-
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: 'auto',
-    });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [pathname, hash]);
-
   return null;
 };
 
@@ -347,9 +307,9 @@ const reducedMotionPageVariants = {
 };
 
 // ── Visual Components ───────────────────────────────────────────────────────
+
 const PageLoader = () => {
   const shouldReduceMotion = useReducedMotion();
-
   return (
     <div
       className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
@@ -377,7 +337,6 @@ const PageLoader = () => {
 
 const PageTransition = ({ children }) => {
   const shouldReduceMotion = useReducedMotion();
-
   return (
     <motion.div
       variants={shouldReduceMotion ? reducedMotionPageVariants : basePageVariants}
@@ -402,44 +361,30 @@ const renderPage = (Component) => (
 // ── Animated Routes ─────────────────────────────────────────────────────────
 const AnimatedRoutes = () => {
   const location = useLocation();
-
   return (
     <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={location.pathname}>
-        {/* Public routes - Added null check with fallback empty array */}
-        {(PUBLIC_ROUTES || []).map(({ path, component: Component }) => (
-          Component ? (
-            <Route key={path} path={path} element={renderPage(Component)} />
-          ) : null
+        {PUBLIC_ROUTES.map(({ path, component: Component }) => (
+          <Route key={path} path={path} element={renderPage(Component)} />
         ))}
-
-        {/* Auth routes - Added null check with fallback empty array */}
-        {(AUTH_ROUTES || []).map(({ path, component: Component }) => (
-          Component ? (
-            <Route key={path} path={path} element={renderPage(Component)} />
-          ) : null
+        {AUTH_ROUTES.map(({ path, component: Component }) => (
+          <Route key={path} path={path} element={renderPage(Component)} />
         ))}
-
-        {/* Protected routes - Added null check and Component validation */}
-        {(PROTECTED_ROUTES || []).map(({ path, component: Component, requirePremium }) => (
-          Component ? (
-            <Route
-              key={path}
-              path={path}
-              element={
-                <PrivateRoute requirePremium={requirePremium}>
-                  <RouteErrorBoundary>
-                    <PageTransition>
-                      <Component />
-                    </PageTransition>
-                  </RouteErrorBoundary>
-                </PrivateRoute>
-              }
-            />
-          ) : null
+        {PROTECTED_ROUTES.map(({ path, component: Component, requirePremium }) => (
+          <Route
+            key={path}
+            path={path}
+            element={
+              <PrivateRoute requirePremium={requirePremium}>
+                <RouteErrorBoundary>
+                  <PageTransition>
+                    <Component />
+                  </PageTransition>
+                </RouteErrorBoundary>
+              </PrivateRoute>
+            }
+          />
         ))}
-
-        {/* Admin routes - Wrapped in Suspense for lazy loading */}
         <Route
           path="/admin/*"
           element={
@@ -454,8 +399,6 @@ const AnimatedRoutes = () => {
             </AdminRoute>
           }
         />
-
-        {/* 404 */}
         <Route path="*" element={renderPage(NotFound)} />
       </Routes>
     </AnimatePresence>
@@ -496,8 +439,7 @@ const AppShell = () => {
                 '!border-green-200 !bg-green-50/90 dark:!border-green-800 dark:!bg-green-900/30',
             },
             error: {
-              className:
-                '!border-red-200 !bg-red-50/90 dark:!border-red-800 dark:!bg-red-900/30',
+              className: '!border-red-200 !bg-red-50/90 dark:!border-red-800 dark:!bg-red-900/30',
             },
             loading: {
               className:
@@ -505,6 +447,8 @@ const AppShell = () => {
             },
           }}
         />
+
+        <SessionTimeoutWarning />
 
         {isDevelopment && (
           <div className="pointer-events-none fixed bottom-4 left-4 z-50 opacity-50 transition-opacity hover:opacity-100 sm:bottom-6 sm:left-6">
@@ -535,23 +479,21 @@ const AppShell = () => {
 // ── Root Component ──────────────────────────────────────────────────────────
 function App() {
   return (
-    <ErrorBoundary>
-      <HelmetProvider>
-        <Router>
-          <ThemeProvider>
-            <AuthProvider>
-              <SettingsProvider>
-                <NotificationProvider>
-                  <ResumeProvider>
-                    <AppShell />
-                  </ResumeProvider>
-                </NotificationProvider>
-              </SettingsProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </Router>
-      </HelmetProvider>
-    </ErrorBoundary>
+    <HelmetProvider>
+      <Router>
+        <ThemeProvider>
+          <AuthProvider>
+            <SettingsProvider>
+              <NotificationProvider>
+                <ResumeProvider>
+                  <AppShell />
+                </ResumeProvider>
+              </NotificationProvider>
+            </SettingsProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </Router>
+    </HelmetProvider>
   );
 }
 

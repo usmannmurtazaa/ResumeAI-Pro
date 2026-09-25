@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiMail, 
-  FiPhone, 
-  FiMapPin, 
-  FiLinkedin, 
-  FiGithub, 
+import {
+  FiMail,
+  FiPhone,
+  FiMapPin,
+  FiLinkedin,
+  FiGithub,
   FiGlobe,
   FiCalendar,
   FiAward,
@@ -25,37 +25,37 @@ import {
   FiTrendingUp,
   FiUsers,
   FiCoffee,
-  FiSmile
+  FiSmile,
 } from 'react-icons/fi';
 
 const Template3 = ({ data, className = '' }) => {
-  const { 
-    personal = {}, 
-    education = [], 
-    experience = [], 
-    skills = {}, 
-    projects = [], 
-    certifications = [] 
+  const {
+    personal = {},
+    education = [],
+    experience = [],
+    skills = {},
+    projects = [],
+    certifications = [],
   } = data;
 
   // Calculate total years of experience
   const totalExperience = useMemo(() => {
     if (!experience.length) return null;
-    
+
     let totalMonths = 0;
-    experience.forEach(exp => {
+    experience.forEach((exp) => {
       if (exp.startDate) {
         const start = new Date(exp.startDate);
-        const end = exp.current ? new Date() : (exp.endDate ? new Date(exp.endDate) : new Date());
-        const months = (end.getFullYear() - start.getFullYear()) * 12 + 
-                       (end.getMonth() - start.getMonth());
+        const end = exp.current ? new Date() : exp.endDate ? new Date(exp.endDate) : new Date();
+        const months =
+          (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
         if (months > 0) totalMonths += months;
       }
     });
-    
+
     const years = Math.floor(totalMonths / 12);
     const months = totalMonths % 12;
-    
+
     if (years === 0) return `${months} months`;
     if (months === 0) return `${years}+ years`;
     return `${years}+ years`;
@@ -71,12 +71,12 @@ const Template3 = ({ data, className = '' }) => {
   // Get top skills for highlight section
   const topSkills = useMemo(() => {
     const technical = skills.technical || [];
-    const withProficiency = technical.map(skill => ({
+    const withProficiency = technical.map((skill) => ({
       name: skill,
       proficiency: skills.skillDetails?.[skill]?.proficiency || 'intermediate',
-      years: skills.skillDetails?.[skill]?.yearsOfExperience
+      years: skills.skillDetails?.[skill]?.yearsOfExperience,
     }));
-    
+
     return withProficiency
       .sort((a, b) => {
         const levels = { expert: 4, advanced: 3, intermediate: 2, beginner: 1 };
@@ -87,23 +87,31 @@ const Template3 = ({ data, className = '' }) => {
 
   // Check if section has content
   const hasContent = (section) => {
-    switch(section) {
-      case 'summary': return !!personal.summary;
-      case 'experience': return experience.length > 0;
-      case 'education': return education.length > 0;
-      case 'skills': return (skills.technical?.length > 0 || skills.soft?.length > 0);
-      case 'projects': return projects.length > 0;
-      case 'certifications': return certifications.length > 0;
-      case 'languages': return skills.languages?.length > 0;
-      default: return false;
+    switch (section) {
+      case 'summary':
+        return !!personal.summary;
+      case 'experience':
+        return experience.length > 0;
+      case 'education':
+        return education.length > 0;
+      case 'skills':
+        return skills.technical?.length > 0 || skills.soft?.length > 0;
+      case 'projects':
+        return projects.length > 0;
+      case 'certifications':
+        return certifications.length > 0;
+      case 'languages':
+        return skills.languages?.length > 0;
+      default:
+        return false;
     }
   };
 
   // Section title component with gradient
   const SectionTitle = ({ title, icon: Icon }) => (
-    <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-      {Icon && <Icon className="w-6 h-6 text-purple-500" />}
-      <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
+    <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 print:text-lg print:mb-2">
+      {Icon && <Icon className="w-6 h-6 text-purple-500 print:w-4 print:h-4" />}
+      <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent print:bg-none print:text-purple-700">
         {title}
       </span>
     </h2>
@@ -119,11 +127,7 @@ const Template3 = ({ data, className = '' }) => {
           {[...Array(4)].map((_, i) => (
             <FiStar
               key={i}
-              className={`w-3.5 h-3.5 ${
-                i < count 
-                  ? 'text-yellow-400 fill-current' 
-                  : 'text-gray-300 dark:text-gray-600'
-              }`}
+              className={`w-3.5 h-3.5 ${i < count ? 'text-yellow-400 fill-current' : 'text-gray-300 dark:text-gray-600'} print:w-2.5 print:h-2.5`}
             />
           ))}
         </div>
@@ -131,25 +135,19 @@ const Template3 = ({ data, className = '' }) => {
     };
 
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1 + index * 0.03 }}
-        whileHover={{ y: -2, scale: 1.02 }}
-        className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-purple-200 dark:border-purple-800/30 hover:shadow-lg transition-all"
-      >
+      <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-purple-200 dark:border-purple-800/30 hover:shadow-lg transition-all print:bg-white print:border-gray-300 print:shadow-none print:p-2">
         <div className="flex items-start justify-between mb-2">
-          <span className="font-semibold text-gray-800 dark:text-gray-200">
+          <span className="font-semibold text-gray-800 dark:text-gray-200 print:text-sm">
             {skill}
           </span>
           {years && (
-            <span className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded-full">
+            <span className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded-full print:bg-gray-200 print:text-gray-700 print:text-[10px]">
               {years} {years === '1' ? 'yr' : 'yrs'}
             </span>
           )}
         </div>
         {getProficiencyStars(proficiency)}
-      </motion.div>
+      </div>
     );
   };
 
@@ -158,186 +156,147 @@ const Template3 = ({ data, className = '' }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className={`max-w-4xl mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-purple-950/20 dark:to-gray-900 shadow-2xl rounded-2xl overflow-hidden print:shadow-none ${className}`}
+      className={`max-w-4xl mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-purple-950/20 dark:to-gray-900 shadow-2xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none print:bg-white print:max-w-full ${className}`}
     >
-      <div className="p-6 sm:p-8">
+      <div className="p-6 sm:p-8 print:p-4">
         {/* Header Section */}
-        <motion.header 
+        <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-center mb-8"
+          className="text-center mb-8 print:mb-4"
         >
           {/* Profile Image */}
           {personal.profileImage && (
-            <motion.img
-              initial={{ scale: 0, rotate: -10 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.15 }}
+            <img
               src={personal.profileImage}
               alt={personal.fullName}
-              className="w-28 h-28 sm:w-32 sm:h-32 rounded-full mx-auto mb-4 border-4 border-white dark:border-gray-700 shadow-xl object-cover"
+              className="w-28 h-28 sm:w-32 sm:h-32 rounded-full mx-auto mb-4 border-4 border-white dark:border-gray-700 shadow-xl object-cover print:w-20 print:h-20 print:border-2 print:shadow-none"
             />
           )}
-          
-          <motion.h1 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-2"
-          >
-            <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
+
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-2 print:text-2xl">
+            <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent print:bg-none print:text-purple-700">
               {personal.fullName || 'Your Name'}
             </span>
-          </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 mb-4"
-          >
+          </h1>
+
+          <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 mb-4 print:text-base print:text-gray-700">
             {personal.title || 'Professional Title'}
-          </motion.p>
-          
+          </p>
+
           {/* Quick Stats */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-2 mb-4"
-          >
+          <div className="flex flex-wrap justify-center gap-2 mb-4 print:gap-1">
             {totalExperience && (
-              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-full text-sm font-medium text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/30">
-                <FiBriefcase className="w-4 h-4" />
+              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-full text-sm font-medium text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/30 print:bg-gray-100 print:border-gray-300 print:text-gray-700 print:text-xs print:px-2 print:py-1">
+                <FiBriefcase className="w-4 h-4 print:w-3 print:h-3" />
                 {totalExperience}
               </span>
             )}
             {education.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-full text-sm font-medium text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/30">
-                <FiBook className="w-4 h-4" />
+              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-full text-sm font-medium text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/30 print:bg-gray-100 print:border-gray-300 print:text-gray-700 print:text-xs print:px-2 print:py-1">
+                <FiBook className="w-4 h-4 print:w-3 print:h-3" />
                 {education.length} {education.length === 1 ? 'Degree' : 'Degrees'}
               </span>
             )}
             {certifications.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-full text-sm font-medium text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/30">
-                <FiAward className="w-4 h-4" />
+              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-full text-sm font-medium text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/30 print:bg-gray-100 print:border-gray-300 print:text-gray-700 print:text-xs print:px-2 print:py-1">
+                <FiAward className="w-4 h-4 print:w-3 print:h-3" />
                 {certifications.length} {certifications.length === 1 ? 'Cert' : 'Certs'}
               </span>
             )}
-          </motion.div>
-          
+          </div>
+
           {/* Contact Information */}
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm"
-          >
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm print:gap-x-3 print:text-xs">
             {personal.email && (
-              <a 
+              <a
                 href={`mailto:${personal.email}`}
-                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors print:text-gray-700 print:hover:text-gray-700"
               >
-                <FiMail className="w-4 h-4" />
+                <FiMail className="w-4 h-4 print:w-3 print:h-3" />
                 <span>{personal.email}</span>
               </a>
             )}
             {personal.phone && (
-              <a 
+              <a
                 href={`tel:${personal.phone}`}
-                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors print:text-gray-700 print:hover:text-gray-700"
               >
-                <FiPhone className="w-4 h-4" />
+                <FiPhone className="w-4 h-4 print:w-3 print:h-3" />
                 <span>{personal.phone}</span>
               </a>
             )}
             {personal.location && (
-              <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                <FiMapPin className="w-4 h-4" />
+              <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 print:text-gray-700">
+                <FiMapPin className="w-4 h-4 print:w-3 print:h-3" />
                 <span>{personal.location}</span>
               </span>
             )}
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm mt-2"
-          >
+          </div>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm mt-2 print:gap-x-3 print:text-xs">
             {personal.website && (
-              <a 
+              <a
                 href={personal.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors print:text-purple-700 print:hover:text-purple-700"
               >
-                <FiGlobe className="w-4 h-4" />
+                <FiGlobe className="w-4 h-4 print:w-3 print:h-3" />
                 <span>{personal.website.replace(/^https?:\/\//, '')}</span>
               </a>
             )}
             {personal.linkedin && (
-              <a 
+              <a
                 href={personal.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors print:text-purple-700 print:hover:text-purple-700"
               >
-                <FiLinkedin className="w-4 h-4" />
+                <FiLinkedin className="w-4 h-4 print:w-3 print:h-3" />
                 <span>LinkedIn</span>
               </a>
             )}
             {personal.github && (
-              <a 
+              <a
                 href={personal.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors print:text-purple-700 print:hover:text-purple-700"
               >
-                <FiGithub className="w-4 h-4" />
+                <FiGithub className="w-4 h-4 print:w-3 print:h-3" />
                 <span>GitHub</span>
               </a>
             )}
-          </motion.div>
+          </div>
         </motion.header>
 
         {/* Professional Summary */}
         {hasContent('summary') && (
-          <motion.section 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            className="mb-8"
-          >
-            <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-200/50 dark:border-purple-800/30">
+          <section className="mb-8 print:mb-4 print:page-break-inside-avoid">
+            <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-200/50 dark:border-purple-800/30 print:bg-white print:border-gray-300 print:p-4">
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl text-white">
-                  <FiUser className="w-6 h-6" />
+                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl text-white print:bg-purple-700 print:p-2">
+                  <FiUser className="w-6 h-6 print:w-4 print:h-4" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-2">
+                  <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-2 print:text-base">
                     Professional Profile
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed print:text-xs print:text-gray-700">
                     {personal.summary}
                   </p>
                 </div>
               </div>
             </div>
-          </motion.section>
+          </section>
         )}
 
         {/* Top Skills Highlight */}
         {topSkills.length > 0 && (
-          <motion.section 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mb-8"
-          >
+          <section className="mb-8 print:mb-4 print:page-break-inside-avoid">
             <SectionTitle title="Core Competencies" icon={FiZap} />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 print:gap-2">
               {topSkills.map((skill, index) => (
                 <SkillCard
                   key={index}
@@ -348,134 +307,130 @@ const Template3 = ({ data, className = '' }) => {
                 />
               ))}
             </div>
-          </motion.section>
+          </section>
         )}
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:gap-4">
           {/* Left Column */}
-          <div className="space-y-6">
+          <div className="space-y-6 print:space-y-4">
             {/* Work Experience */}
             {hasContent('experience') && (
-              <motion.section
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.55 }}
-              >
+              <section className="print:page-break-inside-avoid">
                 <SectionTitle title="Experience" icon={FiBriefcase} />
-                <div className="space-y-4">
+                <div className="space-y-4 print:space-y-2">
                   {experience.map((exp, index) => {
                     const duration = (() => {
                       if (!exp.startDate) return null;
                       const start = new Date(exp.startDate);
-                      const end = exp.current ? new Date() : (exp.endDate ? new Date(exp.endDate) : new Date());
-                      const months = (end.getFullYear() - start.getFullYear()) * 12 + 
-                                     (end.getMonth() - start.getMonth());
+                      const end = exp.current
+                        ? new Date()
+                        : exp.endDate
+                          ? new Date(exp.endDate)
+                          : new Date();
+                      const months =
+                        (end.getFullYear() - start.getFullYear()) * 12 +
+                        (end.getMonth() - start.getMonth());
                       const years = Math.floor(months / 12);
                       const remainingMonths = months % 12;
-                      
+
                       if (years === 0) return `${remainingMonths} mos`;
                       if (remainingMonths === 0) return `${years} yr${years > 1 ? 's' : ''}`;
                       return `${years} yr${years > 1 ? 's' : ''} ${remainingMonths} mos`;
                     })();
-                    
+
                     return (
-                      <motion.div
+                      <div
                         key={index}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6 + index * 0.05 }}
-                        whileHover={{ scale: 1.02 }}
-                        className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-5 border border-purple-200/50 dark:border-purple-800/30 hover:shadow-lg transition-all"
+                        className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-5 border border-purple-200/50 dark:border-purple-800/30 hover:shadow-lg transition-all print:bg-white print:border-gray-300 print:p-3"
                       >
                         <div className="flex flex-wrap justify-between items-start gap-2 mb-3">
                           <div>
-                            <h3 className="font-bold text-gray-800 dark:text-gray-200">
+                            <h3 className="font-bold text-gray-800 dark:text-gray-200 print:text-sm">
                               {exp.title}
                             </h3>
-                            <p className="text-purple-600 dark:text-purple-400 font-medium">
+                            <p className="text-purple-600 dark:text-purple-400 font-medium print:text-purple-700 print:text-xs">
                               {exp.company}
                             </p>
                             {exp.location && (
-                              <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                <FiMapPin className="w-3 h-3" />
+                              <p className="text-xs text-gray-500 flex items-center gap-1 mt-1 print:text-[10px]">
+                                <FiMapPin className="w-3 h-3 print:w-2 print:h-2" />
                                 {exp.location}
                               </p>
                             )}
                           </div>
                           <div className="text-right">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                              <FiCalendar className="w-3.5 h-3.5" />
-                              {formatDate(exp.startDate)} - {exp.current ? 'Present' : formatDate(exp.endDate)}
+                            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 print:text-xs">
+                              <FiCalendar className="w-3.5 h-3.5 print:w-3 print:h-3" />
+                              {formatDate(exp.startDate)} -{' '}
+                              {exp.current ? 'Present' : formatDate(exp.endDate)}
                             </p>
                             {duration && (
-                              <p className="text-xs text-purple-500 flex items-center gap-1 mt-1">
-                                <FiClock className="w-3 h-3" />
+                              <p className="text-xs text-purple-500 flex items-center gap-1 mt-1 print:text-[10px]">
+                                <FiClock className="w-3 h-3 print:w-2 print:h-2" />
                                 {duration}
                               </p>
                             )}
                           </div>
                         </div>
-                        
+
                         {exp.employmentType && exp.employmentType !== 'full-time' && (
-                          <span className="inline-block px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs mb-2">
+                          <span className="inline-block px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs mb-2 print:bg-gray-200 print:text-gray-700 print:text-[10px]">
                             {exp.employmentType}
                           </span>
                         )}
-                        
-                        <div className="text-gray-600 dark:text-gray-400 text-sm space-y-1.5">
-                          {exp.description?.split('\n').map((line, i) => (
-                            line.trim() && (
-                              <p key={i} className="flex items-start gap-2">
-                                <span className="text-purple-400 mt-1.5">•</span>
-                                <span>{line.trim().replace(/^[•\-]\s*/, '')}</span>
-                              </p>
-                            )
-                          ))}
+
+                        <div className="text-gray-600 dark:text-gray-400 text-sm space-y-1.5 print:text-xs">
+                          {exp.description?.split('\n').map(
+                            (line, i) =>
+                              line.trim() && (
+                                <p key={i} className="flex items-start gap-2">
+                                  <span className="text-purple-400 mt-1.5 print:text-gray-500">
+                                    •
+                                  </span>
+                                  <span>{line.trim().replace(/^[•\-]\s*/, '')}</span>
+                                </p>
+                              )
+                          )}
                         </div>
-                        
+
                         {exp.technologies && (
-                          <div className="flex flex-wrap gap-1.5 mt-3">
-                            {exp.technologies.split(',').slice(0, 4).map((tech, i) => (
-                              <span
-                                key={i}
-                                className="px-2 py-1 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs"
-                              >
-                                {tech.trim()}
-                              </span>
-                            ))}
+                          <div className="flex flex-wrap gap-1.5 mt-3 print:mt-1">
+                            {exp.technologies
+                              .split(',')
+                              .slice(0, 4)
+                              .map((tech, i) => (
+                                <span
+                                  key={i}
+                                  className="px-2 py-1 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs print:bg-gray-200 print:text-gray-700 print:text-[10px]"
+                                >
+                                  {tech.trim()}
+                                </span>
+                              ))}
                           </div>
                         )}
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
-              </motion.section>
+              </section>
             )}
           </div>
 
           {/* Right Column */}
-          <div className="space-y-6">
+          <div className="space-y-6 print:space-y-4">
             {/* Projects */}
             {hasContent('projects') && (
-              <motion.section
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.55 }}
-              >
+              <section className="print:page-break-inside-avoid">
                 <SectionTitle title="Featured Projects" icon={FiFolder} />
-                <div className="space-y-4">
+                <div className="space-y-4 print:space-y-2">
                   {projects.slice(0, 3).map((project, index) => (
-                    <motion.div
+                    <div
                       key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 + index * 0.05 }}
-                      whileHover={{ scale: 1.02 }}
-                      className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-5 border border-pink-200/50 dark:border-pink-800/30 hover:shadow-lg transition-all"
+                      className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-5 border border-pink-200/50 dark:border-pink-800/30 hover:shadow-lg transition-all print:bg-white print:border-gray-300 print:p-3"
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-bold text-gray-800 dark:text-gray-200">
+                        <h3 className="font-bold text-gray-800 dark:text-gray-200 print:text-sm">
                           {project.name}
                         </h3>
                         {project.link && (
@@ -483,132 +438,113 @@ const Template3 = ({ data, className = '' }) => {
                             href={project.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-purple-500 hover:text-purple-600 transition-colors"
+                            className="text-purple-500 hover:text-purple-600 transition-colors print:text-purple-700"
                           >
                             <FiExternalLink className="w-4 h-4" />
                           </a>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 print:text-xs">
                         {project.description}
                       </p>
                       {project.technologies && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {project.technologies.split(',').slice(0, 4).map((tech, i) => (
-                            <span
-                              key={i}
-                              className="px-2 py-1 bg-gradient-to-r from-pink-100 to-purple-100 dark:from-pink-900/30 dark:to-purple-900/30 text-pink-700 dark:text-pink-300 rounded-full text-xs"
-                            >
-                              {tech.trim()}
-                            </span>
-                          ))}
+                        <div className="flex flex-wrap gap-1.5 print:gap-1">
+                          {project.technologies
+                            .split(',')
+                            .slice(0, 4)
+                            .map((tech, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-1 bg-gradient-to-r from-pink-100 to-purple-100 dark:from-pink-900/30 dark:to-purple-900/30 text-pink-700 dark:text-pink-300 rounded-full text-xs print:bg-gray-200 print:text-gray-700 print:text-[10px]"
+                              >
+                                {tech.trim()}
+                              </span>
+                            ))}
                         </div>
                       )}
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
-              </motion.section>
+              </section>
             )}
 
             {/* Education */}
             {hasContent('education') && (
-              <motion.section
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 }}
-              >
+              <section className="print:page-break-inside-avoid">
                 <SectionTitle title="Education" icon={FiBook} />
-                <div className="space-y-3">
+                <div className="space-y-3 print:space-y-1.5">
                   {education.map((edu, index) => (
-                    <motion.div
+                    <div
                       key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.65 + index * 0.05 }}
-                      whileHover={{ scale: 1.02 }}
-                      className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-purple-200/50 dark:border-purple-800/30 hover:shadow-lg transition-all"
+                      className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-purple-200/50 dark:border-purple-800/30 hover:shadow-lg transition-all print:bg-white print:border-gray-300 print:p-2"
                     >
-                      <h3 className="font-semibold text-gray-800 dark:text-gray-200">
+                      <h3 className="font-semibold text-gray-800 dark:text-gray-200 print:text-sm">
                         {edu.degree}
                       </h3>
-                      <p className="text-purple-600 dark:text-purple-400 text-sm">
+                      <p className="text-purple-600 dark:text-purple-400 text-sm print:text-purple-700 print:text-xs">
                         {edu.institution}
                       </p>
                       {edu.field && (
-                        <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                        <p className="text-gray-600 dark:text-gray-400 text-xs mt-1 print:text-[10px]">
                           {edu.field}
                         </p>
                       )}
-                      <div className="flex justify-between items-center mt-2">
-                        <p className="text-gray-500 dark:text-gray-400 text-xs">
-                          {edu.startDate && formatDate(edu.startDate)} 
+                      <div className="flex justify-between items-center mt-2 print:mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 text-xs print:text-[10px]">
+                          {edu.startDate && formatDate(edu.startDate)}
                           {edu.endDate && ` - ${edu.current ? 'Present' : formatDate(edu.endDate)}`}
                         </p>
                         {edu.gpa && (
-                          <p className="text-purple-600 dark:text-purple-400 text-xs font-medium">
+                          <p className="text-purple-600 dark:text-purple-400 text-xs font-medium print:text-purple-700 print:text-[10px]">
                             GPA: {edu.gpa}
                           </p>
                         )}
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
-              </motion.section>
+              </section>
             )}
 
             {/* Certifications */}
             {hasContent('certifications') && (
-              <motion.section
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.65 }}
-              >
+              <section className="print:page-break-inside-avoid">
                 <SectionTitle title="Certifications" icon={FiAward} />
-                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-purple-200/50 dark:border-purple-800/30">
-                  <div className="space-y-2">
+                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-purple-200/50 dark:border-purple-800/30 print:bg-white print:border-gray-300 print:p-2">
+                  <div className="space-y-2 print:space-y-1">
                     {certifications.slice(0, 3).map((cert, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.7 + index * 0.03 }}
-                        className="flex items-start gap-2"
-                      >
-                        <FiCheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <div key={index} className="flex items-start gap-2">
+                        <FiCheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0 print:w-3 print:h-3" />
                         <div>
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 print:text-xs">
                             {cert.name}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 print:text-[10px]">
                             {cert.issuer} {cert.date && `• ${formatDate(cert.date)}`}
                           </p>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 </div>
-              </motion.section>
+              </section>
             )}
 
             {/* Soft Skills & Languages */}
             {(skills.soft?.length > 0 || skills.languages?.length > 0) && (
-              <motion.section
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.7 }}
-              >
-                <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-xl p-5 border border-purple-200/50 dark:border-purple-800/30">
+              <section className="print:page-break-inside-avoid">
+                <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-xl p-5 border border-purple-200/50 dark:border-purple-800/30 print:bg-white print:border-gray-300 print:p-3">
                   {skills.soft?.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
-                        <FiHeart className="w-4 h-4 text-pink-500" />
+                    <div className="mb-4 print:mb-2">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 print:text-sm">
+                        <FiHeart className="w-4 h-4 text-pink-500 print:w-3 print:h-3" />
                         Soft Skills
                       </h4>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 print:gap-1">
                         {skills.soft.map((skill, index) => (
                           <span
                             key={index}
-                            className="px-3 py-1.5 bg-white/50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-full text-sm"
+                            className="px-3 py-1.5 bg-white/50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-full text-sm print:bg-gray-200 print:text-gray-700 print:text-xs print:px-2 print:py-1"
                           >
                             {skill}
                           </span>
@@ -616,23 +552,23 @@ const Template3 = ({ data, className = '' }) => {
                       </div>
                     </div>
                   )}
-                  
+
                   {skills.languages?.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
-                        <FiFlag className="w-4 h-4 text-purple-500" />
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 print:text-sm">
+                        <FiFlag className="w-4 h-4 text-purple-500 print:w-3 print:h-3" />
                         Languages
                       </h4>
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 print:space-y-1">
                         {skills.languages.map((language, index) => {
                           const proficiency = skills.skillDetails?.[language]?.proficiency;
                           return (
                             <div key={index} className="flex justify-between items-center">
-                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                              <span className="text-sm text-gray-700 dark:text-gray-300 print:text-xs">
                                 {language}
                               </span>
                               {proficiency && (
-                                <span className="text-xs text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded-full">
+                                <span className="text-xs text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded-full print:bg-gray-200 print:text-gray-700 print:text-[10px]">
                                   {proficiency}
                                 </span>
                               )}
@@ -643,25 +579,20 @@ const Template3 = ({ data, className = '' }) => {
                     </div>
                   )}
                 </div>
-              </motion.section>
+              </section>
             )}
           </div>
         </div>
 
         {/* Footer Quote */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-8 text-center"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-full">
-            <FiSmile className="w-4 h-4 text-purple-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="mt-8 text-center print:mt-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-full print:bg-gray-100 print:border print:border-gray-300">
+            <FiSmile className="w-4 h-4 text-purple-500 print:w-3 print:h-3" />
+            <span className="text-sm text-gray-600 dark:text-gray-400 print:text-xs print:text-gray-700">
               Ready to bring creativity and expertise to your team
             </span>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Print Styles */}
@@ -674,12 +605,57 @@ const Template3 = ({ data, className = '' }) => {
             box-shadow: none !important;
           }
           .bg-gradient-to-br {
-            background: #faf5ff !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .backdrop-blur-sm {
             backdrop-filter: none !important;
+          }
+          .text-purple-500 {
+            color: #6b21a8 !important;
+          }
+          .text-purple-600 {
+            color: #6b21a8 !important;
+          }
+          .text-purple-700 {
+            color: #6b21a8 !important;
+          }
+          .border-purple-200 {
+            border-color: #d1d5db !important;
+          }
+          section {
+            page-break-inside: avoid;
+          }
+          h1,
+          h2,
+          h3,
+          h4,
+          h5,
+          h6 {
+            page-break-after: avoid;
+          }
+          .print\\:page-break-inside-avoid {
+            page-break-inside: avoid;
+          }
+          body {
+            font-size: 10pt;
+            line-height: 1.4;
+          }
+          .print\\:text-xs {
+            font-size: 8pt !important;
+          }
+          .print\\:text-sm {
+            font-size: 9pt !important;
+          }
+          .print\\:text-base {
+            font-size: 10pt !important;
+          }
+          .print\\:text-lg {
+            font-size: 11pt !important;
+          }
+          .print\\:text-2xl {
+            font-size: 14pt !important;
           }
         }
       `}</style>

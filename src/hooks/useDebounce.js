@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 /**
  * Debounces a value by the specified delay.
  * Useful for search inputs, form values, etc.
- * 
+ *
  * @param {*} value - The value to debounce
  * @param {number} delay - Delay in milliseconds
  * @returns {*} Debounced value
@@ -42,7 +42,7 @@ export const useDebounce = (value, delay) => {
  * Debounces a callback function.
  * The callback will only be called after the specified delay
  * since the last invocation.
- * 
+ *
  * @param {Function} callback - The function to debounce
  * @param {number} delay - Delay in milliseconds
  * @param {Object} options - Additional options
@@ -52,7 +52,7 @@ export const useDebounce = (value, delay) => {
  */
 export const useDebouncedCallback = (callback, delay, options = {}) => {
   const { leading = false, trailing = true } = options;
-  
+
   const timeoutRef = useRef(null);
   const callbackRef = useRef(callback);
   const pendingArgsRef = useRef(null);
@@ -96,34 +96,37 @@ export const useDebouncedCallback = (callback, delay, options = {}) => {
 
   // ── Debounced callback ────────────────────────────────────────────
 
-  const debouncedCallback = useCallback((...args) => {
-    // Leading edge execution
-    if (leading && !timeoutRef.current) {
-      executeCallback(args);
-      return;
-    }
+  const debouncedCallback = useCallback(
+    (...args) => {
+      // Leading edge execution
+      if (leading && !timeoutRef.current) {
+        executeCallback(args);
+        return;
+      }
 
-    // Store latest args
-    pendingArgsRef.current = args;
+      // Store latest args
+      pendingArgsRef.current = args;
 
-    // Clear previous timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+      // Clear previous timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    // Set pending state
-    setPending(true);
+      // Set pending state
+      setPending(true);
 
-    // Set new timeout for trailing edge
-    if (trailing) {
-      timeoutRef.current = setTimeout(() => {
-        timeoutRef.current = null;
-        if (pendingArgsRef.current) {
-          executeCallback(pendingArgsRef.current);
-        }
-      }, delay);
-    }
-  }, [delay, leading, trailing, executeCallback]);
+      // Set new timeout for trailing edge
+      if (trailing) {
+        timeoutRef.current = setTimeout(() => {
+          timeoutRef.current = null;
+          if (pendingArgsRef.current) {
+            executeCallback(pendingArgsRef.current);
+          }
+        }, delay);
+      }
+    },
+    [delay, leading, trailing, executeCallback]
+  );
 
   // ── Cleanup on unmount ───────────────────────────────────────────
 
@@ -148,7 +151,7 @@ export const useDebouncedCallback = (callback, delay, options = {}) => {
 /**
  * Throttles a value by the specified interval.
  * The value updates at most once per interval.
- * 
+ *
  * @param {*} value - The value to throttle
  * @param {number} interval - Throttle interval in milliseconds
  * @returns {*} Throttled value
@@ -171,7 +174,7 @@ export const useThrottle = (value, interval) => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       timeoutRef.current = setTimeout(() => {
         lastUpdatedRef.current = Date.now();
         setThrottledValue(value);
@@ -192,7 +195,7 @@ export const useThrottle = (value, interval) => {
 
 /**
  * Throttles a callback to execute at most once per interval.
- * 
+ *
  * @param {Function} callback - The function to throttle
  * @param {number} interval - Throttle interval in milliseconds
  * @returns {Function} Throttled callback
@@ -206,21 +209,24 @@ export const useThrottledCallback = (callback, interval) => {
     callbackRef.current = callback;
   }, [callback]);
 
-  const throttledCallback = useCallback((...args) => {
-    const now = Date.now();
-    const timeSinceLastCall = now - lastCallRef.current;
+  const throttledCallback = useCallback(
+    (...args) => {
+      const now = Date.now();
+      const timeSinceLastCall = now - lastCallRef.current;
 
-    if (timeSinceLastCall >= interval) {
-      lastCallRef.current = now;
-      callbackRef.current(...args);
-    } else if (!timeoutRef.current) {
-      timeoutRef.current = setTimeout(() => {
-        lastCallRef.current = Date.now();
-        timeoutRef.current = null;
+      if (timeSinceLastCall >= interval) {
+        lastCallRef.current = now;
         callbackRef.current(...args);
-      }, interval - timeSinceLastCall);
-    }
-  }, [interval]);
+      } else if (!timeoutRef.current) {
+        timeoutRef.current = setTimeout(() => {
+          lastCallRef.current = Date.now();
+          timeoutRef.current = null;
+          callbackRef.current(...args);
+        }, interval - timeSinceLastCall);
+      }
+    },
+    [interval]
+  );
 
   useEffect(() => {
     return () => {
@@ -237,7 +243,7 @@ export const useThrottledCallback = (callback, interval) => {
 
 /**
  * Tracks online/offline status.
- * 
+ *
  * @returns {boolean} Whether the browser is online
  */
 export const useOnlineStatus = () => {
@@ -265,7 +271,7 @@ export const useOnlineStatus = () => {
 
 /**
  * Detects scroll direction (up/down).
- * 
+ *
  * @param {number} threshold - Minimum scroll distance before direction changes
  * @returns {string} 'up' | 'down'
  */
@@ -305,7 +311,7 @@ export const useScrollDirection = (threshold = 10) => {
 
 /**
  * Registers a keyboard shortcut.
- * 
+ *
  * @param {string} key - The key to listen for
  * @param {Function} callback - The function to call
  * @param {Object} options - Modifiers { ctrl, meta, shift, alt }
@@ -321,7 +327,12 @@ export const useKeyboardShortcut = (key, callback, options = {}) => {
     const handler = (event) => {
       // Skip if target is an input
       const tag = event.target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || event.target.isContentEditable) {
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        event.target.isContentEditable
+      ) {
         return;
       }
 
@@ -342,13 +353,15 @@ export const useKeyboardShortcut = (key, callback, options = {}) => {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [key, options]);
+
+  return { shortcut: { key, ...options } };
 };
 
 // ── useLocalStorage ──────────────────────────────────────────────────────
 
 /**
  * Persists state to localStorage.
- * 
+ *
  * @param {string} key - localStorage key
  * @param {*} initialValue - Default value
  * @returns {[*, Function]} State and setter
@@ -363,15 +376,18 @@ export const useLocalStorage = (key, initialValue) => {
     }
   });
 
-  const setValue = useCallback((value) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.warn(`Error setting localStorage key "${key}":`, error);
-    }
-  }, [key, storedValue]);
+  const setValue = useCallback(
+    (value) => {
+      try {
+        const valueToStore = value instanceof Function ? value(storedValue) : value;
+        setStoredValue(valueToStore);
+        localStorage.setItem(key, JSON.stringify(valueToStore));
+      } catch (error) {
+        console.warn(`Error setting localStorage key "${key}":`, error);
+      }
+    },
+    [key, storedValue]
+  );
 
   return [storedValue, setValue];
 };
@@ -380,7 +396,7 @@ export const useLocalStorage = (key, initialValue) => {
 
 /**
  * Tracks a CSS media query.
- * 
+ *
  * @param {string} query - CSS media query string
  * @returns {boolean} Whether the query matches
  */
@@ -392,9 +408,9 @@ export const useMediaQuery = (query) => {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(query);
-    
+
     const handleChange = (event) => setMatches(event.matches);
-    
+
     // Set initial value
     setMatches(mediaQuery.matches);
 
@@ -416,7 +432,7 @@ export const useMediaQuery = (query) => {
 
 /**
  * Detects clicks outside a ref element.
- * 
+ *
  * @param {Function} handler - Called when click is outside
  * @returns {React.RefObject} Ref to attach to element
  */

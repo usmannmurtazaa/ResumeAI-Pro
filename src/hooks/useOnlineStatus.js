@@ -17,7 +17,7 @@ const getWindow = () => {
 /**
  * Tracks online/offline status with enhanced reliability.
  * Periodically verifies connectivity by attempting to fetch a resource.
- * 
+ *
  * @param {Object} options - Configuration
  * @param {boolean} options.verifyWithFetch - Periodically verify connectivity (default: false)
  * @param {number} options.verifyInterval - Verification interval in ms (default: 30000)
@@ -25,11 +25,7 @@ const getWindow = () => {
  * @returns {Object} { isOnline, connection, isReliable }
  */
 export const useOnlineStatus = (options = {}) => {
-  const {
-    verifyWithFetch = false,
-    verifyInterval = 30000,
-    onChange,
-  } = options;
+  const { verifyWithFetch = false, verifyInterval = 30000, onChange } = options;
 
   const navigatorRef = useRef(getNavigator());
   const onChangeRef = useRef(onChange);
@@ -44,11 +40,11 @@ export const useOnlineStatus = (options = {}) => {
     if (!nav?.connection) return null;
 
     return {
-      effectiveType: nav.connection.effectiveType,    // '4g', '3g', '2g', 'slow-2g'
-      downlink: nav.connection.downlink,               // Mbps
-      rtt: nav.connection.rtt,                         // Round-trip time (ms)
-      saveData: nav.connection.saveData,               // Data saver mode
-      type: nav.connection.type,                       // 'wifi', 'cellular', etc.
+      effectiveType: nav.connection.effectiveType, // '4g', '3g', '2g', 'slow-2g'
+      downlink: nav.connection.downlink, // Mbps
+      rtt: nav.connection.rtt, // Round-trip time (ms)
+      saveData: nav.connection.saveData, // Data saver mode
+      type: nav.connection.type, // 'wifi', 'cellular', etc.
     };
   });
 
@@ -164,7 +160,8 @@ export const useOnlineStatus = (options = {}) => {
 
   // ── Derived values ─────────────────────────────────────────────────
 
-  const isSlowConnection = connection?.effectiveType === 'slow-2g' || connection?.effectiveType === '2g';
+  const isSlowConnection =
+    connection?.effectiveType === 'slow-2g' || connection?.effectiveType === '2g';
   const isDataSaver = connection?.saveData === true;
   const connectionType = connection?.type || 'unknown';
 
@@ -181,7 +178,7 @@ export const useOnlineStatus = (options = {}) => {
 
 /**
  * Returns network quality metrics.
- * 
+ *
  * @returns {Object} { type, effectiveType, downlink, rtt, isMetered }
  */
 export const useNetworkQuality = () => {
@@ -226,7 +223,7 @@ export const useNetworkQuality = () => {
 /**
  * Higher-level hook that combines online status with network quality
  * to make smart decisions about data usage.
- * 
+ *
  * @returns {Object} { shouldLoadImages, shouldLoadVideo, shouldUseHighQuality, isOnline }
  */
 export const useConnectionAware = () => {

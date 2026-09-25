@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 /**
  * Observes an element's visibility using IntersectionObserver.
- * 
+ *
  * @param {Object} options - Configuration options
  * @param {number} options.threshold - Visibility threshold (0-1)
  * @param {Element} options.root - Root element for intersection
@@ -27,7 +27,7 @@ export const useIntersectionObserver = (options = {}) => {
   const [isIntersecting, setIsIntersecting] = useState(false);
   const [entry, setEntry] = useState(null);
   const [intersectionRatio, setIntersectionRatio] = useState(0);
-  
+
   const elementRef = useRef(null);
   const frozenRef = useRef(false);
   const observerRef = useRef(null);
@@ -40,11 +40,14 @@ export const useIntersectionObserver = (options = {}) => {
 
   // ── Build observer options ──────────────────────────────────────────
 
-  const observerOptions = useMemo(() => ({
-    threshold,
-    root,
-    rootMargin,
-  }), [threshold, root, rootMargin]);
+  const observerOptions = useMemo(
+    () => ({
+      threshold,
+      root,
+      rootMargin,
+    }),
+    [threshold, root, rootMargin]
+  );
 
   // ── Observe element ─────────────────────────────────────────────────
 
@@ -89,12 +92,15 @@ export const useIntersectionObserver = (options = {}) => {
     frozenRef.current = false;
   }, [threshold, root, rootMargin]);
 
-  return useMemo(() => ({
-    ref: elementRef,
-    isIntersecting,
-    entry,
-    intersectionRatio,
-  }), [isIntersecting, entry, intersectionRatio]);
+  return useMemo(
+    () => ({
+      ref: elementRef,
+      isIntersecting,
+      entry,
+      intersectionRatio,
+    }),
+    [isIntersecting, entry, intersectionRatio]
+  );
 };
 
 // ── useInView ────────────────────────────────────────────────────────────
@@ -102,7 +108,7 @@ export const useIntersectionObserver = (options = {}) => {
 /**
  * Simplified version that only returns whether the element is in view.
  * Perfect for scroll-triggered animations and lazy loading.
- * 
+ *
  * @param {Object} options - Same as useIntersectionObserver
  * @returns {[React.Ref, boolean]} [ref, isInView]
  */
@@ -111,7 +117,7 @@ export const useInView = (options = {}) => {
     threshold: 0,
     ...options,
   });
-  
+
   return [ref, isIntersecting];
 };
 
@@ -120,7 +126,7 @@ export const useInView = (options = {}) => {
 /**
  * Returns a ref and whether the element has been visible.
  * Once visible, stays true (great for lazy-loading components).
- * 
+ *
  * @param {Object} options - Same as useIntersectionObserver
  * @returns {[React.Ref, boolean]} [ref, hasBeenVisible]
  */
@@ -128,11 +134,14 @@ export const useLazyLoad = (options = {}) => {
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
   const onIntersectRef = useRef(null);
 
-  const handleIntersect = useCallback((entry, isIntersecting) => {
-    if (isIntersecting && !hasBeenVisible) {
-      setHasBeenVisible(true);
-    }
-  }, [hasBeenVisible]);
+  const handleIntersect = useCallback(
+    (entry, isIntersecting) => {
+      if (isIntersecting && !hasBeenVisible) {
+        setHasBeenVisible(true);
+      }
+    },
+    [hasBeenVisible]
+  );
 
   const { ref } = useIntersectionObserver({
     threshold: 0,
@@ -149,7 +158,7 @@ export const useLazyLoad = (options = {}) => {
 /**
  * Triggers staggered animations when elements enter the viewport.
  * Returns a ref and a delay based on index.
- * 
+ *
  * @param {number} index - Element index for stagger calculation
  * @param {number} staggerDelay - Delay between each element (ms)
  * @param {Object} options - Same as useIntersectionObserver
@@ -171,7 +180,7 @@ export const useStaggerAnimation = (index = 0, staggerDelay = 100, options = {})
 
 /**
  * Tracks which section is currently in view for scroll spy navigation.
- * 
+ *
  * @param {string[]} sectionIds - Array of section element IDs to track
  * @param {Object} options - Configuration
  * @param {number} options.offset - Offset from top (default: 0)
@@ -185,13 +194,13 @@ export const useScrollSpy = (sectionIds = [], options = {}) => {
 
   useEffect(() => {
     // Cleanup previous observers
-    observersRef.current.forEach(observer => observer.disconnect());
+    observersRef.current.forEach((observer) => observer.disconnect());
     observersRef.current = [];
 
     if (sectionIds.length === 0) return;
 
     const handleIntersect = (entries) => {
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         if (entry.isIntersecting) {
           setActiveId(entry.target.id);
         }
@@ -203,7 +212,7 @@ export const useScrollSpy = (sectionIds = [], options = {}) => {
       threshold: 0.5,
     });
 
-    sectionIds.forEach(id => {
+    sectionIds.forEach((id) => {
       const element = document.getElementById(id);
       if (element) {
         observer.observe(element);

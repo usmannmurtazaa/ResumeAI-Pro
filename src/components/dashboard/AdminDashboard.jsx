@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  collection, getDocs, deleteDoc, doc, updateDoc, 
-  query, where, orderBy, limit, onSnapshot, writeBatch 
+import {
+  collection,
+  getDocs,
+  deleteDoc,
+  doc,
+  updateDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,10 +24,27 @@ import Input from '../ui/Input';
 import toast from 'react-hot-toast';
 import { format, subDays, startOfDay } from 'date-fns';
 import {
-  FiUsers, FiFileText, FiActivity, FiTrendingUp, FiTrendingDown,
-  FiSearch, FiTrash2, FiUserX, FiUserCheck, FiEye, FiShield,
-  FiAward, FiDownload, FiRefreshCw, FiChevronLeft, FiChevronRight,
-  FiAlertCircle, FiLoader, FiBarChart2, FiPieChart, FiLock
+  FiUsers,
+  FiFileText,
+  FiActivity,
+  FiTrendingUp,
+  FiTrendingDown,
+  FiSearch,
+  FiTrash2,
+  FiUserX,
+  FiUserCheck,
+  FiEye,
+  FiShield,
+  FiAward,
+  FiDownload,
+  FiRefreshCw,
+  FiChevronLeft,
+  FiChevronRight,
+  FiAlertCircle,
+  FiLoader,
+  FiBarChart2,
+  FiPieChart,
+  FiLock,
 } from 'react-icons/fi';
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -28,18 +54,19 @@ const DATE_RANGES = { '7days': 7, '30days': 30, '90days': 90 };
 // ── StatCard Component (Outside Main Component) ────────────────────────────
 
 const StatCard = React.memo(({ title, value, icon: Icon, color, trend, subtitle }) => (
-  <motion.div
-    whileHover={{ y: -4 }}
-    className="glass-card p-5 relative overflow-hidden group"
-  >
-    <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br opacity-10 group-hover:opacity-20 transition-opacity ${color}`} />
+  <motion.div whileHover={{ y: -4 }} className="glass-card p-5 relative overflow-hidden group">
+    <div
+      className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br opacity-10 group-hover:opacity-20 transition-opacity ${color}`}
+    />
     <div className="flex items-start justify-between">
       <div>
         <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
         <h3 className="text-2xl sm:text-3xl font-bold mt-1">{value}</h3>
         {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
         {trend !== undefined && (
-          <p className={`text-sm mt-2 flex items-center gap-1 ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
+          <p
+            className={`text-sm mt-2 flex items-center gap-1 ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}
+          >
             {trend > 0 ? <FiTrendingUp /> : <FiTrendingDown />}
             {Math.abs(trend)}% from last period
           </p>
@@ -76,26 +103,31 @@ const DashboardSkeleton = () => (
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, userRole } = useAuth();
-  
+
   // Permission check
   const isAdmin = userRole === 'admin';
-  
+
   // Refs for cleanup
   const unsubscribeRefs = useRef([]);
   const mountedRef = useRef(true);
 
   // State
   const [stats, setStats] = useState({
-    totalUsers: 0, totalResumes: 0, activeUsers: 0,
-    premiumUsers: 0, suspendedUsers: 0,
-    newUsersToday: 0, newResumesToday: 0, conversionRate: 0,
+    totalUsers: 0,
+    totalResumes: 0,
+    activeUsers: 0,
+    premiumUsers: 0,
+    suspendedUsers: 0,
+    newUsersToday: 0,
+    newResumesToday: 0,
+    conversionRate: 0,
   });
   const [users, setUsers] = useState([]);
   const [resumes, setResumes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // Track which action is loading
-  
+
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -105,7 +137,7 @@ const AdminDashboard = () => {
   const [sortDirection, setSortDirection] = useState('desc');
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [dateRange, setDateRange] = useState('7days');
-  
+
   // Modals
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -125,13 +157,13 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     // FIXED: Proper cleanup with refs
     const unsubUsers = onSnapshot(
       collection(db, 'users'),
       (snapshot) => {
         if (!mountedRef.current) return;
-        const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const usersData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setUsers(usersData);
       },
       (error) => {
@@ -147,7 +179,7 @@ const AdminDashboard = () => {
       collection(db, 'resumes'),
       (snapshot) => {
         if (!mountedRef.current) return;
-        const resumesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const resumesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setResumes(resumesData);
       },
       (error) => {
@@ -163,7 +195,7 @@ const AdminDashboard = () => {
 
     return () => {
       mountedRef.current = false;
-      unsubscribeRefs.current.forEach(unsub => unsub?.());
+      unsubscribeRefs.current.forEach((unsub) => unsub?.());
     };
   }, []); // FIXED: Empty dependency array - no need for users/resumes deps
 
@@ -173,12 +205,12 @@ const AdminDashboard = () => {
     if (!users.length && !resumes.length) return;
 
     const today = startOfDay(new Date()).toISOString();
-    
-    const activeCount = users.filter(u => u.status === 'active').length;
-    const premiumCount = users.filter(u => u.role === 'premium' || u.role === 'admin').length;
-    const suspendedCount = users.filter(u => u.status === 'suspended').length;
-    const newUsersToday = users.filter(u => u.createdAt >= today).length;
-    const newResumesToday = resumes.filter(r => r.createdAt >= today).length;
+
+    const activeCount = users.filter((u) => u.status === 'active').length;
+    const premiumCount = users.filter((u) => u.role === 'premium' || u.role === 'admin').length;
+    const suspendedCount = users.filter((u) => u.status === 'suspended').length;
+    const newUsersToday = users.filter((u) => u.createdAt >= today).length;
+    const newResumesToday = resumes.filter((r) => r.createdAt >= today).length;
     const conversionRate = activeCount > 0 ? ((premiumCount / activeCount) * 100).toFixed(1) : 0;
 
     setStats({
@@ -197,37 +229,36 @@ const AdminDashboard = () => {
 
   const filteredUsers = useMemo(() => {
     let filtered = [...users];
-    
+
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(u =>
-        u.displayName?.toLowerCase().includes(term) ||
-        u.email?.toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (u) => u.displayName?.toLowerCase().includes(term) || u.email?.toLowerCase().includes(term)
       );
     }
-    
+
     if (filterRole !== 'all') {
-      filtered = filtered.filter(u => u.role === filterRole);
+      filtered = filtered.filter((u) => u.role === filterRole);
     }
-    
+
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(u => u.status === filterStatus);
+      filtered = filtered.filter((u) => u.status === filterStatus);
     }
-    
+
     filtered.sort((a, b) => {
       let aVal = a[sortField];
       let bVal = b[sortField];
-      
+
       if (sortField === 'createdAt') {
         aVal = aVal ? new Date(aVal).getTime() : 0;
         bVal = bVal ? new Date(bVal).getTime() : 0;
       }
-      
+
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-    
+
     return filtered;
   }, [users, searchTerm, filterRole, filterStatus, sortField, sortDirection]);
 
@@ -247,9 +278,9 @@ const AdminDashboard = () => {
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleSort = useCallback((field) => {
-    setSortField(prev => {
+    setSortField((prev) => {
       if (prev === field) {
-        setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+        setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
         return prev;
       }
       setSortDirection('asc');
@@ -261,12 +292,12 @@ const AdminDashboard = () => {
     if (selectedUsers.size === paginatedUsers.length) {
       setSelectedUsers(new Set());
     } else {
-      setSelectedUsers(new Set(paginatedUsers.map(u => u.id)));
+      setSelectedUsers(new Set(paginatedUsers.map((u) => u.id)));
     }
   }, [selectedUsers.size, paginatedUsers]);
 
   const toggleSelectUser = useCallback((userId) => {
-    setSelectedUsers(prev => {
+    setSelectedUsers((prev) => {
       const next = new Set(prev);
       if (next.has(userId)) next.delete(userId);
       else next.add(userId);
@@ -274,28 +305,31 @@ const AdminDashboard = () => {
     });
   }, []);
 
-  const handleDeleteUser = useCallback(async (userId) => {
-    setActionLoading(`delete-${userId}`);
-    try {
-      const userResumes = resumes.filter(r => r.userId === userId);
-      const batch = writeBatch(db);
-      
-      userResumes.forEach(resume => {
-        batch.delete(doc(db, 'resumes', resume.id));
-      });
-      batch.delete(doc(db, 'users', userId));
-      
-      await batch.commit();
-      toast.success('User deleted successfully');
-      setShowDeleteConfirm(false);
-      setUserToDelete(null);
-    } catch (error) {
-      console.error('Delete user error:', error);
-      toast.error('Failed to delete user');
-    } finally {
-      setActionLoading(null);
-    }
-  }, [resumes]);
+  const handleDeleteUser = useCallback(
+    async (userId) => {
+      setActionLoading(`delete-${userId}`);
+      try {
+        const userResumes = resumes.filter((r) => r.userId === userId);
+        const batch = writeBatch(db);
+
+        userResumes.forEach((resume) => {
+          batch.delete(doc(db, 'resumes', resume.id));
+        });
+        batch.delete(doc(db, 'users', userId));
+
+        await batch.commit();
+        toast.success('User deleted successfully');
+        setShowDeleteConfirm(false);
+        setUserToDelete(null);
+      } catch (error) {
+        console.error('Delete user error:', error);
+        toast.error('Failed to delete user');
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [resumes]
+  );
 
   const handleSuspendUser = useCallback(async (userId, currentStatus) => {
     setActionLoading(`suspend-${userId}`);
@@ -328,15 +362,11 @@ const AdminDashboard = () => {
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
           <FiLock className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Access Denied
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
           <p className="text-gray-500 mb-4">
             You need administrator privileges to access this page.
           </p>
-          <Button onClick={() => navigate('/dashboard')}>
-            Go to Dashboard
-          </Button>
+          <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
         </div>
       </div>
     );
@@ -351,9 +381,7 @@ const AdminDashboard = () => {
           <FiAlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Failed to Load Dashboard</h2>
           <p className="text-gray-500 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>
-            Retry
-          </Button>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     );
@@ -364,20 +392,13 @@ const AdminDashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold gradient-text">
-            Admin Dashboard
-          </h1>
+          <h1 className="text-2xl sm:text-3xl font-bold gradient-text">Admin Dashboard</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Last updated: {format(new Date(), 'MMM dd, yyyy HH:mm')}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            icon={<FiRefreshCw />}
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh} icon={<FiRefreshCw />}>
             Refresh
           </Button>
         </div>
@@ -386,23 +407,33 @@ const AdminDashboard = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          title="Total Users" value={stats.totalUsers}
-          icon={FiUsers} color="from-blue-500 to-blue-600" trend={12}
+          title="Total Users"
+          value={stats.totalUsers}
+          icon={FiUsers}
+          color="from-blue-500 to-blue-600"
+          trend={12}
           subtitle={`+${stats.newUsersToday} today`}
         />
         <StatCard
-          title="Total Resumes" value={stats.totalResumes}
-          icon={FiFileText} color="from-purple-500 to-purple-600" trend={8}
+          title="Total Resumes"
+          value={stats.totalResumes}
+          icon={FiFileText}
+          color="from-purple-500 to-purple-600"
+          trend={8}
           subtitle={`+${stats.newResumesToday} today`}
         />
         <StatCard
-          title="Active Users" value={stats.activeUsers}
-          icon={FiActivity} color="from-green-500 to-green-600"
+          title="Active Users"
+          value={stats.activeUsers}
+          icon={FiActivity}
+          color="from-green-500 to-green-600"
           subtitle={`${stats.suspendedUsers} suspended`}
         />
         <StatCard
-          title="Premium Users" value={stats.premiumUsers}
-          icon={FiAward} color="from-orange-500 to-orange-600"
+          title="Premium Users"
+          value={stats.premiumUsers}
+          icon={FiAward}
+          color="from-orange-500 to-orange-600"
           subtitle={`${stats.conversionRate}% conversion`}
         />
       </div>
@@ -477,34 +508,48 @@ const AdminDashboard = () => {
                 <th className="py-3 px-2">
                   <input
                     type="checkbox"
-                    checked={selectedUsers.size === paginatedUsers.length && paginatedUsers.length > 0}
+                    checked={
+                      selectedUsers.size === paginatedUsers.length && paginatedUsers.length > 0
+                    }
                     onChange={toggleSelectAll}
                     className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   />
                 </th>
-                <th className="text-left py-3 px-2 cursor-pointer" onClick={() => handleSort('displayName')}>
+                <th
+                  className="text-left py-3 px-2 cursor-pointer"
+                  onClick={() => handleSort('displayName')}
+                >
                   User {sortField === 'displayName' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th className="text-left py-3 px-2 cursor-pointer" onClick={() => handleSort('email')}>
+                <th
+                  className="text-left py-3 px-2 cursor-pointer"
+                  onClick={() => handleSort('email')}
+                >
                   Email {sortField === 'email' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th className="text-left py-3 px-2">Role</th>
                 <th className="text-left py-3 px-2">Status</th>
                 <th className="text-left py-3 px-2">Resumes</th>
-                <th className="text-left py-3 px-2 cursor-pointer" onClick={() => handleSort('createdAt')}>
+                <th
+                  className="text-left py-3 px-2 cursor-pointer"
+                  onClick={() => handleSort('createdAt')}
+                >
                   Joined {sortField === 'createdAt' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th className="text-left py-3 px-2">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedUsers.map(user => {
-                const userResumeCount = resumes.filter(r => r.userId === user.id).length;
+              {paginatedUsers.map((user) => {
+                const userResumeCount = resumes.filter((r) => r.userId === user.id).length;
                 const isSuspending = actionLoading === `suspend-${user.id}`;
                 const isDeleting = actionLoading === `delete-${user.id}`;
-                
+
                 return (
-                  <tr key={user.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <tr
+                    key={user.id}
+                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                  >
                     <td className="py-3 px-2">
                       <input
                         type="checkbox"
@@ -516,14 +561,27 @@ const AdminDashboard = () => {
                     <td className="py-3 px-2">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center text-white font-semibold text-sm">
-                          {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                          {user.displayName?.[0]?.toUpperCase() ||
+                            user.email?.[0]?.toUpperCase() ||
+                            'U'}
                         </div>
                         <span className="font-medium text-sm">{user.displayName || 'N/A'}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-400">{user.email}</td>
+                    <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-400">
+                      {user.email}
+                    </td>
                     <td className="py-3 px-2">
-                      <Badge variant={user.role === 'admin' ? 'danger' : user.role === 'premium' ? 'warning' : 'primary'} size="sm">
+                      <Badge
+                        variant={
+                          user.role === 'admin'
+                            ? 'danger'
+                            : user.role === 'premium'
+                              ? 'warning'
+                              : 'primary'
+                        }
+                        size="sm"
+                      >
                         {user.role || 'user'}
                       </Badge>
                     </td>
@@ -532,14 +590,19 @@ const AdminDashboard = () => {
                         {user.status || 'active'}
                       </Badge>
                     </td>
-                    <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-400">{userResumeCount}</td>
+                    <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-400">
+                      {userResumeCount}
+                    </td>
                     <td className="py-3 px-2 text-sm text-gray-500">
                       {user.createdAt ? format(new Date(user.createdAt), 'MMM dd, yyyy') : 'N/A'}
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex gap-1">
                         <button
-                          onClick={() => { setSelectedUser(user); setShowUserModal(true); }}
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setShowUserModal(true);
+                          }}
                           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                           aria-label="View user"
                         >
@@ -562,7 +625,10 @@ const AdminDashboard = () => {
                           )}
                         </button>
                         <button
-                          onClick={() => { setUserToDelete(user.id); setShowDeleteConfirm(true); }}
+                          onClick={() => {
+                            setUserToDelete(user.id);
+                            setShowDeleteConfirm(true);
+                          }}
                           disabled={isDeleting}
                           className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-red-600 disabled:opacity-50"
                           aria-label="Delete user"
@@ -594,19 +660,23 @@ const AdminDashboard = () => {
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6">
             <p className="text-sm text-gray-500">
-              Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length}
+              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
+              {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of{' '}
+              {filteredUsers.length}
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
               >
                 <FiChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-4 py-2 text-sm">Page {currentPage} of {totalPages}</span>
+              <span className="px-4 py-2 text-sm">
+                Page {currentPage} of {totalPages}
+              </span>
               <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
               >
@@ -620,7 +690,10 @@ const AdminDashboard = () => {
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={showDeleteConfirm}
-        onClose={() => { setShowDeleteConfirm(false); setUserToDelete(null); }}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setUserToDelete(null);
+        }}
         title="Delete User"
         size="sm"
       >
@@ -628,15 +701,16 @@ const AdminDashboard = () => {
           <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
             <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
             <p className="text-sm text-red-700 dark:text-red-300">
-              This action cannot be undone. All user data including resumes will be permanently deleted.
+              This action cannot be undone. All user data including resumes will be permanently
+              deleted.
             </p>
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="danger" 
+            <Button
+              variant="danger"
               onClick={() => handleDeleteUser(userToDelete)}
               loading={actionLoading === `delete-${userToDelete}`}
             >

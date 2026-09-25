@@ -1,11 +1,5 @@
 rules_version = '2';
 
-/**
- * IMPORTANT: Admin dashboards require custom claims matching the client —
- * Prefer Firebase Admin SDK: setCustomUserClaims(uid, { admin: true })
- * Optionally also set role: 'admin' for legacy checks (storage.rules).
- */
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -13,7 +7,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /** Client AdminRoute verifies admin/superAdmin; rules must mirror JWT claims only. */
     function isPrivilegedAdmin() {
       return signedIn()
         && (request.auth.token.admin == true
@@ -25,20 +18,64 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isAllowedUserUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'displayName',
+        'photoURL',
+        'phone',
+        'location',
+        'bio',
+        'title',
+        'website',
+        'github',
+        'linkedin',
+        'twitter'
+      ]);
+    }
+
+    function isValidUserCreate() {
+      return signedIn()
+        && request.resource.data.role == 'user'
+        && request.resource.data.status == 'active'
+        && (!('subscription' in request.resource.data))
+        && (!('plan' in request.resource.data))
+        && (!('userId' in request.resource.data));
+    }
+
     match /users/{userId} {
       allow read: if isSelf(userId) || isPrivilegedAdmin();
-      allow create: if isSelf(userId);
-      allow update, delete: if isSelf(userId) || isPrivilegedAdmin();
+      allow create: if isSelf(userId) && isValidUserCreate();
+      allow update: if (isSelf(userId) && isAllowedUserUpdate()) || isPrivilegedAdmin();
+      allow delete: if isSelf(userId) || isPrivilegedAdmin();
+    }
+
+    function isAllowedResumeUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'data',
+        'template',
+        'name',
+        'status',
+        'atsScore',
+        'downloadCount',
+        'viewCount',
+        'lastDownloaded',
+        'lastViewed'
+      ]);
     }
 
     match /resumes/{resumeId} {
       allow read: if signedIn()
         && (resource.data.userId == request.auth.uid || isPrivilegedAdmin());
 
-      allow create: if signedIn()
-        && request.resource.data.userId == request.auth.uid;
+      // Direct client-side resume creation is denied.
+      // The Netlify Functions use Admin SDK, which bypasses these rules.
+      allow create: if isPrivilegedAdmin();
 
-      allow update, delete: if signedIn()
+      allow update: if signedIn()
+        && (resource.data.userId == request.auth.uid || isPrivilegedAdmin())
+        && (isPrivilegedAdmin() || isAllowedResumeUpdate());
+
+      allow delete: if signedIn()
         && (resource.data.userId == request.auth.uid || isPrivilegedAdmin());
     }
 
@@ -61,14 +98,12 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    /** Billing / Stripe mirror — client reads own doc; writes via Admin SDK or privileged admin */
     match /subscriptions/{userId} {
       allow read: if isSelf(userId) || isPrivilegedAdmin();
       allow create, update: if isPrivilegedAdmin();
       allow delete: if isSelf(userId) || isPrivilegedAdmin();
     }
 
-    /** Product analytics — authenticated events only; userId on document must match caller */
     match /analytics/{docId} {
       allow read: if isPrivilegedAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
@@ -78,12 +113,10 @@ service cloud.firestore {
       allow update, delete: if isPrivilegedAdmin();
     }
 
-    /** Session list under user profile (authService) */
     match /users/{userId}/sessions/{sessionId} {
       allow read, create, update, delete: if isSelf(userId);
     }
 
-    /** Soft-delete audit trail */
     match /deletedAccounts/{docId} {
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid;

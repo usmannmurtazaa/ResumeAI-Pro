@@ -2,11 +2,27 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  FiTarget, FiZap, FiLayout, FiDownload, FiCode,
-  FiUsers, FiShield, FiTrendingUp, FiFileText,
-  FiBriefcase, FiAward, FiStar, FiCheckCircle,
-  FiArrowRight, FiSmartphone, FiGlobe, FiLock,
-  FiCpu, FiMessageCircle, FiEye, FiEdit3,
+  FiTarget,
+  FiZap,
+  FiLayout,
+  FiDownload,
+  FiCode,
+  FiUsers,
+  FiShield,
+  FiTrendingUp,
+  FiFileText,
+  FiBriefcase,
+  FiAward,
+  FiStar,
+  FiCheckCircle,
+  FiArrowRight,
+  FiSmartphone,
+  FiGlobe,
+  FiLock,
+  FiCpu,
+  FiMessageCircle,
+  FiEye,
+  FiEdit3,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
@@ -23,7 +39,8 @@ const FEATURES = [
     id: 'ats-optimization',
     icon: FiTarget,
     title: 'ATS Optimization',
-    description: 'AI-powered keyword analysis and real-time ATS scoring to ensure your resume passes automated screening systems.',
+    description:
+      'AI-powered keyword analysis and real-time ATS scoring to ensure your resume passes automated screening systems.',
     color: 'from-blue-500 to-cyan-500',
     badge: 'Core',
     details: [
@@ -38,7 +55,8 @@ const FEATURES = [
     id: 'ai-suggestions',
     icon: FiCpu,
     title: 'AI-Powered Suggestions',
-    description: 'Smart content suggestions that improve your resume\'s impact using natural language processing and machine learning.',
+    description:
+      "Smart content suggestions that improve your resume's impact using natural language processing and machine learning.",
     color: 'from-purple-500 to-pink-500',
     badge: 'AI',
     details: [
@@ -53,7 +71,8 @@ const FEATURES = [
     id: 'templates',
     icon: FiLayout,
     title: 'Professional Templates',
-    description: '25+ beautiful, ATS-friendly templates designed by professional resume writers and reviewed by recruiters.',
+    description:
+      '25+ beautiful, ATS-friendly templates designed by professional resume writers and reviewed by recruiters.',
     color: 'from-green-500 to-emerald-500',
     badge: 'Popular',
     details: [
@@ -68,7 +87,8 @@ const FEATURES = [
     id: 'builder',
     icon: FiEdit3,
     title: 'Intuitive Builder',
-    description: 'A seamless resume-building experience with real-time preview, auto-save, and guided section completion.',
+    description:
+      'A seamless resume-building experience with real-time preview, auto-save, and guided section completion.',
     color: 'from-orange-500 to-red-500',
     badge: 'New',
     details: [
@@ -83,7 +103,8 @@ const FEATURES = [
     id: 'export',
     icon: FiDownload,
     title: 'Export & Share',
-    description: 'Download your resume in multiple formats or generate a shareable link that updates automatically.',
+    description:
+      'Download your resume in multiple formats or generate a shareable link that updates automatically.',
     color: 'from-indigo-500 to-blue-600',
     badge: 'Essential',
     details: [
@@ -98,7 +119,8 @@ const FEATURES = [
     id: 'analytics',
     icon: FiTrendingUp,
     title: 'Resume Analytics',
-    description: 'Track views, downloads, and ATS score improvements over time with detailed performance analytics.',
+    description:
+      'Track views, downloads, and ATS score improvements over time with detailed performance analytics.',
     color: 'from-pink-500 to-rose-500',
     badge: 'Pro',
     details: [
@@ -113,7 +135,8 @@ const FEATURES = [
     id: 'security',
     icon: FiShield,
     title: 'Enterprise Security',
-    description: 'Bank-level encryption, GDPR compliance, and granular privacy controls to keep your data safe.',
+    description:
+      'Bank-level encryption, GDPR compliance, and granular privacy controls to keep your data safe.',
     color: 'from-gray-600 to-gray-800',
     details: [
       '256-bit SSL encryption',
@@ -127,7 +150,8 @@ const FEATURES = [
     id: 'support',
     icon: FiMessageCircle,
     title: '24/7 Support',
-    description: 'Access to comprehensive help center, live chat support, and a dedicated community of professionals.',
+    description:
+      'Access to comprehensive help center, live chat support, and a dedicated community of professionals.',
     color: 'from-teal-500 to-cyan-500',
     details: [
       '24/7 live chat support',
@@ -157,14 +181,21 @@ const FeatureCard = React.memo(({ feature, index }) => (
     whileHover={{ y: -4 }}
   >
     <Card className="p-6 h-full group">
-      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+      <div
+        className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
+      >
         <feature.icon className="w-6 h-6 text-white" />
       </div>
 
       <div className="flex items-center gap-2 mb-2">
         <h3 className="text-xl font-semibold">{feature.title}</h3>
         {feature.badge && (
-          <Badge variant={feature.badge === 'Pro' ? 'warning' : feature.badge === 'AI' ? 'primary' : 'secondary'} size="sm">
+          <Badge
+            variant={
+              feature.badge === 'Pro' ? 'warning' : feature.badge === 'AI' ? 'primary' : 'secondary'
+            }
+            size="sm"
+          >
             {feature.badge}
           </Badge>
         )}
@@ -193,7 +224,8 @@ FeatureCard.displayName = 'FeatureCard';
 const Features = () => {
   usePageTitle({
     title: 'Features - Everything You Need',
-    description: 'Explore ResumeAI Pro\'s powerful features: ATS optimization, AI suggestions, 25+ templates, analytics, and enterprise security.',
+    description:
+      "Explore Resume Ai Pro's powerful features: ATS optimization, AI suggestions, 25+ templates, analytics, and enterprise security.",
   });
 
   return (
@@ -202,17 +234,20 @@ const Features = () => {
         <div className="container mx-auto px-4">
           {/* Hero */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-center max-w-4xl mx-auto mb-16"
           >
-            <Badge variant="primary" className="mb-4">Powerful Features</Badge>
+            <Badge variant="primary" className="mb-4">
+              Powerful Features
+            </Badge>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              Everything You Need to{' '}
-              <span className="gradient-text">Land the Job</span>
+              Everything You Need to <span className="gradient-text">Land the Job</span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              From AI-powered writing to ATS optimization, ResumeAI Pro gives you all the tools to create a standout resume.
+              From AI-powered writing to ATS optimization, Resume Ai Pro gives you all the tools
+              to create a standout resume.
             </p>
           </motion.div>
 
@@ -250,7 +285,9 @@ const Features = () => {
               className="text-center mb-10"
             >
               <h2 className="text-3xl font-bold mb-4">Plan Comparison</h2>
-              <p className="text-gray-600 dark:text-gray-400">Choose the plan that fits your needs</p>
+              <p className="text-gray-600 dark:text-gray-400">
+                Choose the plan that fits your needs
+              </p>
             </motion.div>
 
             <div className="overflow-x-auto">
@@ -263,7 +300,9 @@ const Features = () => {
                     </th>
                     <th className="text-center py-4 px-6 font-semibold">
                       <span className="gradient-text">Pro</span>
-                      <Badge variant="warning" size="sm" className="ml-2">Popular</Badge>
+                      <Badge variant="warning" size="sm" className="ml-2">
+                        Popular
+                      </Badge>
                     </th>
                     <th className="text-center py-4 px-6 font-semibold">
                       <span className="text-blue-600 dark:text-blue-400">Business</span>
@@ -273,19 +312,55 @@ const Features = () => {
                 <tbody>
                   {[
                     { feature: 'Resumes', free: '5', pro: 'Unlimited', business: 'Unlimited' },
-                    { feature: 'Templates', free: 'Basic (5)', pro: 'All (25+)', business: 'All + Custom' },
-                    { feature: 'ATS Scoring', free: 'Basic', pro: 'Advanced', business: 'Advanced + API' },
-                    { feature: 'AI Suggestions', free: '10/mo', pro: 'Unlimited', business: 'Unlimited + Custom' },
-                    { feature: 'Export Formats', free: 'PDF', pro: 'PDF, DOCX, TXT', business: 'All + API' },
-                    { feature: 'Analytics', free: 'Basic', pro: 'Advanced', business: 'Advanced + Reports' },
-                    { feature: 'Support', free: 'Email', pro: 'Priority Chat', business: 'Dedicated Manager' },
+                    {
+                      feature: 'Templates',
+                      free: 'Basic (5)',
+                      pro: 'All (25+)',
+                      business: 'All + Custom',
+                    },
+                    {
+                      feature: 'ATS Scoring',
+                      free: 'Basic',
+                      pro: 'Advanced',
+                      business: 'Advanced + API',
+                    },
+                    {
+                      feature: 'AI Suggestions',
+                      free: '10/mo',
+                      pro: 'Unlimited',
+                      business: 'Unlimited + Custom',
+                    },
+                    {
+                      feature: 'Export Formats',
+                      free: 'PDF',
+                      pro: 'PDF, DOCX, TXT',
+                      business: 'All + API',
+                    },
+                    {
+                      feature: 'Analytics',
+                      free: 'Basic',
+                      pro: 'Advanced',
+                      business: 'Advanced + Reports',
+                    },
+                    {
+                      feature: 'Support',
+                      free: 'Email',
+                      pro: 'Priority Chat',
+                      business: 'Dedicated Manager',
+                    },
                     { feature: 'Price', free: 'Free', pro: '$19/mo', business: '$49/mo' },
                   ].map((row, index) => (
                     <tr key={index} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="py-4 px-6 text-sm font-medium">{row.feature}</td>
-                      <td className="py-4 px-6 text-sm text-center text-gray-600 dark:text-gray-400">{row.free}</td>
-                      <td className="py-4 px-6 text-sm text-center font-medium text-primary-600 dark:text-primary-400">{row.pro}</td>
-                      <td className="py-4 px-6 text-sm text-center text-gray-600 dark:text-gray-400">{row.business}</td>
+                      <td className="py-4 px-6 text-sm text-center text-gray-600 dark:text-gray-400">
+                        {row.free}
+                      </td>
+                      <td className="py-4 px-6 text-sm text-center font-medium text-primary-600 dark:text-primary-400">
+                        {row.pro}
+                      </td>
+                      <td className="py-4 px-6 text-sm text-center text-gray-600 dark:text-gray-400">
+                        {row.business}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -303,7 +378,7 @@ const Features = () => {
             <Card className="p-10 bg-gradient-to-br from-primary-50/50 to-accent-50/50 dark:from-primary-900/20 dark:to-accent-900/20">
               <h2 className="text-2xl md:text-3xl font-bold mb-4">Ready to Build Your Resume?</h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Join 50,000+ professionals who've accelerated their careers with ResumeAI Pro.
+                Join 50,000+ professionals who've accelerated their careers with Resume Ai Pro.
               </p>
               <div className="flex flex-wrap gap-4 justify-center">
                 <Link to="/signup">
@@ -313,7 +388,9 @@ const Features = () => {
                   </Button>
                 </Link>
                 <Link to="/pricing">
-                  <Button variant="outline" size="lg">View Pricing</Button>
+                  <Button variant="outline" size="lg">
+                    View Pricing
+                  </Button>
                 </Link>
               </div>
             </Card>

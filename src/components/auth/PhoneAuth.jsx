@@ -1,23 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber,
-} from 'firebase/auth';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../services/firebase';
 import PhoneInput from 'react-phone-number-input';
 import OtpInput from 'react-otp-input';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiSmartphone, 
-  FiCheckCircle, 
+import {
+  FiSmartphone,
+  FiCheckCircle,
   FiAlertCircle,
   FiArrowLeft,
   FiShield,
   FiInfo,
   FiRefreshCw,
   FiLock,
-  FiX
+  FiX,
 } from 'react-icons/fi';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
@@ -43,7 +40,7 @@ const useSmsRateLimiter = () => {
     try {
       const saved = sessionStorage.getItem('sms_rate_limit');
       if (!saved) return { count: 0, timestamp: Date.now() };
-      
+
       const data = JSON.parse(saved);
       // Reset if window has passed
       if (Date.now() - data.timestamp > SMS_RATE_LIMIT_WINDOW) {
@@ -54,28 +51,28 @@ const useSmsRateLimiter = () => {
       return { count: 0, timestamp: Date.now() };
     }
   });
-  
-  const isRateLimited = smsCount.count >= MAX_SMS_PER_HOUR &&
-    Date.now() - smsCount.timestamp < SMS_RATE_LIMIT_WINDOW;
-  
+
+  const isRateLimited =
+    smsCount.count >= MAX_SMS_PER_HOUR && Date.now() - smsCount.timestamp < SMS_RATE_LIMIT_WINDOW;
+
   const recordSmsSent = useCallback(() => {
     const newData = {
       count: smsCount.count + 1,
       timestamp: smsCount.timestamp || Date.now(),
     };
     setSmsCount(newData);
-    
+
     try {
       sessionStorage.setItem('sms_rate_limit', JSON.stringify(newData));
     } catch {
       // Ignore storage errors
     }
   }, [smsCount]);
-  
+
   const timeUntilReset = isRateLimited
     ? Math.ceil((SMS_RATE_LIMIT_WINDOW - (Date.now() - smsCount.timestamp)) / 1000 / 60)
     : 0;
-  
+
   return { isRateLimited, timeUntilReset, recordSmsSent };
 };
 
@@ -104,13 +101,13 @@ const isValidE164 = (phone) => {
 const formatPhoneForDisplay = (phone, masked = false) => {
   if (!phone) return '';
   const cleaned = phone.replace(/\D/g, '');
-  
+
   if (masked) {
     // Show only last 4 digits
     const last4 = cleaned.slice(-4);
     return `•••• ${last4}`;
   }
-  
+
   const match = cleaned.match(/^(\d{1,3})(\d{0,3})(\d{0,4})$/);
   if (match) {
     return `${match[1]} ${match[2]} ${match[3]}`.trim();
@@ -120,10 +117,10 @@ const formatPhoneForDisplay = (phone, masked = false) => {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-const PhoneAuth = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
+const PhoneAuth = ({
+  isOpen,
+  onClose,
+  onSuccess,
   onError,
   mode = 'signin',
   linkToExisting = false,
@@ -139,24 +136,24 @@ const PhoneAuth = ({
   const [error, setError] = useState(null);
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
-  
+
   // FIXED: Instance-based refs instead of global
   const recaptchaVerifierRef = useRef(null);
   const abortControllerRef = useRef(null);
   const mountedRef = useRef(false);
   const otpInputContainerRef = useRef(null);
-  
+
   const { isRateLimited, timeUntilReset, recordSmsSent } = useSmsRateLimiter();
 
   // ── Modal Lifecycle ─────────────────────────────────────────────────────
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     if (isOpen) {
       resetState();
     }
-    
+
     return () => {
       mountedRef.current = false;
       cleanupRecaptcha();
@@ -168,11 +165,11 @@ const PhoneAuth = ({
 
   useEffect(() => {
     if (resendTimer <= 0) return;
-    
+
     const timer = setInterval(() => {
-      setResendTimer(prev => Math.max(0, prev - 1));
+      setResendTimer((prev) => Math.max(0, prev - 1));
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, [resendTimer]);
 
@@ -180,13 +177,13 @@ const PhoneAuth = ({
 
   useEffect(() => {
     if (!isLocked) return;
-    
+
     const timer = setTimeout(() => {
       setIsLocked(false);
       setOtpAttempts(0);
       setError(null);
     }, OTP_LOCKOUT_DURATION);
-    
+
     return () => clearTimeout(timer);
   }, [isLocked]);
 
@@ -228,7 +225,7 @@ const PhoneAuth = ({
 
   const setupRecaptcha = useCallback(() => {
     cleanupRecaptcha();
-    
+
     try {
       recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
@@ -244,7 +241,7 @@ const PhoneAuth = ({
           }
         },
       });
-      
+
       return recaptchaVerifierRef.current;
     } catch (error) {
       console.error('reCAPTCHA setup failed:', error);
@@ -283,41 +280,36 @@ const PhoneAuth = ({
 
     setLoading(true);
     setError(null);
-    
+
     try {
       const sanitizedPhone = sanitizePhoneNumber(phoneNumber);
       const verifier = setupRecaptcha();
-      
-      const confirmation = await signInWithPhoneNumber(
-        auth, 
-        sanitizedPhone, 
-        verifier
-      );
-      
+
+      const confirmation = await signInWithPhoneNumber(auth, sanitizedPhone, verifier);
+
       // Check if operation was aborted
       if (signal.aborted) return;
-      
+
       if (!mountedRef.current) return;
-      
+
       setConfirmationResult(confirmation);
       setStep('otp');
       setResendTimer(RESEND_COOLDOWN);
       recordSmsSent();
-      
+
       toast.success('Verification code sent!', {
         icon: '📱',
         duration: 3000,
         id: 'otp-sent',
       });
-      
     } catch (error) {
       if (signal.aborted) return;
       if (!mountedRef.current) return;
-      
+
       console.error('Error sending OTP:', error);
-      
+
       let errorMessage = 'Failed to send verification code';
-      
+
       switch (error.code) {
         case 'auth/too-many-requests':
           errorMessage = 'Too many attempts. Please try again later.';
@@ -349,7 +341,7 @@ const PhoneAuth = ({
         default:
           errorMessage = error.message || errorMessage;
       }
-      
+
       setError(errorMessage);
       toast.error(errorMessage, { id: 'otp-error' });
       onError?.(error);
@@ -367,13 +359,13 @@ const PhoneAuth = ({
       toast.error(`Please wait ${resendTimer} seconds`, { id: 'resend-cooldown' });
       return;
     }
-    
+
     if (isLocked) {
       const minutesLeft = Math.ceil(OTP_LOCKOUT_DURATION / 60000);
       toast.error(`Account temporarily locked. Try again in ${minutesLeft} minutes.`);
       return;
     }
-    
+
     // Reset OTP attempts on resend
     setOtpAttempts(0);
     await sendOTP();
@@ -400,28 +392,28 @@ const PhoneAuth = ({
 
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
-      
+
       if (!mountedRef.current) return;
-      
+
       // Reset OTP attempts on success
       setOtpAttempts(0);
-      
+
       await handleSuccessfulAuth(user);
     } catch (error) {
       if (!mountedRef.current) return;
-      
+
       console.error('OTP verification failed:', error);
-      
+
       // Increment failed attempts
       const newAttempts = otpAttempts + 1;
       setOtpAttempts(newAttempts);
-      
+
       let errorMessage = 'Invalid verification code';
-      
+
       switch (error.code) {
         case 'auth/invalid-verification-code':
           errorMessage = `Invalid code. ${MAX_OTP_ATTEMPTS - newAttempts} attempt(s) remaining.`;
@@ -442,17 +434,17 @@ const PhoneAuth = ({
         default:
           errorMessage = error.message || 'Verification failed';
       }
-      
+
       // Check if should lock out
       if (newAttempts >= MAX_OTP_ATTEMPTS) {
         setIsLocked(true);
         errorMessage = 'Too many failed attempts. Please try again in 5 minutes.';
       }
-      
+
       setError(errorMessage);
       toast.error(errorMessage, { id: 'otp-verify-error' });
       onError?.(error);
-      
+
       // Clear OTP field on error
       setOtp('');
     } finally {
@@ -468,7 +460,7 @@ const PhoneAuth = ({
     try {
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
-      
+
       if (!userDoc.exists()) {
         // Create new user document
         const userData = {
@@ -490,10 +482,10 @@ const PhoneAuth = ({
             userAgent: navigator.userAgent.substring(0, 200), // Truncate for storage
           },
         };
-        
+
         // FIXED: Use setDoc with merge to prevent race conditions
         await setDoc(userDocRef, userData, { merge: false });
-        
+
         if (mode === 'signup') {
           toast.success('Account created successfully! Welcome!', {
             icon: '🎉',
@@ -508,24 +500,24 @@ const PhoneAuth = ({
           updatedAt: serverTimestamp(),
           ...(user.phoneNumber && { phoneNumber: user.phoneNumber }),
         });
-        
+
         toast.success('Phone verified successfully!', {
           icon: '✅',
           duration: 2000,
         });
       }
-      
+
       onSuccess?.(user);
       handleClose();
     } catch (error) {
       console.error('Firestore update failed:', error);
-      
+
       // Still succeed - authentication worked even if Firestore failed
       toast.success('Verified! Redirecting...', {
         icon: '✅',
         duration: 2000,
       });
-      
+
       onSuccess?.(user);
       handleClose();
     }
@@ -554,7 +546,7 @@ const PhoneAuth = ({
     e.preventDefault();
     const pastedText = e.clipboardData?.getData('text') || '';
     const numbers = pastedText.replace(/\D/g, '').slice(0, OTP_LENGTH);
-    
+
     if (numbers.length === OTP_LENGTH) {
       setOtp(numbers);
       // Auto-submit after paste
@@ -570,9 +562,9 @@ const PhoneAuth = ({
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
       title={
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg">
@@ -593,7 +585,7 @@ const PhoneAuth = ({
       <div className="space-y-5">
         {/* Hidden reCAPTCHA container */}
         <div id="recaptcha-container" className="hidden" aria-hidden="true"></div>
-        
+
         <AnimatePresence mode="wait">
           {step === 'phone' ? (
             <motion.div
@@ -608,7 +600,7 @@ const PhoneAuth = ({
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Phone Number
                 </label>
-                
+
                 <div className="relative">
                   <PhoneInput
                     international
@@ -626,12 +618,12 @@ const PhoneAuth = ({
                     aria-invalid={!!error}
                     aria-describedby={error ? 'phone-error' : undefined}
                   />
-                  
+
                   {isValidNumber && !error && (
                     <FiCheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
                   )}
                 </div>
-                
+
                 {/* Error Message */}
                 <AnimatePresence>
                   {error && (
@@ -648,18 +640,18 @@ const PhoneAuth = ({
                     </motion.p>
                   )}
                 </AnimatePresence>
-                
+
                 {/* Info Banner */}
                 <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <div className="flex items-start gap-2">
                     <FiInfo className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-blue-700 dark:text-blue-300">
-                      We'll send a {OTP_LENGTH}-digit verification code via SMS.
-                      Standard message and data rates may apply.
+                      We'll send a {OTP_LENGTH}-digit verification code via SMS. Standard message
+                      and data rates may apply.
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Rate Limit Warning */}
                 {isRateLimited && (
                   <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
@@ -670,7 +662,7 @@ const PhoneAuth = ({
                   </div>
                 )}
               </div>
-              
+
               <div className="space-y-3">
                 <Button
                   onClick={sendOTP}
@@ -681,18 +673,14 @@ const PhoneAuth = ({
                 >
                   {loading ? 'Sending Code...' : 'Send Verification Code'}
                 </Button>
-                
+
                 {allowSkip && mode === 'signup' && (
-                  <Button
-                    variant="ghost"
-                    onClick={handleClose}
-                    className="w-full"
-                  >
+                  <Button variant="ghost" onClick={handleClose} className="w-full">
                     Skip for now
                   </Button>
                 )}
               </div>
-              
+
               {/* Trust Indicator */}
               <div className="flex items-center justify-center gap-2 text-xs text-gray-400 dark:text-gray-500">
                 <FiShield className="w-3 h-3" />
@@ -718,15 +706,15 @@ const PhoneAuth = ({
                 <FiArrowLeft className="w-4 h-4" />
                 Change phone number
               </button>
-              
+
               {/* OTP Input */}
               <div>
                 <label className="block text-sm font-medium mb-3 text-center text-gray-700 dark:text-gray-300">
                   Enter {OTP_LENGTH}-digit verification code
                 </label>
-                
-                <div 
-                  className="otp-input-container" 
+
+                <div
+                  className="otp-input-container"
                   onPaste={handleOtpPaste}
                   ref={otpInputContainerRef}
                 >
@@ -742,9 +730,10 @@ const PhoneAuth = ({
                         {...props}
                         className={`w-11 h-11 sm:w-12 sm:h-12 text-center text-xl font-semibold
                           border-2 rounded-lg transition-all duration-200
-                          ${error 
-                            ? 'border-red-300 dark:border-red-700 focus:border-red-500' 
-                            : 'border-gray-300 dark:border-gray-600 focus:border-primary-500'
+                          ${
+                            error
+                              ? 'border-red-300 dark:border-red-700 focus:border-red-500'
+                              : 'border-gray-300 dark:border-gray-600 focus:border-primary-500'
                           }
                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                           focus:ring-2 focus:ring-primary-500 focus:border-transparent
@@ -757,7 +746,7 @@ const PhoneAuth = ({
                     )}
                   />
                 </div>
-                
+
                 {/* Phone Info & Resend */}
                 <div className="text-center mt-4 space-y-3">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -766,27 +755,28 @@ const PhoneAuth = ({
                       {formatPhoneForDisplay(phoneNumber, true)}
                     </span>
                   </p>
-                  
+
                   <button
                     onClick={resendOTP}
                     disabled={resendTimer > 0 || loading || isLocked}
                     className={`inline-flex items-center gap-1 text-sm font-medium transition-all
-                      ${resendTimer > 0 || loading || isLocked
-                        ? 'text-gray-400 cursor-not-allowed dark:text-gray-500' 
-                        : 'text-primary-600 hover:text-primary-700 dark:text-primary-400'
+                      ${
+                        resendTimer > 0 || loading || isLocked
+                          ? 'text-gray-400 cursor-not-allowed dark:text-gray-500'
+                          : 'text-primary-600 hover:text-primary-700 dark:text-primary-400'
                       }`}
                     type="button"
                   >
                     <FiRefreshCw className={`w-4 h-4 ${resendTimer === 0 && !loading ? '' : ''}`} />
-                    {isLocked 
-                      ? 'Account locked' 
-                      : resendTimer > 0 
+                    {isLocked
+                      ? 'Account locked'
+                      : resendTimer > 0
                         ? `Resend code in ${resendTimer}s`
                         : 'Resend code'}
                   </button>
                 </div>
               </div>
-              
+
               {/* Error & Lockout Messages */}
               <AnimatePresence>
                 {error && (
@@ -795,15 +785,17 @@ const PhoneAuth = ({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     className={`p-3 rounded-lg flex items-start gap-2 ${
-                      isLocked 
-                        ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700' 
+                      isLocked
+                        ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700'
                         : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
                     }`}
                     role="alert"
                   >
-                    <FiAlertCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
-                      isLocked ? 'text-red-600' : 'text-red-500'
-                    }`} />
+                    <FiAlertCircle
+                      className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                        isLocked ? 'text-red-600' : 'text-red-500'
+                      }`}
+                    />
                     <div>
                       <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                       {isLocked && (
@@ -815,14 +807,14 @@ const PhoneAuth = ({
                   </motion.div>
                 )}
               </AnimatePresence>
-              
+
               {/* Attempts Counter */}
               {otpAttempts > 0 && !isLocked && (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center">
                   {MAX_OTP_ATTEMPTS - otpAttempts} attempt(s) remaining
                 </p>
               )}
-              
+
               <Button
                 onClick={verifyOTP}
                 loading={loading}

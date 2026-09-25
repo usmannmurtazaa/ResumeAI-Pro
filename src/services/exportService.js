@@ -36,8 +36,9 @@ const exportAsPDF = async (element, filename = 'resume.pdf') => {
     const html2canvas = html2canvasModule.default;
     const jsPDF = jsPDFModule.default;
 
+    // Higher scale for better quality (3x for print)
     const canvas = await html2canvas(element, {
-      scale: 2,
+      scale: 3,
       backgroundColor: '#ffffff',
       logging: false,
       useCORS: true,
@@ -67,20 +68,29 @@ const exportAsPDF = async (element, filename = 'resume.pdf') => {
 
       const pageCanvas = document.createElement('canvas');
       pageCanvas.width = imgWidth;
-      pageCanvas.height = Math.min(imgHeight - (position / ratio), pdfHeight / ratio);
+      pageCanvas.height = Math.min(imgHeight - position / ratio, pdfHeight / ratio);
 
       const ctx = pageCanvas.getContext('2d');
       ctx.drawImage(
         canvas,
-        0, position / ratio, imgWidth, pageCanvas.height,
-        0, 0, imgWidth, pageCanvas.height
+        0,
+        position / ratio,
+        imgWidth,
+        pageCanvas.height,
+        0,
+        0,
+        imgWidth,
+        pageCanvas.height
       );
 
       const pageImgData = pageCanvas.toDataURL('image/png');
       pdf.addImage(
-        pageImgData, 'PNG',
-        (pdfWidth - scaledWidth) / 2, 0,
-        scaledWidth, Math.min(scaledHeight, pdfHeight)
+        pageImgData,
+        'PNG',
+        (pdfWidth - scaledWidth) / 2,
+        0,
+        scaledWidth,
+        Math.min(scaledHeight, pdfHeight)
       );
 
       remainingHeight -= pdfHeight;
@@ -140,9 +150,11 @@ const exportAsTXT = (data, filename = 'resume.txt') => {
     if (Array.isArray(data?.experience) && data.experience.length > 0) {
       lines.push('EXPERIENCE');
       lines.push('='.repeat(20));
-      data.experience.forEach(exp => {
+      data.experience.forEach((exp) => {
         lines.push(`${exp.title} | ${exp.company}`);
-        lines.push(`${exp.startDate || ''} - ${exp.endDate || 'Present'}${exp.location ? ` | ${exp.location}` : ''}`);
+        lines.push(
+          `${exp.startDate || ''} - ${exp.endDate || 'Present'}${exp.location ? ` | ${exp.location}` : ''}`
+        );
         if (exp.description) {
           lines.push(exp.description.replace(/•/g, '\n•'));
         }
@@ -154,7 +166,7 @@ const exportAsTXT = (data, filename = 'resume.txt') => {
     if (Array.isArray(data?.education) && data.education.length > 0) {
       lines.push('EDUCATION');
       lines.push('='.repeat(20));
-      data.education.forEach(edu => {
+      data.education.forEach((edu) => {
         lines.push(`${edu.degree}${edu.field ? ` in ${edu.field}` : ''}`);
         lines.push(`${edu.institution}${edu.gpa ? ` | GPA: ${edu.gpa}` : ''}`);
         if (edu.startDate) lines.push(`${edu.startDate} - ${edu.endDate || 'Present'}`);
@@ -179,7 +191,7 @@ const exportAsTXT = (data, filename = 'resume.txt') => {
     if (Array.isArray(data?.certifications) && data.certifications.length > 0) {
       lines.push('CERTIFICATIONS');
       lines.push('='.repeat(20));
-      data.certifications.forEach(cert => {
+      data.certifications.forEach((cert) => {
         lines.push(`${cert.name} - ${cert.issuer}${cert.date ? ` (${cert.date})` : ''}`);
       });
       lines.push('');
@@ -189,7 +201,7 @@ const exportAsTXT = (data, filename = 'resume.txt') => {
     if (Array.isArray(data?.projects) && data.projects.length > 0) {
       lines.push('PROJECTS');
       lines.push('='.repeat(20));
-      data.projects.forEach(proj => {
+      data.projects.forEach((proj) => {
         lines.push(proj.name);
         if (proj.description) lines.push(proj.description);
         if (proj.link) lines.push(`Link: ${proj.link}`);
@@ -244,11 +256,16 @@ const exportAsDOCX = (data, filename = 'resume.docx') => {
     // Experience
     if (Array.isArray(data?.experience) && data.experience.length > 0) {
       lines.push('<h2>Experience</h2>');
-      data.experience.forEach(exp => {
+      data.experience.forEach((exp) => {
         lines.push(`<h3>${exp.title} — ${exp.company}</h3>`);
-        lines.push(`<p class="dates">${exp.startDate || ''} - ${exp.endDate || 'Present'}${exp.location ? ` | ${exp.location}` : ''}</p>`);
+        lines.push(
+          `<p class="dates">${exp.startDate || ''} - ${exp.endDate || 'Present'}${exp.location ? ` | ${exp.location}` : ''}</p>`
+        );
         if (exp.description) {
-          const bullets = exp.description.split('\n').filter(Boolean).map(b => `<li>${b.replace(/^[•\-]\s*/, '')}</li>`);
+          const bullets = exp.description
+            .split('\n')
+            .filter(Boolean)
+            .map((b) => `<li>${b.replace(/^[•\-]\s*/, '')}</li>`);
           lines.push(`<ul>${bullets.join('')}</ul>`);
         }
       });
@@ -257,10 +274,11 @@ const exportAsDOCX = (data, filename = 'resume.docx') => {
     // Education
     if (Array.isArray(data?.education) && data.education.length > 0) {
       lines.push('<h2>Education</h2>');
-      data.education.forEach(edu => {
+      data.education.forEach((edu) => {
         lines.push(`<h3>${edu.degree}${edu.field ? ` in ${edu.field}` : ''}</h3>`);
         lines.push(`<p>${edu.institution}${edu.gpa ? ` — GPA: ${edu.gpa}` : ''}</p>`);
-        if (edu.startDate) lines.push(`<p class="dates">${edu.startDate} - ${edu.endDate || 'Present'}</p>`);
+        if (edu.startDate)
+          lines.push(`<p class="dates">${edu.startDate} - ${edu.endDate || 'Present'}</p>`);
       });
     }
 

@@ -25,7 +25,8 @@ const NotFound = () => {
   // Set page title
   usePageTitle({
     title: '404 - Page Not Found',
-    description: 'The page you\'re looking for doesn\'t exist or has been moved. Navigate back to ResumeAI Pro.',
+    description:
+      "The page you're looking for doesn't exist or has been moved. Navigate back to Resume Ai Pro.",
   });
 
   // FIXED: Safe back navigation
@@ -60,8 +61,8 @@ const NotFound = () => {
           </h1>
 
           <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-            Oops! The page you're looking for doesn't exist or has been moved. 
-            Let's get you back on track.
+            Oops! The page you're looking for doesn't exist or has been moved. Let's get you back on
+            track.
           </p>
 
           {/* Action Buttons */}
@@ -70,9 +71,7 @@ const NotFound = () => {
               Go Back
             </Button>
             <Link to="/">
-              <Button icon={<FiHome />}>
-                Home Page
-              </Button>
+              <Button icon={<FiHome />}>Home Page</Button>
             </Link>
           </div>
 
@@ -106,8 +105,8 @@ const NotFound = () => {
             Still lost?{' '}
             <Link to="/help" className="text-primary-500 hover:text-primary-600 font-medium">
               Visit our Help Center
-            </Link>
-            {' '}or{' '}
+            </Link>{' '}
+            or{' '}
             <Link to="/contact" className="text-primary-500 hover:text-primary-600 font-medium">
               Contact Support
             </Link>

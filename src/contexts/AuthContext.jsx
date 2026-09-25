@@ -5,11 +5,10 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from 'react';
 import {
   applyActionCode,
-  browserLocalPersistence,
-  browserSessionPersistence,
   checkActionCode,
   confirmPasswordReset as firebaseConfirmPasswordReset,
   createUserWithEmailAndPassword,
@@ -55,16 +54,18 @@ import {
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { auth, db, logAnalyticsEvent } from '../services/firebase';
+import { authService } from '../services/authService';
+import { SESSION_TIMEOUT_MS, SESSION_WARNING_MS, SESSION_ACTIVITY_EVENTS } from '../data/constants';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const COLLECTIONS = {
+const COLLECTIONS = Object.freeze({
   users: 'users',
   resumes: 'resumes',
   notifications: 'notifications',
   subscriptions: 'subscriptions',
   settings: 'settings',
-};
+});
 
 const RESTRICTED_PROFILE_FIELDS = new Set([
   'role',
@@ -92,7 +93,8 @@ const ERROR_MESSAGES = {
   'auth/network-request-failed': 'Network error. Check your connection and try again.',
   'auth/popup-closed-by-user': 'Sign-in popup was closed before completion.',
   'auth/popup-blocked': 'Popups are blocked. Please allow popups and try again.',
-  'auth/account-exists-with-different-credential': 'An account already exists with a different sign-in method.',
+  'auth/account-exists-with-different-credential':
+    'An account already exists with a different sign-in method.',
   'auth/requires-recent-login': 'Please sign in again to continue.',
   'auth/user-disabled': 'This account has been disabled.',
   'auth/operation-not-allowed': 'This operation is not allowed.',
@@ -114,7 +116,8 @@ const ERROR_MESSAGES = {
 
 // ── Utility Functions ─────────────────────────────────────────────────────
 
-const getErrorMessage = (code) => ERROR_MESSAGES[code] || 'An unexpected error occurred. Please try again.';
+const getErrorMessage = (code) =>
+  ERROR_MESSAGES[code] || 'An unexpected error occurred. Please try again.';
 
 const safeTrackEvent = (eventName, payload = {}) => {
   try {
@@ -194,9 +197,7 @@ const deleteDocumentRefsInBatches = async (refs) => {
   const uniqueRefs = Array.from(
     new Map(refs.filter(Boolean).map((ref) => [ref.path, ref])).values()
   );
-
   const chunkSize = 400;
-
   for (let index = 0; index < uniqueRefs.length; index += chunkSize) {
     const batch = writeBatch(db);
     uniqueRefs.slice(index, index + chunkSize).forEach((ref) => batch.delete(ref));
@@ -210,11 +211,9 @@ export const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-
   return context;
 };
 
@@ -232,6 +231,19 @@ export const AuthProvider = ({ children }) => {
   const [linkedProviders, setLinkedProviders] = useState([]);
   const [mfaEnabled, setMfaEnabled] = useState(false);
 
+  // ── Session Timeout State ──────────────────────────────────────────────
+
+  const [sessionTimeout, setSessionTimeout] = useState({
+    remaining: SESSION_TIMEOUT_MS,
+    isExpired: false,
+    showWarning: false,
+  });
+
+  const sessionTimerRef = useRef(null);
+  const warningTimerRef = useRef(null);
+  const activityTimeoutRef = useRef(null);
+  const lastActivityRef = useRef(Date.now());
+
   // ── State Helpers ─────────────────────────────────────────────────────
 
   const clearAuthState = useCallback(() => {
@@ -243,6 +255,11 @@ export const AuthProvider = ({ children }) => {
     setLinkedProviders([]);
     setMfaEnabled(false);
     setAuthError(null);
+    setSessionTimeout({
+      remaining: SESSION_TIMEOUT_MS,
+      isExpired: false,
+      showWarning: false,
+    });
   }, []);
 
   const syncFirebaseUserState = useCallback((firebaseUser) => {
@@ -253,7 +270,6 @@ export const AuthProvider = ({ children }) => {
       setMfaEnabled(false);
       return;
     }
-
     setUser(firebaseUser);
     setIsEmailVerified(Boolean(firebaseUser.emailVerified));
     setLinkedProviders(getLinkedProviderIds(firebaseUser));
@@ -262,35 +278,29 @@ export const AuthProvider = ({ children }) => {
 
   const requireAuthenticatedUser = useCallback(() => {
     const currentUser = auth.currentUser;
-
     if (!currentUser) {
       const error = new Error('No authenticated user.');
       error.code = 'auth/no-current-user';
       throw error;
     }
-
     return currentUser;
   }, []);
 
   const reauthenticateWithPassword = useCallback(
     async (password) => {
       const currentUser = requireAuthenticatedUser();
-
       if (!currentUser.email || !hasPasswordProvider(currentUser)) {
         const error = new Error('Password reauthentication is not available for this account.');
         error.code = 'auth/no-password-provider';
         throw error;
       }
-
       if (!password) {
         const error = new Error('Password is required.');
         error.code = 'auth/missing-password';
         throw error;
       }
-
       const credential = EmailAuthProvider.credential(currentUser.email, password);
       await reauthenticateWithCredential(currentUser, credential);
-
       return currentUser;
     },
     [requireAuthenticatedUser]
@@ -298,21 +308,17 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUserData = useCallback(async () => {
     const currentUser = auth.currentUser;
-
     if (!currentUser) {
       clearAuthState();
       return null;
     }
-
     try {
       await reload(currentUser);
       syncFirebaseUserState(auth.currentUser || currentUser);
-
       const [userSnapshot, subscriptionSnapshot] = await Promise.all([
         getDoc(doc(db, COLLECTIONS.users, currentUser.uid)),
         getDoc(doc(db, COLLECTIONS.subscriptions, currentUser.uid)),
       ]);
-
       if (userSnapshot.exists()) {
         const nextUserData = userSnapshot.data();
         setUserData(nextUserData);
@@ -321,9 +327,7 @@ export const AuthProvider = ({ children }) => {
         setUserData(null);
         setUserRole(null);
       }
-
       setSubscription(subscriptionSnapshot.exists() ? subscriptionSnapshot.data() : null);
-
       return userSnapshot.exists() ? userSnapshot.data() : null;
     } catch (error) {
       console.error('Error refreshing user data:', error);
@@ -335,7 +339,6 @@ export const AuthProvider = ({ children }) => {
   const hydrateUserDocument = useCallback(async (firebaseUser) => {
     const userDocRef = doc(db, COLLECTIONS.users, firebaseUser.uid);
     const existingUserSnapshot = await getDoc(userDocRef);
-
     if (existingUserSnapshot.exists()) {
       const existingData = existingUserSnapshot.data();
       const mergedData = {
@@ -345,7 +348,6 @@ export const AuthProvider = ({ children }) => {
         photoURL: existingData.photoURL ?? firebaseUser.photoURL ?? null,
         emailVerified: firebaseUser.emailVerified,
       };
-
       try {
         await updateDoc(userDocRef, {
           email: mergedData.email,
@@ -361,11 +363,8 @@ export const AuthProvider = ({ children }) => {
           console.warn('Unable to update user session metadata', error);
         }
       }
-
       return { created: false, data: mergedData };
     }
-
-    // Create new user document
     const newUserData = {
       email: firebaseUser.email ?? null,
       displayName: getDisplayName(firebaseUser),
@@ -382,11 +381,8 @@ export const AuthProvider = ({ children }) => {
         signUpDate: new Date().toISOString(),
       },
     };
-
     await setDoc(userDocRef, newUserData, { merge: true });
-
     const createdSnapshot = await getDoc(userDocRef);
-
     return {
       created: true,
       data: createdSnapshot.exists()
@@ -400,52 +396,119 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  // ── Session Timeout Logic ──────────────────────────────────────────────
+
+  const resetSessionTimer = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    if (sessionTimerRef.current) {
+      clearTimeout(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+    }
+    if (warningTimerRef.current) {
+      clearTimeout(warningTimerRef.current);
+      warningTimerRef.current = null;
+    }
+    if (!auth.currentUser) {
+      setSessionTimeout({
+        remaining: SESSION_TIMEOUT_MS,
+        isExpired: false,
+        showWarning: false,
+      });
+      return;
+    }
+    setSessionTimeout({
+      remaining: SESSION_TIMEOUT_MS,
+      isExpired: false,
+      showWarning: false,
+    });
+    warningTimerRef.current = setTimeout(() => {
+      setSessionTimeout((prev) => ({
+        ...prev,
+        showWarning: true,
+        remaining: SESSION_WARNING_MS,
+      }));
+      sessionTimerRef.current = setTimeout(() => {
+        setSessionTimeout((prev) => ({
+          ...prev,
+          isExpired: true,
+          showWarning: false,
+          remaining: 0,
+        }));
+        signOut(auth)
+          .then(() => {
+            clearAuthState();
+            toast.error('Your session has expired due to inactivity. Please sign in again.');
+            safeTrackEvent('session_timeout', { userId: auth.currentUser?.uid });
+          })
+          .catch(() => {});
+      }, SESSION_WARNING_MS);
+    }, SESSION_TIMEOUT_MS - SESSION_WARNING_MS);
+  }, [clearAuthState]);
+
+  const extendSession = useCallback(() => {
+    if (sessionTimerRef.current) {
+      clearTimeout(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+    }
+    if (warningTimerRef.current) {
+      clearTimeout(warningTimerRef.current);
+      warningTimerRef.current = null;
+    }
+    setSessionTimeout({
+      remaining: SESSION_TIMEOUT_MS,
+      isExpired: false,
+      showWarning: false,
+    });
+    resetSessionTimer();
+    toast.success('Session extended.');
+    safeTrackEvent('session_extended', { userId: auth.currentUser?.uid });
+  }, [resetSessionTimer]);
+
+  const handleUserActivity = useCallback(() => {
+    if (!auth.currentUser) return;
+    if (activityTimeoutRef.current) {
+      clearTimeout(activityTimeoutRef.current);
+    }
+    activityTimeoutRef.current = setTimeout(() => {
+      resetSessionTimer();
+    }, 1000);
+  }, [resetSessionTimer]);
+
   // ── Auth State Listener ──────────────────────────────────────────────
 
   useEffect(() => {
     let isActive = true;
     let hydrationGeneration = 0;
-
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!isActive) return;
-
       const generation = ++hydrationGeneration;
-
       setInitializing(true);
       setLoading(true);
-
       try {
         if (!firebaseUser) {
           clearAuthState();
           return;
         }
-
         syncFirebaseUserState(firebaseUser);
-
         const { created, data } = await hydrateUserDocument(firebaseUser);
-
         if (!isActive || generation !== hydrationGeneration) return;
-
         setUserData(data);
         setUserRole(data?.role || 'user');
-
-        // FIX: Removed one-time getDoc for subscriptions here.
-        // The real-time onSnapshot listener (useEffect below) fires immediately after
-        // `user` state is set, providing the same data without the extra read.
-        // This eliminates a duplicate Firestore read on every login.
-
         safeTrackEvent('user_session_started', {
           userId: firebaseUser.uid,
           method: getPrimaryProviderId(firebaseUser),
         });
-
         if (created && getPrimaryProviderId(firebaseUser) !== 'password') {
           safeTrackEvent('sign_up_completed', {
             userId: firebaseUser.uid,
             method: getPrimaryProviderId(firebaseUser),
           });
-          toast.success('Welcome to ResumeAI Pro!');
+          toast.success('Welcome to Resume Ai Pro!');
         }
+        resetSessionTimer();
+        SESSION_ACTIVITY_EVENTS.forEach((event) => {
+          document.addEventListener(event, handleUserActivity, { passive: true });
+        });
       } catch (error) {
         console.error('Error syncing auth state:', error);
         if (isActive && generation === hydrationGeneration) {
@@ -458,31 +521,36 @@ export const AuthProvider = ({ children }) => {
         }
       }
     });
-
     return () => {
       isActive = false;
       unsubscribe();
+      if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+      if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
+      SESSION_ACTIVITY_EVENTS.forEach((event) => {
+        document.removeEventListener(event, handleUserActivity);
+      });
     };
-  }, [clearAuthState, hydrateUserDocument, syncFirebaseUserState]);
+  }, [
+    clearAuthState,
+    hydrateUserDocument,
+    syncFirebaseUserState,
+    resetSessionTimer,
+    handleUserActivity,
+  ]);
 
   // ── Token Refresh Listener ──────────────────────────────────────────
 
   useEffect(() => {
     let isActive = true;
-
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       if (!isActive || !firebaseUser) return;
-
       try {
         await getIdTokenResult(firebaseUser, false);
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('Token refreshed for user:', firebaseUser.uid);
-        }
       } catch (error) {
         console.warn('Token refresh failed:', error);
       }
     });
-
     return () => {
       isActive = false;
       unsubscribe();
@@ -496,7 +564,6 @@ export const AuthProvider = ({ children }) => {
       setSubscription(null);
       return undefined;
     }
-
     const unsubscribe = onSnapshot(
       doc(db, COLLECTIONS.subscriptions, user.uid),
       (snapshot) => {
@@ -506,107 +573,20 @@ export const AuthProvider = ({ children }) => {
         console.error('Subscription listener error:', error);
       }
     );
-
     return unsubscribe;
   }, [user]);
 
-  // ── Auth Methods ──────────────────────────────────────────────────────
+  // ── Auth Methods (Delegated to authService) ─────────────────────────
 
   const signup = useCallback(async (email, password, displayName, options = {}) => {
     try {
       setAuthError(null);
-
-      const normalizedEmail = email.trim().toLowerCase();
-      const normalizedDisplayName = displayName?.trim() || normalizedEmail.split('@')[0];
-      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
-
-      await updateProfile(userCredential.user, { displayName: normalizedDisplayName });
-
-      if (options.sendVerification !== false) {
-        await sendEmailVerification(userCredential.user, {
-          url: `${window.location.origin}/verify-email`,
-          handleCodeInApp: true,
-        });
+      const result = await authService.signUp(email, password, displayName, options);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
+        throw error;
       }
-
-      await setDoc(
-        doc(db, COLLECTIONS.users, userCredential.user.uid),
-        {
-          email: normalizedEmail,
-          displayName: normalizedDisplayName,
-          photoURL: userCredential.user.photoURL ?? null,
-          role: 'user',
-          status: 'active',
-          emailVerified: false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-          authProvider: 'password',
-          metadata: {
-            signUpMethod: 'email',
-            referrer: options.referrer || null,
-            utmSource: options.utmSource || null,
-            signUpDate: new Date().toISOString(),
-          },
-        },
-        { merge: true }
-      );
-
-      safeTrackEvent('sign_up', { method: 'email', userId: userCredential.user.uid });
-      toast.success('Account created successfully. Please verify your email.');
-      return userCredential.user;
-    } catch (error) {
-      setAuthError(error);
-      toast.error(getErrorMessage(error.code));
-      throw error;
-    }
-  }, []);
-
-  const login = useCallback(async (email, password, rememberMe = true) => {
-    try {
-      setAuthError(null);
-
-      // FIX: Only call setPersistence() when the user explicitly opts out of
-      // "remember me". Firebase SDK defaults to browserLocalPersistence so we
-      // only need to switch to sessionPersistence for the "don't remember" case.
-      // This avoids the redundant round-trip on the happy path.
-      if (!rememberMe) {
-        await setPersistence(auth, browserSessionPersistence);
-      }
-
-      const normalizedEmail = email.trim().toLowerCase();
-      const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
-
-      toast.success(
-        `Welcome back, ${userCredential.user.displayName?.split(' ')[0] || 'User'}!`
-      );
-
-      return userCredential.user;
-    } catch (error) {
-      setAuthError(error);
-      toast.error(getErrorMessage(error.code));
-      throw error;
-    }
-  }, []);
-
-  const loginWithProvider = useCallback(async (providerName) => {
-    try {
-      setAuthError(null);
-
-      // FIX: Removed setPersistence() call here. Firebase SDK v9+ defaults to
-      // browserLocalPersistence. Calling setPersistence() immediately before
-      // signInWithPopup() added async latency that caused browsers to classify
-      // the popup as non-user-initiated and block it intermittently.
-      const provider = createProvider(providerName);
-      const result = await signInWithPopup(auth, provider);
-      const additionalUserInfo = getAdditionalUserInfo(result);
-
-      toast.success(
-        additionalUserInfo?.isNewUser
-          ? 'Account created successfully. Welcome aboard.'
-          : `Signed in with ${providerName}.`
-      );
-
       return result.user;
     } catch (error) {
       setAuthError(error);
@@ -614,25 +594,65 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   }, []);
+
+  const login = useCallback(
+    async (email, password, rememberMe = true) => {
+      try {
+        setAuthError(null);
+        const result = await authService.signIn(email, password, rememberMe);
+        if (!result.success) {
+          const error = new Error(result.error);
+          error.code = result.code || 'auth/unknown';
+          throw error;
+        }
+        resetSessionTimer();
+        toast.success(`Welcome back, ${result.user.displayName?.split(' ')[0] || 'User'}!`);
+        return result.user;
+      } catch (error) {
+        setAuthError(error);
+        toast.error(getErrorMessage(error.code));
+        throw error;
+      }
+    },
+    [resetSessionTimer]
+  );
+
+  const loginWithProvider = useCallback(
+    async (providerName) => {
+      try {
+        setAuthError(null);
+        const result = await authService.signInWithProvider(providerName);
+        if (!result.success) {
+          const error = new Error(result.error);
+          error.code = result.code || 'auth/unknown';
+          throw error;
+        }
+        resetSessionTimer();
+        toast.success(
+          result.isNewUser
+            ? 'Account created successfully. Welcome aboard.'
+            : `Signed in with ${providerName}.`
+        );
+        return result.user;
+      } catch (error) {
+        setAuthError(error);
+        toast.error(getErrorMessage(error.code));
+        throw error;
+      }
+    },
+    [resetSessionTimer]
+  );
 
   const loginWithPhone = useCallback(async (phoneNumber, recaptchaVerifier) => {
     try {
       setAuthError(null);
-
-      if (!recaptchaVerifier) {
-        const error = new Error('Recaptcha verifier is required.');
-        error.code = 'auth/missing-recaptcha';
+      const result = await authService.signInWithPhone(phoneNumber, recaptchaVerifier);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
         throw error;
       }
-
-      const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        phoneNumber.trim(),
-        recaptchaVerifier
-      );
-
-      toast.success('Verification code sent.');
-      return confirmationResult;
+      return result.confirmationResult;
     } catch (error) {
       setAuthError(error);
       toast.error(getErrorMessage(error.code));
@@ -640,69 +660,55 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const confirmPhoneSignIn = useCallback(async (confirmationResult, code) => {
-    try {
-      setAuthError(null);
-
-      const result = await confirmationResult.confirm(code);
-      toast.success('Phone verified successfully.');
-      return result.user;
-    } catch (error) {
-      setAuthError(error);
-      toast.error(getErrorMessage(error.code));
-      throw error;
-    }
-  }, []);
+  const confirmPhoneSignIn = useCallback(
+    async (confirmationResult, code) => {
+      try {
+        setAuthError(null);
+        const result = await authService.confirmPhoneSignIn(confirmationResult, code);
+        if (!result.success) {
+          const error = new Error(result.error);
+          error.code = result.code || 'auth/unknown';
+          throw error;
+        }
+        resetSessionTimer();
+        toast.success('Phone verified successfully.');
+        return result.user;
+      } catch (error) {
+        setAuthError(error);
+        toast.error(getErrorMessage(error.code));
+        throw error;
+      }
+    },
+    [resetSessionTimer]
+  );
 
   const logout = useCallback(async () => {
     try {
       setAuthError(null);
-
-      const currentUser = auth.currentUser;
-
-      if (currentUser) {
-        try {
-          // FIX: Use Promise.race with a 2s timeout so a hanging Firestore write
-          // (offline, permission error, network issue) never blocks signOut.
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Logout metadata update timed out')), 2000)
-          );
-          await Promise.race([
-            updateDoc(doc(db, COLLECTIONS.users, currentUser.uid), {
-              lastLogout: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            }),
-            timeoutPromise,
-          ]);
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Failed to update logout timestamp (non-critical):', error.message);
-          }
-          // Non-critical: always proceed to signOut regardless
-        }
-
-        safeTrackEvent('logout', { userId: currentUser.uid });
+      const result = await authService.signOut();
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
+        throw error;
       }
-
-      await signOut(auth);
+      clearAuthState();
       toast.success('Logged out successfully.');
     } catch (error) {
       setAuthError(error);
       toast.error('Failed to log out.');
       throw error;
     }
-  }, []);
+  }, [clearAuthState]);
 
   const resetPassword = useCallback(async (email) => {
     try {
       setAuthError(null);
-
-      await sendPasswordResetEmail(auth, email.trim().toLowerCase(), {
-        url: `${window.location.origin}/login`,
-        handleCodeInApp: false,
-      });
-
-      toast.success('Password reset email sent. Check your inbox.');
+      const result = await authService.resetPassword(email);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
+        throw error;
+      }
     } catch (error) {
       setAuthError(error);
       toast.error(getErrorMessage(error.code));
@@ -713,9 +719,12 @@ export const AuthProvider = ({ children }) => {
   const confirmPasswordResetAction = useCallback(async (oobCode, newPassword) => {
     try {
       setAuthError(null);
-
-      await firebaseConfirmPasswordReset(auth, oobCode, newPassword);
-      toast.success('Password reset successfully. You can now sign in.');
+      const result = await authService.confirmPasswordReset(oobCode, newPassword);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
+        throw error;
+      }
       return true;
     } catch (error) {
       setAuthError(error);
@@ -727,67 +736,32 @@ export const AuthProvider = ({ children }) => {
   const sendVerificationEmail = useCallback(async () => {
     try {
       setAuthError(null);
-
-      const currentUser = requireAuthenticatedUser();
-
-      await sendEmailVerification(currentUser, {
-        url: `${window.location.origin}/verify-email`,
-        handleCodeInApp: true,
-      });
-
-      toast.success('Verification email sent. Check your inbox.');
+      const result = await authService.sendVerificationEmail();
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
+        throw error;
+      }
       return true;
     } catch (error) {
       setAuthError(error);
       toast.error(getErrorMessage(error.code));
       throw error;
     }
-  }, [requireAuthenticatedUser]);
+  }, []);
 
   const verifyEmail = useCallback(
     async (oobCode) => {
       try {
         setAuthError(null);
-
-        const actionInfo = await checkActionCode(auth, oobCode);
-        await applyActionCode(auth, oobCode);
-
-        const verifiedEmail = actionInfo?.data?.email || actionInfo?.data?.previousEmail || null;
-        const currentUser = auth.currentUser;
-
-        if (currentUser) {
-          await reload(currentUser);
-          syncFirebaseUserState(auth.currentUser || currentUser);
+        const result = await authService.verifyEmail(oobCode);
+        if (!result.success) {
+          const error = new Error(result.error);
+          error.code = result.code || 'auth/unknown';
+          throw error;
         }
-
-        if (verifiedEmail) {
-          const userQuery = query(
-            collection(db, COLLECTIONS.users),
-            where('email', '==', verifiedEmail)
-          );
-          const matchingUsers = await getDocs(userQuery);
-
-          if (!matchingUsers.empty) {
-            const batch = writeBatch(db);
-            matchingUsers.docs.forEach((userDoc) => {
-              batch.update(userDoc.ref, {
-                emailVerified: true,
-                updatedAt: serverTimestamp(),
-              });
-            });
-            await batch.commit();
-          }
-        } else if (currentUser) {
-          await updateDoc(doc(db, COLLECTIONS.users, currentUser.uid), {
-            emailVerified: true,
-            updatedAt: serverTimestamp(),
-          });
-        }
-
         setIsEmailVerified(true);
         await refreshUserData();
-
-        toast.success('Email verified successfully.');
         return true;
       } catch (error) {
         console.error('Verify email error:', error);
@@ -796,53 +770,22 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
     },
-    [refreshUserData, syncFirebaseUserState]
+    [refreshUserData]
   );
 
   const updateUserProfile = useCallback(
     async (profileData = {}) => {
       try {
         setAuthError(null);
-
         const currentUser = requireAuthenticatedUser();
-        const sanitizedUpdates = sanitizeProfileUpdates(profileData);
-        const authProfileUpdates = {};
-
-        if (
-          Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'displayName') &&
-          sanitizedUpdates.displayName !== currentUser.displayName
-        ) {
-          authProfileUpdates.displayName = sanitizedUpdates.displayName;
+        const result = await authService.updateUserProfile(currentUser.uid, profileData);
+        if (!result.success) {
+          const error = new Error(result.error);
+          error.code = result.code || 'auth/unknown';
+          throw error;
         }
-
-        if (
-          Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'photoURL') &&
-          sanitizedUpdates.photoURL !== currentUser.photoURL
-        ) {
-          authProfileUpdates.photoURL = sanitizedUpdates.photoURL;
-        }
-
-        const firestoreUpdates = filterUndefined({
-          ...sanitizedUpdates,
-          ...authProfileUpdates,
-        });
-
-        if (Object.keys(authProfileUpdates).length > 0) {
-          await updateProfile(currentUser, authProfileUpdates);
-        }
-
-        if (Object.keys(firestoreUpdates).length === 0) {
-          return false;
-        }
-
-        await updateDoc(doc(db, COLLECTIONS.users, currentUser.uid), {
-          ...firestoreUpdates,
-          updatedAt: serverTimestamp(),
-        });
-
-        setUserData((prev) => (prev ? { ...prev, ...firestoreUpdates } : prev));
+        setUserData((prev) => (prev ? { ...prev, ...profileData } : prev));
         syncFirebaseUserState(auth.currentUser || currentUser);
-
         toast.success('Profile updated successfully.');
         return true;
       } catch (error) {
@@ -854,106 +797,72 @@ export const AuthProvider = ({ children }) => {
     [requireAuthenticatedUser, syncFirebaseUserState]
   );
 
-  const updateUserEmail = useCallback(
-    async (newEmail, password) => {
-      try {
-        setAuthError(null);
-
-        const currentUser = await reauthenticateWithPassword(password);
-        const normalizedEmail = newEmail.trim().toLowerCase();
-
-        await updateEmail(currentUser, normalizedEmail);
-        await sendEmailVerification(currentUser, {
-          url: `${window.location.origin}/verify-email`,
-          handleCodeInApp: true,
-        });
-
-        await updateDoc(doc(db, COLLECTIONS.users, currentUser.uid), {
-          email: normalizedEmail,
-          emailVerified: false,
-          updatedAt: serverTimestamp(),
-        });
-
-        setIsEmailVerified(false);
-        setUserData((prev) =>
-          prev
-            ? { ...prev, email: normalizedEmail, emailVerified: false }
-            : prev
-        );
-
-        toast.success('Email updated. Please verify your new email.');
-        return true;
-      } catch (error) {
-        setAuthError(error);
-        toast.error(getErrorMessage(error.code));
+  const updateUserEmail = useCallback(async (newEmail, password) => {
+    try {
+      setAuthError(null);
+      const result = await authService.updateUserEmail(newEmail, password);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
         throw error;
       }
-    },
-    [reauthenticateWithPassword]
-  );
+      setIsEmailVerified(false);
+      setUserData((prev) => (prev ? { ...prev, email: newEmail, emailVerified: false } : prev));
+      toast.success('Email updated. Please verify your new email.');
+      return true;
+    } catch (error) {
+      setAuthError(error);
+      toast.error(getErrorMessage(error.code));
+      throw error;
+    }
+  }, []);
 
-  const updateUserPassword = useCallback(
-    async (currentPassword, newPassword) => {
-      try {
-        setAuthError(null);
-
-        const currentUser = await reauthenticateWithPassword(currentPassword);
-        await updatePassword(currentUser, newPassword);
-
-        toast.success('Password updated successfully.');
-        return true;
-      } catch (error) {
-        setAuthError(error);
-        toast.error(getErrorMessage(error.code));
+  const updateUserPassword = useCallback(async (currentPassword, newPassword) => {
+    try {
+      setAuthError(null);
+      const result = await authService.updateUserPassword(currentPassword, newPassword);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
         throw error;
       }
-    },
-    [reauthenticateWithPassword]
-  );
+      toast.success('Password updated successfully.');
+      return true;
+    } catch (error) {
+      setAuthError(error);
+      toast.error(getErrorMessage(error.code));
+      throw error;
+    }
+  }, []);
 
-  const reauthenticate = useCallback(
-    async (password) => {
-      try {
-        setAuthError(null);
-        await reauthenticateWithPassword(password);
-        return true;
-      } catch (error) {
-        setAuthError(error);
-        toast.error(getErrorMessage(error.code));
+  const reauthenticate = useCallback(async (password) => {
+    try {
+      setAuthError(null);
+      const result = await authService.reauthenticate(password);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
         throw error;
       }
-    },
-    [reauthenticateWithPassword]
-  );
+      return true;
+    } catch (error) {
+      setAuthError(error);
+      toast.error(getErrorMessage(error.code));
+      throw error;
+    }
+  }, []);
 
   const deleteAccount = useCallback(
     async (password) => {
       try {
         setAuthError(null);
-
-        const currentUser = requireAuthenticatedUser();
-
-        if (hasPasswordProvider(currentUser) && password) {
-          await reauthenticateWithPassword(password);
+        const result = await authService.deleteUserAccount(password);
+        if (!result.success) {
+          const error = new Error(result.error);
+          error.code = result.code || 'auth/unknown';
+          throw error;
         }
-
-        const [resumesSnapshot, notificationsSnapshot] = await Promise.all([
-          getDocs(query(collection(db, COLLECTIONS.resumes), where('userId', '==', currentUser.uid))),
-          getDocs(query(collection(db, COLLECTIONS.notifications), where('userId', '==', currentUser.uid))),
-        ]);
-
-        const refsToDelete = [
-          ...resumesSnapshot.docs.map((snapshot) => snapshot.ref),
-          ...notificationsSnapshot.docs.map((snapshot) => snapshot.ref),
-          doc(db, COLLECTIONS.users, currentUser.uid),
-          doc(db, COLLECTIONS.settings, currentUser.uid),
-          doc(db, COLLECTIONS.subscriptions, currentUser.uid),
-        ];
-
-        await deleteDocumentRefsInBatches(refsToDelete);
-        safeTrackEvent('account_deleted', { userId: currentUser.uid });
-
-        await deleteUser(currentUser);
+        clearAuthState();
         toast.success('Account deleted successfully.');
         return true;
       } catch (error) {
@@ -962,82 +871,50 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
     },
-    [reauthenticateWithPassword, requireAuthenticatedUser]
+    [clearAuthState]
   );
 
-  const linkProvider = useCallback(
-    async (providerName) => {
-      try {
-        setAuthError(null);
-
-        const currentUser = requireAuthenticatedUser();
-        const provider = createProvider(providerName);
-        const result = await linkWithPopup(currentUser, provider);
-        const nextLinkedProviders = getLinkedProviderIds(result.user);
-
-        setLinkedProviders(nextLinkedProviders);
-
-        try {
-          await updateDoc(doc(db, COLLECTIONS.users, result.user.uid), {
-            authProvider: getPrimaryProviderId(result.user),
-            updatedAt: serverTimestamp(),
-          });
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Failed to sync linked provider metadata', error);
-          }
-        }
-
-        toast.success(`${providerName} account linked successfully.`);
-        return result.user;
-      } catch (error) {
-        setAuthError(error);
-        toast.error(getErrorMessage(error.code));
+  const linkProvider = useCallback(async (providerName) => {
+    try {
+      setAuthError(null);
+      const result = await authService.linkProvider(providerName);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
         throw error;
       }
-    },
-    [requireAuthenticatedUser]
-  );
+      setLinkedProviders(getLinkedProviderIds(result.user));
+      toast.success(`${providerName} account linked successfully.`);
+      return result.user;
+    } catch (error) {
+      setAuthError(error);
+      toast.error(getErrorMessage(error.code));
+      throw error;
+    }
+  }, []);
 
-  const unlinkProvider = useCallback(
-    async (providerId) => {
-      try {
-        setAuthError(null);
-
-        const currentUser = requireAuthenticatedUser();
-        const currentProviderIds = getLinkedProviderIds(currentUser);
-
-        if (!currentProviderIds.includes(providerId)) {
-          const error = new Error('Provider is not linked.');
-          error.code = 'auth/provider-not-linked';
-          throw error;
-        }
-
-        if (currentProviderIds.length <= 1) {
-          const error = new Error('Cannot unlink the last remaining provider.');
-          error.code = 'auth/cannot-unlink-last-provider';
-          throw error;
-        }
-
-        const updatedUser = await unlink(currentUser, providerId);
-        setLinkedProviders(getLinkedProviderIds(updatedUser));
-
-        toast.success('Account unlinked successfully.');
-        return updatedUser;
-      } catch (error) {
-        setAuthError(error);
-        toast.error(getErrorMessage(error.code));
+  const unlinkProvider = useCallback(async (providerId) => {
+    try {
+      setAuthError(null);
+      const result = await authService.unlinkProvider(providerId);
+      if (!result.success) {
+        const error = new Error(result.error);
+        error.code = result.code || 'auth/unknown';
         throw error;
       }
-    },
-    [requireAuthenticatedUser]
-  );
+      setLinkedProviders(getLinkedProviderIds(result.user));
+      toast.success('Account unlinked successfully.');
+      return result.user;
+    } catch (error) {
+      setAuthError(error);
+      toast.error(getErrorMessage(error.code));
+      throw error;
+    }
+  }, []);
 
   const getToken = useCallback(async (forceRefresh = false) => {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) return null;
-      return await getIdToken(currentUser, forceRefresh);
+      return await authService.getIdToken(forceRefresh);
     } catch (error) {
       console.error('Error getting token:', error);
       return null;
@@ -1046,9 +923,7 @@ export const AuthProvider = ({ children }) => {
 
   const getTokenResult = useCallback(async (forceRefresh = false) => {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) return null;
-      return await getIdTokenResult(currentUser, forceRefresh);
+      return await authService.getIdTokenResult(forceRefresh);
     } catch (error) {
       console.error('Error getting token result:', error);
       return null;
@@ -1072,7 +947,7 @@ export const AuthProvider = ({ children }) => {
     [subscription, userRole]
   );
 
-  // ── Context Value ────────────────────────────────────────────────────
+  // ── Memoized Context Value ─────────────────────────────────────────────────
 
   const value = useMemo(
     () => ({
@@ -1087,6 +962,9 @@ export const AuthProvider = ({ children }) => {
       isPremium,
       linkedProviders,
       mfaEnabled,
+      sessionTimeout,
+      extendSession,
+      resetSessionTimer,
       signup,
       login,
       loginWithProvider,
@@ -1110,62 +988,56 @@ export const AuthProvider = ({ children }) => {
       refreshUserData,
     }),
     [
-      authError,
-      confirmPasswordResetAction,
-      confirmPhoneSignIn,
-      deleteAccount,
-      getToken,
-      getTokenResult,
-      hasRole,
-      initializing,
-      isEmailVerified,
-      isPremium,
-      linkedProviders,
-      linkProvider,
-      loading,
-      login,
-      loginWithPhone,
-      loginWithProvider,
-      logout,
-      mfaEnabled,
-      reauthenticate,
-      refreshUserData,
-      resetPassword,
-      sendVerificationEmail,
-      signup,
-      subscription,
-      unlinkProvider,
-      updateUserEmail,
-      updateUserPassword,
-      updateUserProfile,
       user,
       userData,
       userRole,
+      loading,
+      initializing,
+      authError,
+      isEmailVerified,
+      subscription,
+      isPremium,
+      linkedProviders,
+      mfaEnabled,
+      sessionTimeout,
+      extendSession,
+      resetSessionTimer,
+      signup,
+      login,
+      loginWithProvider,
+      loginWithPhone,
+      confirmPhoneSignIn,
+      logout,
+      resetPassword,
+      confirmPasswordResetAction,
+      sendVerificationEmail,
       verifyEmail,
+      updateUserProfile,
+      updateUserEmail,
+      updateUserPassword,
+      reauthenticate,
+      deleteAccount,
+      linkProvider,
+      unlinkProvider,
+      getToken,
+      getTokenResult,
+      hasRole,
+      refreshUserData,
     ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// ── useRequireAuth Hook ──────────────────────────────────────────────────
-
 export const useRequireAuth = (options = {}) => {
   const { user, loading, initializing, isEmailVerified, hasRole, sendVerificationEmail } =
     useAuth();
-
-  const {
-    requireEmailVerified = false,
-    requiredRole = null,
-    redirectTo = '/login',
-  } = options;
-
+  const { requireEmailVerified = false, requiredRole = null, redirectTo = '/login' } = options;
   const isLoading = loading || initializing;
   const isAuthenticated = Boolean(user);
   const hasRequiredRole = requiredRole ? hasRole(requiredRole) : true;
   const canAccess =
     isAuthenticated && (!requireEmailVerified || isEmailVerified) && hasRequiredRole;
-
   return {
     user,
     isLoading,

@@ -16,7 +16,7 @@ const getWindowSize = () => {
 
 /**
  * Tracks window dimensions with debounced resize handling.
- * 
+ *
  * @param {Object} options - Configuration
  * @param {number} options.debounceDelay - Debounce delay in ms (default: 100)
  * @param {boolean} options.includeScrollbar - Include scrollbar in width (default: true)
@@ -38,9 +38,7 @@ export const useWindowSize = (options = {}) => {
       }
 
       timeoutRef.current = setTimeout(() => {
-        const width = includeScrollbar
-          ? window.innerWidth
-          : document.documentElement.clientWidth;
+        const width = includeScrollbar ? window.innerWidth : document.documentElement.clientWidth;
         const height = includeScrollbar
           ? window.innerHeight
           : document.documentElement.clientHeight;
@@ -69,7 +67,7 @@ export const useWindowSize = (options = {}) => {
 
 /**
  * Returns the current breakpoint name and whether it matches specific sizes.
- * 
+ *
  * @returns {Object} { breakpoint, isXs, isSm, isMd, isLg, isXl, is2xl, isMobile, isTablet, isDesktop }
  */
 export const useBreakpoint = () => {
@@ -108,19 +106,19 @@ export const useBreakpoint = () => {
 /**
  * Accepts breakpoint-specific values and returns the one for the current viewport.
  * Similar to CSS custom properties / container queries.
- * 
+ *
  * @param {Object} values - { base, sm, md, lg, xl, '2xl' }
  * @returns {*} The value for the current breakpoint
- * 
+ *
  * @example
  * const columns = useResponsive({ base: 1, sm: 2, lg: 3, xl: 4 });
  */
 export const useResponsive = (values = {}) => {
   const { breakpoint } = useBreakpoint();
-  
+
   return useMemo(() => {
     const priority = ['2xl', 'xl', 'lg', 'md', 'sm', 'base'];
-    
+
     for (const bp of priority) {
       if (bp === 'base') return values.base;
       if (bp === breakpoint || (bp === 'sm' && breakpoint === 'sm')) {
@@ -138,16 +136,16 @@ export const useResponsive = (values = {}) => {
 /**
  * Tracks device orientation (portrait/landscape).
  * Uses both screen dimensions and the Screen Orientation API.
- * 
+ *
  * @returns {Object} { orientation, isPortrait, isLandscape, angle }
  */
 export const useOrientation = () => {
   const [orientation, setOrientation] = useState(() => {
     if (typeof window === 'undefined') return { type: 'portrait', angle: 0 };
-    
+
     return {
       type: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait',
-      angle: screen?.orientation?.angle || 0,
+      angle: window.screen?.orientation?.angle || 0,
     };
   });
 
@@ -157,39 +155,42 @@ export const useOrientation = () => {
     const updateOrientation = () => {
       setOrientation({
         type: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait',
-        angle: screen?.orientation?.angle || 0,
+        angle: window.screen?.orientation?.angle || 0,
       });
     };
 
     // Screen Orientation API
-    if (screen?.orientation?.addEventListener) {
-      screen.orientation.addEventListener('change', updateOrientation);
+    if (window.screen?.orientation?.addEventListener) {
+      window.screen.orientation.addEventListener('change', updateOrientation);
     }
 
     // Fallback: listen to resize
     window.addEventListener('resize', updateOrientation, { passive: true });
 
     return () => {
-      if (screen?.orientation?.removeEventListener) {
-        screen.orientation.removeEventListener('change', updateOrientation);
+      if (window.screen?.orientation?.removeEventListener) {
+        window.screen.orientation.removeEventListener('change', updateOrientation);
       }
       window.removeEventListener('resize', updateOrientation);
     };
   }, []);
 
-  return useMemo(() => ({
-    orientation: orientation.type,
-    isPortrait: orientation.type === 'portrait',
-    isLandscape: orientation.type === 'landscape',
-    angle: orientation.angle,
-  }), [orientation]);
+  return useMemo(
+    () => ({
+      orientation: orientation.type,
+      isPortrait: orientation.type === 'portrait',
+      isLandscape: orientation.type === 'landscape',
+      angle: orientation.angle,
+    }),
+    [orientation]
+  );
 };
 
 // ── useElementSize ───────────────────────────────────────────────────────
 
 /**
  * Tracks the size of a specific DOM element using ResizeObserver.
- * 
+ *
  * @param {React.RefObject} ref - Element ref to observe
  * @param {Object} options - ResizeObserver options
  * @returns {{ width: number, height: number }} Element dimensions
@@ -233,7 +234,7 @@ export const useElementSize = (ref, options = {}) => {
 
 /**
  * Detects if the current device supports touch.
- * 
+ *
  * @returns {boolean} Whether the device supports touch
  */
 export const useIsTouchDevice = () => {

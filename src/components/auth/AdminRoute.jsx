@@ -21,14 +21,14 @@ const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
  */
 const verifyAdminServerSide = async (user) => {
   if (!user) return false;
-  
+
   try {
     // Get the ID token with force refresh to ensure latest claims
     const idToken = await user.getIdToken(true);
-    
+
     // Verify token claims
     const decodedToken = await user.getIdTokenResult();
-    
+
     // Check for admin claim in Firebase custom claims
     // In production, set these claims via Firebase Admin SDK or your backend
     const isAdmin = decodedToken.claims.admin === true;
@@ -40,14 +40,14 @@ const verifyAdminServerSide = async (user) => {
       console.warn('Admin access denied: Missing admin claims in token');
       return false;
     }
-    
+
     // Optional: Verify with your backend API
     // const response = await fetch('/api/admin/verify', {
     //   headers: { Authorization: `Bearer ${idToken}` }
     // });
     // const { valid } = await response.json();
     // return valid;
-    
+
     return true;
   } catch (error) {
     console.error('Admin verification failed:', error);
@@ -69,7 +69,7 @@ const logAdminActivity = async (user, action, details = {}) => {
     userAgent: navigator.userAgent,
     ...details,
   };
-  
+
   try {
     // Send to your logging endpoint
     // await fetch('/api/admin/log', {
@@ -77,10 +77,10 @@ const logAdminActivity = async (user, action, details = {}) => {
     //   body: JSON.stringify(logEntry),
     //   headers: { 'Content-Type': 'application/json' }
     // });
-    
+
     // In development, log to console
     console.info('[Admin Audit]', logEntry);
-    
+
     // Store locally for session tracking
     const activities = JSON.parse(sessionStorage.getItem('admin_activities') || '[]');
     activities.push(logEntry);
@@ -96,27 +96,27 @@ const logAdminActivity = async (user, action, details = {}) => {
 const checkRateLimit = () => {
   const attempts = JSON.parse(sessionStorage.getItem('admin_login_attempts') || '[]');
   const now = Date.now();
-  
+
   // Filter attempts within the time window
-  const recentAttempts = attempts.filter(time => now - time < LOGIN_ATTEMPT_WINDOW);
-  
+  const recentAttempts = attempts.filter((time) => now - time < LOGIN_ATTEMPT_WINDOW);
+
   if (recentAttempts.length >= MAX_LOGIN_ATTEMPTS) {
     const oldestAttempt = recentAttempts[0];
     const timeToWait = LOGIN_ATTEMPT_WINDOW - (now - oldestAttempt);
     return { allowed: false, timeToWait };
   }
-  
+
   // Record this attempt
   recentAttempts.push(now);
   sessionStorage.setItem('admin_login_attempts', JSON.stringify(recentAttempts));
-  
+
   return { allowed: true, timeToWait: 0 };
 };
 
 // ── Admin Route Component ───────────────────────────────────────────────────
 
-const AdminRoute = ({ 
-  children, 
+const AdminRoute = ({
+  children,
   redirectTo = '/dashboard',
   requireVerified = true,
   allowImpersonation = false, // For support staff to view as admin
@@ -125,12 +125,12 @@ const AdminRoute = ({
   const { user, userRole, loading, isEmailVerified, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const [showUnauthorized, setShowUnauthorized] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [verifying, setVerifying] = useState(true);
   const [adminVerified, setAdminVerified] = useState(false);
-  
+
   const lastActivityRef = useRef(Date.now());
   const sessionCheckIntervalRef = useRef(null);
   const redirectTimeoutRef = useRef(null);
@@ -143,33 +143,35 @@ const AdminRoute = ({
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     const performAdminVerification = async () => {
       if (!loading && user && userRole === 'admin') {
         setVerifying(true);
-        
+
         try {
           // Check rate limiting
           const { allowed, timeToWait } = checkRateLimit();
           if (!allowed) {
-            toast.error(`Too many attempts. Try again in ${Math.ceil(timeToWait / 60000)} minutes.`);
+            toast.error(
+              `Too many attempts. Try again in ${Math.ceil(timeToWait / 60000)} minutes.`
+            );
             setAdminVerified(false);
             return;
           }
-          
+
           // Verify admin status server-side
           const isVerified = await verifyAdminServerSide(user);
-          
+
           if (mountedRef.current) {
             setAdminVerified(isVerified);
-            
+
             if (isVerified) {
               // Log successful admin access
               await logAdminActivity(user, 'admin_access_granted', {
                 route: location.pathname,
                 from: location.state?.from?.pathname,
               });
-              
+
               toast.success('Admin access verified', { duration: 2000 });
             } else {
               // Log failed verification
@@ -177,7 +179,7 @@ const AdminRoute = ({
                 route: location.pathname,
                 reason: 'Server-side verification failed',
               });
-              
+
               toast.error('Admin verification failed');
             }
           }
@@ -196,13 +198,13 @@ const AdminRoute = ({
         setVerifying(false);
       }
     };
-    
+
     if (!loading && user && userRole === 'admin') {
       performAdminVerification();
     } else {
       setVerifying(false);
     }
-    
+
     return () => {
       mountedRef.current = false;
     };
@@ -218,24 +220,24 @@ const AdminRoute = ({
     };
 
     // Track user activity
-    ADMIN_ACTIVITY_EVENTS.forEach(event => {
+    ADMIN_ACTIVITY_EVENTS.forEach((event) => {
       document.addEventListener(event, updateLastActivity);
     });
 
     // Check for session timeout every 30 seconds
     sessionCheckIntervalRef.current = setInterval(() => {
       const timeSinceActivity = Date.now() - lastActivityRef.current;
-      
+
       if (timeSinceActivity > sessionTimeout) {
         handleSessionTimeout();
       }
     }, 30000);
 
     return () => {
-      ADMIN_ACTIVITY_EVENTS.forEach(event => {
+      ADMIN_ACTIVITY_EVENTS.forEach((event) => {
         document.removeEventListener(event, updateLastActivity);
       });
-      
+
       if (sessionCheckIntervalRef.current) {
         clearInterval(sessionCheckIntervalRef.current);
       }
@@ -246,15 +248,15 @@ const AdminRoute = ({
     await logAdminActivity(user, 'session_timeout', {
       lastActivity: new Date(lastActivityRef.current).toISOString(),
     });
-    
+
     toast.error('Admin session expired due to inactivity');
     await logout();
-    navigate('/login', { 
-      state: { 
+    navigate('/login', {
+      state: {
         from: location,
         message: 'Admin session expired. Please sign in again.',
       },
-      replace: true 
+      replace: true,
     });
   }, [user, logout, navigate, location]);
 
@@ -264,15 +266,15 @@ const AdminRoute = ({
     // Show unauthorized message if user is logged in but not admin
     if (!loading && !verifying && user && (userRole !== 'admin' || !adminVerified)) {
       setShowUnauthorized(true);
-      
+
       // Log unauthorized attempt
       logAdminActivity(user, 'unauthorized_access_attempt', {
         route: location.pathname,
       });
-      
+
       // Auto-redirect countdown
       const timer = setInterval(() => {
-        setCountdown(prev => {
+        setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
             // Use navigate instead of window.location for smoother transition
@@ -285,7 +287,16 @@ const AdminRoute = ({
 
       return () => clearInterval(timer);
     }
-  }, [loading, verifying, user, userRole, adminVerified, fromLocation, location.pathname, navigate]);
+  }, [
+    loading,
+    verifying,
+    user,
+    userRole,
+    adminVerified,
+    fromLocation,
+    location.pathname,
+    navigate,
+  ]);
 
   // ── Action Handlers ────────────────────────────────────────────────────
 
@@ -314,7 +325,7 @@ const AdminRoute = ({
     await logAdminActivity(user, 'support_contacted', {
       reason: 'Admin access denied',
     });
-    
+
     navigate('/contact', {
       state: {
         subject: 'Admin Access Request',
@@ -347,24 +358,24 @@ const AdminRoute = ({
         >
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
             className="mb-6"
           >
             <FiShield className="w-16 h-16 text-primary-500 mx-auto" />
           </motion.div>
-          
+
           <Loader size="lg" />
-          
+
           <p className="mt-4 text-gray-600 dark:text-gray-400">
             {verifying ? 'Verifying admin credentials...' : 'Loading...'}
           </p>
-          
+
           <p className="text-xs text-gray-400 mt-2">
-            {verifying 
-              ? 'Checking security permissions' 
+            {verifying
+              ? 'Checking security permissions'
               : 'Please wait while we check your permissions'}
           </p>
-          
+
           {verifying && (
             <div className="mt-4 flex items-center justify-center gap-2">
               <FiActivity className="w-4 h-4 text-green-500 animate-pulse" />
@@ -379,14 +390,14 @@ const AdminRoute = ({
   // Not authenticated - redirect to login
   if (!user) {
     return (
-      <Navigate 
-        to="/login" 
-        state={{ 
+      <Navigate
+        to="/login"
+        state={{
           from: location,
           message: 'Please sign in to access the admin area',
-          requireAdmin: true 
-        }} 
-        replace 
+          requireAdmin: true,
+        }}
+        replace
       />
     );
   }
@@ -403,25 +414,18 @@ const AdminRoute = ({
           <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
             <FiAlertCircle className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
           </div>
-          
+
           <h2 className="text-2xl font-bold mb-2">Email Verification Required</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Please verify your email address before accessing the admin area.
-            This is an additional security measure.
+            Please verify your email address before accessing the admin area. This is an additional
+            security measure.
           </p>
-          
+
           <div className="space-y-3">
-            <Button
-              onClick={() => navigate('/verify-email')}
-              className="w-full"
-            >
+            <Button onClick={() => navigate('/verify-email')} className="w-full">
               Resend Verification Email
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/dashboard')}
-              className="w-full"
-            >
+            <Button variant="outline" onClick={() => navigate('/dashboard')} className="w-full">
               Go to Dashboard
             </Button>
           </div>
@@ -449,7 +453,7 @@ const AdminRoute = ({
               >
                 {/* Security Alert Icon */}
                 <div className="relative mb-6">
-                  <motion.div 
+                  <motion.div
                     className="absolute inset-0 bg-red-500/20 rounded-full"
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
@@ -460,39 +464,31 @@ const AdminRoute = ({
                 </div>
 
                 {/* Access Denied Message */}
-                <h2 className="text-2xl font-bold mb-2 gradient-text">
-                  Admin Access Denied
-                </h2>
-                
+                <h2 className="text-2xl font-bold mb-2 gradient-text">Admin Access Denied</h2>
+
                 <p className="text-gray-600 dark:text-gray-400 mb-2">
                   You don't have administrator privileges.
                 </p>
-                
+
                 <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
-                  This area is restricted to authorized administrators only.
-                  All access attempts are logged.
+                  This area is restricted to authorized administrators only. All access attempts are
+                  logged.
                 </p>
 
                 {/* User Info with Session Status */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg mb-6">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Signed in as:
-                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Signed in as:</p>
                     <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full">
                       Restricted
                     </span>
                   </div>
-                  
-                  <p className="font-medium text-gray-800 dark:text-gray-200">
-                    {user.email}
-                  </p>
-                  
+
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{user.email}</p>
+
                   <div className="flex items-center justify-between mt-2">
-                    <p className="text-xs text-gray-500">
-                      Role: {userRole || 'user'}
-                    </p>
-                    
+                    <p className="text-xs text-gray-500">Role: {userRole || 'user'}</p>
+
                     {/* Session timer */}
                     <div className="flex items-center gap-1 text-xs text-gray-400">
                       <FiClock className="w-3 h-3" />
@@ -503,13 +499,10 @@ const AdminRoute = ({
 
                 {/* Action Buttons */}
                 <div className="space-y-3">
-                  <Button
-                    onClick={handleManualRedirect}
-                    className="w-full"
-                  >
+                  <Button onClick={handleManualRedirect} className="w-full">
                     Return to Dashboard
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     onClick={handleSignOutAndLogin}
@@ -522,11 +515,7 @@ const AdminRoute = ({
 
                 {/* Auto-redirect with manual override */}
                 {countdown > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-4"
-                  >
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4">
                     <button
                       onClick={() => {
                         setCountdown(0);
@@ -541,10 +530,8 @@ const AdminRoute = ({
 
                 {/* Help Section */}
                 <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-xs text-gray-400 mb-2">
-                    Think this is a mistake?
-                  </p>
-                  
+                  <p className="text-xs text-gray-400 mb-2">Think this is a mistake?</p>
+
                   <div className="flex gap-2 justify-center">
                     <button
                       onClick={handleContactSupport}
@@ -552,7 +539,7 @@ const AdminRoute = ({
                     >
                       Contact Support
                     </button>
-                    
+
                     <button
                       onClick={() => navigate('/help', { state: { focus: 'admin-access' } })}
                       className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg transition-colors"
@@ -580,7 +567,7 @@ const AdminRoute = ({
           <span className="sm:hidden">Admin</span>
         </div>
       </div>
-      
+
       {/* Session Activity Indicator */}
       <div className="fixed top-4 right-4 z-40 opacity-0 hover:opacity-100 transition-opacity duration-200">
         <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/10 text-green-600 dark:text-green-400 text-xs rounded-full">
@@ -588,7 +575,7 @@ const AdminRoute = ({
           <span className="hidden sm:inline">Session Active</span>
         </div>
       </div>
-      
+
       {/* Render admin content */}
       {children}
     </div>
@@ -608,11 +595,11 @@ export const withAdminProtection = (WrappedComponent, options = {}) => {
       </AdminRoute>
     );
   };
-  
+
   WithAdminProtection.displayName = `WithAdminProtection(${
     WrappedComponent.displayName || WrappedComponent.name || 'Component'
   })`;
-  
+
   return WithAdminProtection;
 };
 
@@ -624,7 +611,7 @@ export const withSuperAdminProtection = (WrappedComponent) => {
     const { user } = useAuth();
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
-    
+
     useEffect(() => {
       const checkSuperAdmin = async () => {
         if (user) {
@@ -638,20 +625,20 @@ export const withSuperAdminProtection = (WrappedComponent) => {
         }
         setLoading(false);
       };
-      
+
       checkSuperAdmin();
     }, [user]);
-    
+
     if (loading) return <Loader />;
     if (!isSuperAdmin) return <Navigate to="/admin" replace />;
-    
+
     return <WrappedComponent {...props} />;
   };
-  
+
   WithSuperAdminProtection.displayName = `WithSuperAdminProtection(${
     WrappedComponent.displayName || WrappedComponent.name || 'Component'
   })`;
-  
+
   return WithSuperAdminProtection;
 };
 
@@ -664,10 +651,10 @@ export const useAdminAccess = () => {
   const { user, userRole, loading, isEmailVerified } = useAuth();
   const [isVerified, setIsVerified] = useState(false);
   const [verifying, setVerifying] = useState(true);
-  
+
   useEffect(() => {
     let mounted = true;
-    
+
     const verifyAccess = async () => {
       if (user && userRole === 'admin') {
         try {
@@ -679,12 +666,14 @@ export const useAdminAccess = () => {
       }
       if (mounted) setVerifying(false);
     };
-    
+
     verifyAccess();
-    
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, [user, userRole]);
-  
+
   return {
     isAdmin: userRole === 'admin' && isVerified,
     isLoading: loading || verifying,

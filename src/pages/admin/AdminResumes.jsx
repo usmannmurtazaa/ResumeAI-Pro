@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  FiFileText, FiSearch, FiFilter, FiRefreshCw, FiDownload,
-  FiEye, FiTrash2, FiTarget, FiChevronLeft, FiChevronRight,
+  FiFileText,
+  FiSearch,
+  FiFilter,
+  FiRefreshCw,
+  FiDownload,
+  FiEye,
+  FiTrash2,
+  FiTarget,
+  FiChevronLeft,
+  FiChevronRight,
   FiAlertCircle,
 } from 'react-icons/fi';
 import AdminLayout from '../../components/layouts/AdminLayout';
@@ -12,7 +20,18 @@ import Badge from '../../components/ui/Badge';
 import Tooltip from '../../components/ui/Tooltip';
 import Progress from '../../components/ui/Progress';
 import { ConfirmModal } from '../../components/ui/Modal';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, limit, startAfter, onSnapshot, where } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  limit,
+  startAfter,
+  onSnapshot,
+  where,
+} from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import toast from 'react-hot-toast';
 
@@ -108,7 +127,9 @@ const AdminResumes = () => {
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // ── FIXED: Real-time subscription with pagination ────────────────────
@@ -123,11 +144,12 @@ const AdminResumes = () => {
       limit(RESUMES_PER_PAGE)
     );
 
-    const unsubscribe = onSnapshot(q,
+    const unsubscribe = onSnapshot(
+      q,
       (snapshot) => {
         if (!mountedRef.current) return;
 
-        const resumeData = snapshot.docs.map(doc => ({
+        const resumeData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
@@ -138,10 +160,12 @@ const AdminResumes = () => {
 
         // Calculate stats from all resumes (this is a separate light query or derived)
         const total = snapshot.size; // Note: this is only the current page
-        const scores = resumeData.map(r => r.atsScore || 0).filter(s => s > 0);
-        const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+        const scores = resumeData.map((r) => r.atsScore || 0).filter((s) => s > 0);
+        const avgScore = scores.length
+          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+          : 0;
         const totalDownloads = resumeData.reduce((sum, r) => sum + (r.downloadCount || 0), 0);
-        
+
         setStats({ total: resumeData.length, avgScore, totalDownloads });
         setLoading(false);
       },
@@ -175,12 +199,12 @@ const AdminResumes = () => {
       const snapshot = await getDocs(q);
       if (!mountedRef.current) return;
 
-      const newResumes = snapshot.docs.map(doc => ({
+      const newResumes = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      setResumes(prev => [...prev, ...newResumes]);
+      setResumes((prev) => [...prev, ...newResumes]);
       setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
       setHasMore(snapshot.docs.length === RESUMES_PER_PAGE);
     } catch (err) {
@@ -197,7 +221,7 @@ const AdminResumes = () => {
     setIsDeleting(true);
     try {
       await deleteDoc(doc(db, 'resumes', selectedResume.id));
-      setResumes(prev => prev.filter(r => r.id !== selectedResume.id));
+      setResumes((prev) => prev.filter((r) => r.id !== selectedResume.id));
       toast.success('Resume deleted');
       setShowDeleteModal(false);
       setSelectedResume(null);
@@ -211,7 +235,7 @@ const AdminResumes = () => {
   const handleExport = useCallback(() => {
     // FIXED: Proper CSV escaping
     const headers = ['Name', 'User ID', 'Template', 'ATS Score', 'Downloads', 'Updated'];
-    const rows = filteredResumes.map(r => [
+    const rows = filteredResumes.map((r) => [
       escapeCSV(r.name || 'Untitled'),
       escapeCSV(r.userId),
       escapeCSV(r.template || 'modern'),
@@ -220,8 +244,8 @@ const AdminResumes = () => {
       escapeCSV(formatDate(r.updatedAt)),
     ]);
 
-    const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    
+    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -235,7 +259,7 @@ const AdminResumes = () => {
   // ── FIXED: Memoized derived data ────────────────────────────────────
 
   const templates = useMemo(() => {
-    const unique = new Set(resumes.map(r => r.template).filter(Boolean));
+    const unique = new Set(resumes.map((r) => r.template).filter(Boolean));
     return ['all', ...Array.from(unique)];
   }, [resumes]);
 
@@ -244,19 +268,20 @@ const AdminResumes = () => {
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.name?.toLowerCase().includes(term) ||
-        r.data?.personal?.fullName?.toLowerCase().includes(term) ||
-        r.userId?.toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (r) =>
+          r.name?.toLowerCase().includes(term) ||
+          r.data?.personal?.fullName?.toLowerCase().includes(term) ||
+          r.userId?.toLowerCase().includes(term)
       );
     }
 
     if (filterTemplate !== 'all') {
-      filtered = filtered.filter(r => r.template === filterTemplate);
+      filtered = filtered.filter((r) => r.template === filterTemplate);
     }
 
     if (filterScore !== 'all') {
-      filtered = filtered.filter(r => {
+      filtered = filtered.filter((r) => {
         const score = r.atsScore || 0;
         if (filterScore === 'high') return score >= 80;
         if (filterScore === 'medium') return score >= 60 && score < 80;
@@ -273,9 +298,24 @@ const AdminResumes = () => {
       <div className="space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard icon={FiFileText} label="Total Resumes (loaded)" value={stats.total} color="bg-blue-500" />
-          <StatCard icon={FiTarget} label="Average ATS Score" value={`${stats.avgScore}%`} color="bg-purple-500" />
-          <StatCard icon={FiDownload} label="Total Downloads" value={stats.totalDownloads} color="bg-green-500" />
+          <StatCard
+            icon={FiFileText}
+            label="Total Resumes (loaded)"
+            value={stats.total}
+            color="bg-blue-500"
+          />
+          <StatCard
+            icon={FiTarget}
+            label="Average ATS Score"
+            value={`${stats.avgScore}%`}
+            color="bg-purple-500"
+          />
+          <StatCard
+            icon={FiDownload}
+            label="Total Downloads"
+            value={stats.totalDownloads}
+            color="bg-green-500"
+          />
         </div>
 
         {/* Toolbar */}
@@ -287,23 +327,35 @@ const AdminResumes = () => {
                 type="text"
                 placeholder="Search by name, user ID..."
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 focus:ring-2 focus:ring-primary-500 text-sm"
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <select value={filterTemplate} onChange={e => setFilterTemplate(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm capitalize">
-                {templates.map(t => <option key={t} value={t} className="capitalize">{t === 'all' ? 'All Templates' : t}</option>)}
+              <select
+                value={filterTemplate}
+                onChange={(e) => setFilterTemplate(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm capitalize"
+              >
+                {templates.map((t) => (
+                  <option key={t} value={t} className="capitalize">
+                    {t === 'all' ? 'All Templates' : t}
+                  </option>
+                ))}
               </select>
-              <select value={filterScore} onChange={e => setFilterScore(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm">
+              <select
+                value={filterScore}
+                onChange={(e) => setFilterScore(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm"
+              >
                 <option value="all">All Scores</option>
                 <option value="high">High (80%+)</option>
                 <option value="medium">Medium (60-79%)</option>
                 <option value="low">Low (&lt;60%)</option>
               </select>
-              <Button variant="outline" onClick={handleExport} icon={<FiDownload />} size="sm">Export</Button>
+              <Button variant="outline" onClick={handleExport} icon={<FiDownload />} size="sm">
+                Export
+              </Button>
             </div>
           </div>
         </Card>
@@ -313,7 +365,9 @@ const AdminResumes = () => {
           <Card className="p-8 text-center">
             <FiAlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
             <p className="text-gray-500 mb-4">Failed to load resumes</p>
-            <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
           </Card>
         )}
 
@@ -327,47 +381,88 @@ const AdminResumes = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Resume</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">User</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Template</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">ATS Score</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Downloads</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Updated</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                      Resume
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                      User
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                      Template
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                      ATS Score
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                      Downloads
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                      Updated
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredResumes.map(resume => (
-                    <tr key={resume.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  {filteredResumes.map((resume) => (
+                    <tr
+                      key={resume.id}
+                      className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
                       <td className="py-3 px-4">
                         <p className="font-medium text-sm">{resume.name || 'Untitled'}</p>
-                        <p className="text-xs text-gray-500">{resume.data?.personal?.fullName || 'No name'}</p>
+                        <p className="text-xs text-gray-500">
+                          {resume.data?.personal?.fullName || 'No name'}
+                        </p>
                       </td>
                       <td className="py-3 px-4">
-                        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{resume.userId?.slice(0, 8)}...</code>
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                          {resume.userId?.slice(0, 8)}...
+                        </code>
                       </td>
                       <td className="py-3 px-4">
-                        <Badge variant="secondary" size="sm" className="capitalize">{resume.template || 'modern'}</Badge>
+                        <Badge variant="secondary" size="sm" className="capitalize">
+                          {resume.template || 'modern'}
+                        </Badge>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <span className={`font-semibold text-sm ${getScoreColor(resume.atsScore || 0)}`}>{resume.atsScore || 0}%</span>
-                          <Progress value={resume.atsScore || 0} size="sm" color={getScoreVariant(resume.atsScore || 0)} className="w-16" />
+                          <span
+                            className={`font-semibold text-sm ${getScoreColor(resume.atsScore || 0)}`}
+                          >
+                            {resume.atsScore || 0}%
+                          </span>
+                          <Progress
+                            value={resume.atsScore || 0}
+                            size="sm"
+                            color={getScoreVariant(resume.atsScore || 0)}
+                            className="w-16"
+                          />
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm">{resume.downloadCount || 0}</td>
-                      <td className="py-3 px-4 text-sm text-gray-500">{formatDate(resume.updatedAt)}</td>
+                      <td className="py-3 px-4 text-sm text-gray-500">
+                        {formatDate(resume.updatedAt)}
+                      </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-1">
                           <Tooltip content="Preview">
-                            <button onClick={() => window.open(`/preview/${resume.id}`, '_blank')}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            <button
+                              onClick={() => window.open(`/preview/${resume.id}`, '_blank')}
+                              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                            >
                               <FiEye className="w-4 h-4" />
                             </button>
                           </Tooltip>
                           <Tooltip content="Delete">
-                            <button onClick={() => { setSelectedResume(resume); setShowDeleteModal(true); }}
-                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-red-500">
+                            <button
+                              onClick={() => {
+                                setSelectedResume(resume);
+                                setShowDeleteModal(true);
+                              }}
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-red-500"
+                            >
                               <FiTrash2 className="w-4 h-4" />
                             </button>
                           </Tooltip>
@@ -402,7 +497,10 @@ const AdminResumes = () => {
       {/* Delete Modal */}
       <ConfirmModal
         isOpen={showDeleteModal}
-        onClose={() => { setShowDeleteModal(false); setSelectedResume(null); }}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSelectedResume(null);
+        }}
         onConfirm={handleDelete}
         title="Delete Resume"
         message={`Are you sure you want to delete "${selectedResume?.name || 'this resume'}"? This action cannot be undone.`}

@@ -18,34 +18,38 @@ const ATSScannerPage = () => {
   // Set page title and meta
   usePageTitle({
     title: 'ATS Resume Scanner',
-    description: 'Upload your resume for instant ATS compatibility analysis. Get a detailed score, keyword suggestions, and actionable improvements.',
+    description:
+      'Upload your resume for instant ATS compatibility analysis. Get a detailed score, keyword suggestions, and actionable improvements.',
   });
 
   // ── Handlers ─────────────────────────────────────────────────────────
 
-  const handleDataExtracted = useCallback((data) => {
-    setIsProcessing(true);
-    
-    // Validate extracted data
-    if (!data || Object.keys(data).length === 0) {
-      toast.error('No data could be extracted from the file. Please try again.');
-      setIsProcessing(false);
-      return;
-    }
+  const handleDataExtracted = useCallback(
+    (data) => {
+      setIsProcessing(true);
 
-    toast.success('Data extracted! Redirecting to resume builder...', {
-      icon: '🎉',
-      duration: 2000,
-    });
+      // Validate extracted data
+      if (!data || Object.keys(data).length === 0) {
+        toast.error('No data could be extracted from the file. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
 
-    // Navigate to builder with extracted data
-    setTimeout(() => {
-      navigate('/builder', { 
-        state: { extractedData: data },
-        replace: true,
+      toast.success('Data extracted! Redirecting to resume builder...', {
+        icon: '🎉',
+        duration: 2000,
       });
-    }, 500);
-  }, [navigate]);
+
+      // Navigate to builder with extracted data
+      setTimeout(() => {
+        navigate('/builder', {
+          state: { extractedData: data },
+          replace: true,
+        });
+      }, 500);
+    },
+    [navigate]
+  );
 
   // FIXED: Safe back navigation
   const handleGoBack = useCallback(() => {
@@ -72,12 +76,7 @@ const ATSScannerPage = () => {
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={handleGoBack}
-              icon={<FiArrowLeft />}
-              size="sm"
-            >
+            <Button variant="ghost" onClick={handleGoBack} icon={<FiArrowLeft />} size="sm">
               Back
             </Button>
             <div>
@@ -90,18 +89,10 @@ const ATSScannerPage = () => {
 
           {/* Quick Actions */}
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/builder')}
-            >
+            <Button variant="outline" size="sm" onClick={() => navigate('/builder')}>
               Create New Resume
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/my-resumes')}
-            >
+            <Button variant="outline" size="sm" onClick={() => navigate('/my-resumes')}>
               My Resumes
             </Button>
           </div>
@@ -114,7 +105,7 @@ const ATSScannerPage = () => {
             <div>
               <h3 className="font-medium text-blue-700 dark:text-blue-300 text-sm">How it works</h3>
               <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                Our AI-powered scanner analyzes your resume against industry-standard ATS criteria. 
+                Our AI-powered scanner analyzes your resume against industry-standard ATS criteria.
                 You'll get a detailed score, keyword suggestions, and actionable improvements.
               </p>
             </div>
@@ -129,12 +120,8 @@ const ATSScannerPage = () => {
             className="glass-card p-8 text-center"
           >
             <Loader variant="brand" size="md" />
-            <p className="mt-4 text-gray-600 dark:text-gray-400">
-              Processing your resume data...
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Redirecting to resume builder
-            </p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Processing your resume data...</p>
+            <p className="text-xs text-gray-400 mt-1">Redirecting to resume builder</p>
           </motion.div>
         )}
 
@@ -146,10 +133,7 @@ const ATSScannerPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <ATSScanner 
-                onDataExtracted={handleDataExtracted}
-                onError={handleScannerError}
-              />
+              <ATSScanner onDataExtracted={handleDataExtracted} onError={handleScannerError} />
             </motion.div>
           </ErrorBoundary>
         )}
@@ -165,19 +149,27 @@ const ATSScannerPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                 <h4 className="font-medium text-sm mb-1">📄 Use Standard Formats</h4>
-                <p className="text-xs text-gray-500">Stick to standard section headings like "Experience", "Education", and "Skills".</p>
+                <p className="text-xs text-gray-500">
+                  Stick to standard section headings like "Experience", "Education", and "Skills".
+                </p>
               </div>
               <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                 <h4 className="font-medium text-sm mb-1">🔑 Include Keywords</h4>
-                <p className="text-xs text-gray-500">Match keywords from job descriptions to improve ATS compatibility.</p>
+                <p className="text-xs text-gray-500">
+                  Match keywords from job descriptions to improve ATS compatibility.
+                </p>
               </div>
               <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                 <h4 className="font-medium text-sm mb-1">📊 Quantify Achievements</h4>
-                <p className="text-xs text-gray-500">Use numbers and percentages to demonstrate your impact.</p>
+                <p className="text-xs text-gray-500">
+                  Use numbers and percentages to demonstrate your impact.
+                </p>
               </div>
               <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                 <h4 className="font-medium text-sm mb-1">🎯 Use Action Verbs</h4>
-                <p className="text-xs text-gray-500">Start bullet points with strong action verbs like "Led", "Developed", "Achieved".</p>
+                <p className="text-xs text-gray-500">
+                  Start bullet points with strong action verbs like "Led", "Developed", "Achieved".
+                </p>
               </div>
             </div>
           </Card>

@@ -1,14 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import SignUpForm from '../components/auth/SignUpForm';
 import AuthLayout from '../components/layouts/AuthLayout';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import Loader from '../components/common/Loader';
-
-// ── Utility ───────────────────────────────────────────────────────────────
-
-const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
 // ── Component ─────────────────────────────────────────────────────────────
 
@@ -23,7 +19,8 @@ const SignUp = () => {
   // Set page title
   usePageTitle({
     title: 'Create Your Free Account',
-    description: 'Join 50,000+ professionals using ResumeAI Pro to create ATS-optimized resumes. Free plan available.',
+    description:
+      'Join 50,000+ professionals using Resume Ai Pro to create ATS-optimized resumes. Free plan available.',
   });
 
   // Show loader while auth initializes

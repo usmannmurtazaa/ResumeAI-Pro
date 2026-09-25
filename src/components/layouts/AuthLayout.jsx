@@ -2,8 +2,18 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  FiArrowLeft, FiAward, FiCheckCircle, FiFacebook, FiFileText,
-  FiGithub, FiShield, FiStar, FiTarget, FiTrendingUp, FiUsers, FiZap,
+  FiArrowLeft,
+  FiAward,
+  FiCheckCircle,
+  FiFacebook,
+  FiFileText,
+  FiGithub,
+  FiShield,
+  FiStar,
+  FiTarget,
+  FiTrendingUp,
+  FiUsers,
+  FiZap,
 } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import ThemeToggle from '../common/ThemeToggle';
@@ -24,17 +34,61 @@ const TARGET_STATS = {
 
 const FEATURES = [
   { id: 'ats', icon: FiZap, text: 'AI-powered ATS optimization', iconClassName: 'text-yellow-300' },
-  { id: 'templates', icon: FiFileText, text: '25+ professional templates', iconClassName: 'text-blue-300' },
-  { id: 'preview', icon: FiTarget, text: 'Real-time preview and scoring', iconClassName: 'text-green-300' },
-  { id: 'keywords', icon: FiTrendingUp, text: 'Smart keyword suggestions', iconClassName: 'text-purple-300' },
-  { id: 'security', icon: FiShield, text: 'Bank-level account security', iconClassName: 'text-cyan-300' },
+  {
+    id: 'templates',
+    icon: FiFileText,
+    text: '25+ professional templates',
+    iconClassName: 'text-blue-300',
+  },
+  {
+    id: 'preview',
+    icon: FiTarget,
+    text: 'Real-time preview and scoring',
+    iconClassName: 'text-green-300',
+  },
+  {
+    id: 'keywords',
+    icon: FiTrendingUp,
+    text: 'Smart keyword suggestions',
+    iconClassName: 'text-purple-300',
+  },
+  {
+    id: 'security',
+    icon: FiShield,
+    text: 'Bank-level account security',
+    iconClassName: 'text-cyan-300',
+  },
 ];
 
 const TESTIMONIALS = [
-  { id: 'sarah', text: 'ResumeAI Pro helped me land my dream job at Google. The ATS optimization is incredible.', author: 'Sarah Chen', role: 'Software Engineer at Google', avatar: 'SC' },
-  { id: 'michael', text: 'I increased my interview calls by 300% after using this resume builder.', author: 'Michael Rodriguez', role: 'Product Manager at Microsoft', avatar: 'MR' },
-  { id: 'emily', text: 'The AI suggestions are spot-on. My resume went from average to outstanding.', author: 'Emily Watson', role: 'Marketing Director at Amazon', avatar: 'EW' },
-  { id: 'david', text: 'Finally, a resume builder that actually understands ATS systems.', author: 'David Kim', role: 'Senior Recruiter at Meta', avatar: 'DK' },
+  {
+    id: 'sarah',
+    text: 'Resume Ai Pro helped me land my dream job at Google. The ATS optimization is incredible.',
+    author: 'Sarah Chen',
+    role: 'Software Engineer at Google',
+    avatar: 'SC',
+  },
+  {
+    id: 'michael',
+    text: 'I increased my interview calls by 300% after using this resume builder.',
+    author: 'Michael Rodriguez',
+    role: 'Product Manager at Microsoft',
+    avatar: 'MR',
+  },
+  {
+    id: 'emily',
+    text: 'The AI suggestions are spot-on. My resume went from average to outstanding.',
+    author: 'Emily Watson',
+    role: 'Marketing Director at Amazon',
+    avatar: 'EW',
+  },
+  {
+    id: 'david',
+    text: 'Finally, a resume builder that actually understands ATS systems.',
+    author: 'David Kim',
+    role: 'Senior Recruiter at Meta',
+    avatar: 'DK',
+  },
 ];
 
 const TRUST_BADGES = [
@@ -46,8 +100,18 @@ const TRUST_BADGES = [
 
 const SOCIAL_PROVIDERS = [
   { id: 'google', label: 'Continue with Google', icon: FcGoogle },
-  { id: 'github', label: 'Continue with GitHub', icon: FiGithub, iconClassName: 'text-gray-800 dark:text-gray-100' },
-  { id: 'facebook', label: 'Continue with Facebook', icon: FiFacebook, iconClassName: 'text-blue-600' },
+  {
+    id: 'github',
+    label: 'Continue with GitHub',
+    icon: FiGithub,
+    iconClassName: 'text-gray-800 dark:text-gray-100',
+  },
+  {
+    id: 'facebook',
+    label: 'Continue with Facebook',
+    icon: FiFacebook,
+    iconClassName: 'text-blue-600',
+  },
 ];
 
 // ── Utilities ────────────────────────────────────────────────────────────
@@ -76,7 +140,7 @@ const getRouteMeta = (pathname, title, subtitle) => {
     },
     '/signup': {
       heroTitle: 'Start Your Journey',
-      heroSubtitle: 'Join professionals using ResumeAI Pro to land better opportunities',
+      heroSubtitle: 'Join professionals using Resume Ai Pro to land better opportunities',
       formTitle: 'Create your free account',
       formSubtitle: 'Start building your ATS-optimized resume in minutes.',
     },
@@ -84,7 +148,7 @@ const getRouteMeta = (pathname, title, subtitle) => {
       heroTitle: 'Reset Your Password',
       heroSubtitle: "We'll send you a secure link to reset your password",
       formTitle: 'Reset your password',
-      formSubtitle: 'Enter your email and we\'ll help you get back in.',
+      formSubtitle: "Enter your email and we'll help you get back in.",
     },
     '/verify-email': {
       heroTitle: 'Verify Your Email',
@@ -182,7 +246,6 @@ const AuthLayout = ({ children, title, subtitle }) => {
   useEffect(() => {
     if (shouldReduceMotion || TESTIMONIALS.length <= 1) return undefined;
 
-    // Pause rotation if user is hovering
     if (isPaused) return undefined;
 
     const intervalId = setInterval(() => {
@@ -205,7 +268,6 @@ const AuthLayout = ({ children, title, subtitle }) => {
       try {
         await loginWithProvider(provider);
       } catch (error) {
-        // FIXED: Show user feedback on error
         if (error.code !== 'auth/popup-closed-by-user') {
           toast.error(`Failed to sign in with ${provider}. Please try again.`);
         }
@@ -232,22 +294,31 @@ const AuthLayout = ({ children, title, subtitle }) => {
           <ThemeToggle />
         </div>
         <div className="absolute left-4 top-4 z-20 flex items-center gap-4">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors"
+          >
             <FiArrowLeft className="h-4 w-4" /> Back to Home
           </Link>
-          <Link to="/help" className="text-sm text-white/60 hover:text-white/80 transition-colors">Help</Link>
+          <Link to="/help" className="text-sm text-white/60 hover:text-white/80 transition-colors">
+            Help
+          </Link>
         </div>
 
         {/* Background animations */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <motion.div
             animate={shouldReduceMotion ? {} : { scale: [1, 1.16, 1], rotate: [0, 180, 360] }}
-            transition={shouldReduceMotion ? {} : { duration: 20, repeat: Infinity, ease: 'linear' }}
+            transition={
+              shouldReduceMotion ? {} : { duration: 20, repeat: Infinity, ease: 'linear' }
+            }
             className="absolute -right-1/2 -top-1/2 h-full w-full rounded-full bg-gradient-to-br from-white/10 to-transparent blur-3xl"
           />
           <motion.div
             animate={shouldReduceMotion ? {} : { scale: [1.16, 1, 1.16], rotate: [360, 180, 0] }}
-            transition={shouldReduceMotion ? {} : { duration: 16, repeat: Infinity, ease: 'linear' }}
+            transition={
+              shouldReduceMotion ? {} : { duration: 16, repeat: Infinity, ease: 'linear' }
+            }
             className="absolute -bottom-1/2 -left-1/2 h-full w-full rounded-full bg-gradient-to-tr from-black/20 to-transparent blur-3xl"
           />
         </div>
@@ -265,10 +336,14 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
                   <FiFileText className="h-6 w-6 text-white" />
                 </div>
-                <h1 className="text-3xl font-bold text-white">ResumeAI Pro</h1>
-                <Badge variant="success" className="border-white/30 bg-white/20 text-white">v2.5</Badge>
+                <h1 className="text-3xl font-bold text-white">Resume Ai Pro</h1>
+                <Badge variant="success" className="border-white/30 bg-white/20 text-white">
+                  v2.5
+                </Badge>
               </div>
-              <h2 className="text-2xl font-semibold leading-tight text-white/95 xl:text-3xl">{routeMeta.heroTitle}</h2>
+              <h2 className="text-2xl font-semibold leading-tight text-white/95 xl:text-3xl">
+                {routeMeta.heroTitle}
+              </h2>
               <p className="mt-2 text-lg text-white/80">{routeMeta.heroSubtitle}</p>
             </div>
 
@@ -284,9 +359,14 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 { key: 'resumes', icon: FiFileText, label: 'Resumes Created' },
                 { key: 'successRate', icon: FiTrendingUp, label: 'Success Rate' },
               ].map(({ key, icon: Icon, label }) => (
-                <div key={key} className="rounded-xl border border-white/20 bg-white/10 p-4 text-center backdrop-blur-sm hover:bg-white/15 transition-colors">
+                <div
+                  key={key}
+                  className="rounded-xl border border-white/20 bg-white/10 p-4 text-center backdrop-blur-sm hover:bg-white/15 transition-colors"
+                >
                   <Icon className="mx-auto mb-2 h-6 w-6 text-white/80" />
-                  <div className="text-2xl font-bold text-white">{formatStatValue(key, stats[key])}</div>
+                  <div className="text-2xl font-bold text-white">
+                    {formatStatValue(key, stats[key])}
+                  </div>
                   <div className="text-xs text-white/70">{label}</div>
                 </div>
               ))}
@@ -335,7 +415,9 @@ const AuthLayout = ({ children, title, subtitle }) => {
                       <FiStar key={i} className="h-4 w-4 fill-current text-yellow-400" />
                     ))}
                   </div>
-                  <p className="mb-4 text-base italic text-white/90">"{currentTestimonialData.text}"</p>
+                  <p className="mb-4 text-base italic text-white/90">
+                    "{currentTestimonialData.text}"
+                  </p>
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-white/30 to-white/10 font-semibold text-white">
                       {currentTestimonialData.avatar}
@@ -357,7 +439,9 @@ const AuthLayout = ({ children, title, subtitle }) => {
                     onClick={() => setCurrentTestimonial(index)}
                     className={cn(
                       'h-1.5 rounded-full transition-all',
-                      index === currentTestimonial ? 'w-8 bg-white' : 'w-2 bg-white/40 hover:bg-white/60'
+                      index === currentTestimonial
+                        ? 'w-8 bg-white'
+                        : 'w-2 bg-white/40 hover:bg-white/60'
                     )}
                     aria-label={`View testimonial ${index + 1}`}
                     aria-pressed={index === currentTestimonial}
@@ -387,7 +471,10 @@ const AuthLayout = ({ children, title, subtitle }) => {
           {/* Mobile Header */}
           <div className="mb-6 lg:hidden">
             <div className="mb-4 flex items-center justify-between">
-              <Link to="/" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
+              >
                 <FiArrowLeft className="h-4 w-4" /> Back to Home
               </Link>
               <ThemeToggle />
@@ -397,23 +484,31 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-accent-500">
                   <FiFileText className="h-5 w-5 text-white" />
                 </div>
-                <h1 className="text-2xl font-bold gradient-text">ResumeAI Pro</h1>
+                <h1 className="text-2xl font-bold gradient-text">Resume Ai Pro</h1>
               </div>
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">{routeMeta.heroTitle}</h2>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{routeMeta.heroSubtitle}</p>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+                {routeMeta.heroTitle}
+              </h2>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                {routeMeta.heroSubtitle}
+              </p>
             </div>
           </div>
 
           {/* Desktop Form Title */}
           <div className="mb-6 hidden lg:block">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{routeMeta.formTitle}</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+              {routeMeta.formTitle}
+            </h2>
             <p className="mt-1 text-gray-600 dark:text-gray-400">{routeMeta.formSubtitle}</p>
           </div>
 
           {/* Social Login */}
           {showSocialLogin && (
             <div className="mb-6">
-              <p className="mb-3 text-center text-xs text-gray-500 dark:text-gray-400">Continue with</p>
+              <p className="mb-3 text-center text-xs text-gray-500 dark:text-gray-400">
+                Continue with
+              </p>
               <div className="grid grid-cols-3 gap-2">
                 {SOCIAL_PROVIDERS.map(({ id, label, icon: Icon, iconClassName }) => (
                   <Button
@@ -457,7 +552,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
             </motion.div>
           </AnimatePresence>
 
-          {/* FIXED: Demo credentials only in development */}
+          {/* Demo credentials only in development */}
           {isLogin && IS_DEVELOPMENT && (
             <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
               <p className="text-center text-xs text-blue-700 dark:text-blue-300">
@@ -469,9 +564,15 @@ const AuthLayout = ({ children, title, subtitle }) => {
           {/* Mobile Trust Badges */}
           <div className="mt-8 lg:hidden">
             <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-400">
-              <div className="flex items-center gap-1"><FiShield className="h-3 w-3" /> SSL Secure</div>
-              <div className="flex items-center gap-1"><FiAward className="h-3 w-3" /> GDPR Ready</div>
-              <div className="flex items-center gap-1"><FiStar className="h-3 w-3" /> 4.9/5 Rating</div>
+              <div className="flex items-center gap-1">
+                <FiShield className="h-3 w-3" /> SSL Secure
+              </div>
+              <div className="flex items-center gap-1">
+                <FiAward className="h-3 w-3" /> GDPR Ready
+              </div>
+              <div className="flex items-center gap-1">
+                <FiStar className="h-3 w-3" /> 4.9/5 Rating
+              </div>
             </div>
           </div>
 
@@ -479,9 +580,13 @@ const AuthLayout = ({ children, title, subtitle }) => {
           <div className="mt-6 text-center text-xs text-gray-400">
             <p>
               By continuing, you agree to our{' '}
-              <Link to="/terms" className="text-primary-500 hover:text-primary-600">Terms</Link>{' '}
+              <Link to="/terms" className="text-primary-500 hover:text-primary-600">
+                Terms
+              </Link>{' '}
               and{' '}
-              <Link to="/privacy" className="text-primary-500 hover:text-primary-600">Privacy Policy</Link>
+              <Link to="/privacy" className="text-primary-500 hover:text-primary-600">
+                Privacy Policy
+              </Link>
             </p>
           </div>
         </div>

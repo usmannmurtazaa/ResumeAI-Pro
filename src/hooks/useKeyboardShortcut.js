@@ -3,26 +3,26 @@ import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 // ── Utility Functions ────────────────────────────────────────────────────
 
 const NORMALIZE_MAP = {
-  'esc': 'escape',
-  'spacebar': ' ',
-  'space': ' ',
-  'control': 'ctrl',
-  'option': 'alt',
-  'command': 'meta',
-  'cmd': 'meta',
-  'windows': 'meta',
-  'up': 'arrowup',
-  'down': 'arrowdown',
-  'left': 'arrowleft',
-  'right': 'arrowright',
-  'del': 'delete',
-  'return': 'enter',
-  'plus': '+',
-  'minus': '-',
-  'period': '.',
-  'comma': ',',
-  'slash': '/',
-  'backslash': '\\',
+  esc: 'escape',
+  spacebar: ' ',
+  space: ' ',
+  control: 'ctrl',
+  option: 'alt',
+  command: 'meta',
+  cmd: 'meta',
+  windows: 'meta',
+  up: 'arrowup',
+  down: 'arrowdown',
+  left: 'arrowleft',
+  right: 'arrowright',
+  del: 'delete',
+  return: 'enter',
+  plus: '+',
+  minus: '-',
+  period: '.',
+  comma: ',',
+  slash: '/',
+  backslash: '\\',
 };
 
 const normalizeKey = (key) => {
@@ -46,7 +46,7 @@ const isTypingTarget = (target) => {
 
 /**
  * Matches modifier keys with platform-aware Ctrl/Cmd handling.
- * 
+ *
  * - `ctrl`: True on Windows/Linux with Ctrl key, or Mac with Cmd key
  * - `meta`: True only with the actual Meta/Cmd key
  * - `exact`: When true, only the specified modifiers can be pressed
@@ -163,17 +163,17 @@ export const useKeyboardShortcut = (keys, callback, options = {}) => {
 /**
  * Listens for a sequence of keys pressed in order.
  * Useful for "g + i" style shortcuts (like Gmail).
- * 
+ *
  * @param {string[]} sequence - Array of keys in order
  * @param {Function} callback - Called when sequence is matched
  * @param {Object} options - Same as useKeyboardShortcut options
- * 
+ *
  * @example
  * useKeySequence(['g', 'i'], () => navigateToInbox());
  */
 export const useKeySequence = (sequence, callback, options = {}) => {
   const { enabled = true, allowInInput = false, timeout = 1000 } = options;
-  
+
   const sequenceRef = useRef([]);
   const timeoutRef = useRef(null);
   const callbackRef = useRef(callback);
@@ -225,10 +225,14 @@ export const useKeySequence = (sequence, callback, options = {}) => {
 /**
  * Registers multiple keyboard shortcuts at once.
  * Returns an object to enable/disable individual shortcuts.
- * 
+ *
+ * This implementation does NOT call useKeyboardShortcut per shortcut
+ * (which would violate the Rules of Hooks). Instead it registers a
+ * single keydown listener and manages all shortcuts internally.
+ *
  * @param {Object} shortcuts - Map of shortcut names to configurations
  * @returns {Object} { isEnabled, toggleShortcut, enableShortcut, disableShortcut }
- * 
+ *
  * @example
  * const shortcuts = useShortcutList({
  *   save: { keys: 's', ctrl: true, callback: handleSave },
@@ -237,37 +241,89 @@ export const useKeySequence = (sequence, callback, options = {}) => {
  */
 export const useShortcutList = (shortcuts = {}) => {
   const [disabledShortcuts, setDisabledShortcuts] = useState(new Set());
+  const shortcutsRef = useRef(shortcuts);
+
+  // Keep shortcuts ref updated
+  useEffect(() => {
+    shortcutsRef.current = shortcuts;
+  }, [shortcuts]);
 
   const isEnabled = useCallback((name) => !disabledShortcuts.has(name), [disabledShortcuts]);
+
   const toggleShortcut = useCallback((name) => {
-    setDisabledShortcuts(prev => {
+    setDisabledShortcuts((prev) => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
       return next;
     });
   }, []);
+
   const enableShortcut = useCallback((name) => {
-    setDisabledShortcuts(prev => {
+    setDisabledShortcuts((prev) => {
       const next = new Set(prev);
       next.delete(name);
       return next;
     });
   }, []);
+
   const disableShortcut = useCallback((name) => {
-    setDisabledShortcuts(prev => new Set([...prev, name]));
+    setDisabledShortcuts((prev) => new Set([...prev, name]));
   }, []);
 
-  // Register all shortcuts
-  Object.entries(shortcuts).forEach(([name, config]) => {
-    useKeyboardShortcut(
-      config.keys,
-      config.callback,
-      {
-        ...config,
-        enabled: config.enabled !== false && isEnabled(name),
+  // Register a single event listener that handles all shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      const shortcutEntries = Object.entries(shortcutsRef.current);
+
+      for (const [name, config] of shortcutEntries) {
+        // Skip disabled shortcuts
+        if (disabledShortcuts.has(name)) continue;
+        if (config.enabled === false) continue;
+
+        const {
+          keys,
+          callback,
+          ctrl = false,
+          alt = false,
+          shift = false,
+          meta = false,
+          preventDefault = true,
+          allowInInput = false,
+          allowRepeat = false,
+          exact = true,
+        } = config;
+
+        // Skip if composing
+        if (event.isComposing) continue;
+
+        // Skip key repeat unless allowed
+        if (!allowRepeat && event.repeat) continue;
+
+        // Skip typing targets unless allowed
+        if (!allowInInput && isTypingTarget(event.target)) continue;
+
+        const keyList = Array.isArray(keys) ? keys : [keys];
+        const normalizedKeys = keyList.map(normalizeKey).filter(Boolean);
+        const eventKey = normalizeKey(event.key);
+
+        if (!normalizedKeys.includes(eventKey)) continue;
+
+        if (!matchesModifiers(event, { ctrl, alt, shift, meta, exact })) continue;
+
+        if (preventDefault) event.preventDefault();
+        callback?.(event);
+        break;
       }
-    );
-  });
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+
+    return undefined;
+  }, [disabledShortcuts]);
 
   return { isEnabled, toggleShortcut, enableShortcut, disableShortcut };
 };
@@ -276,7 +332,7 @@ export const useShortcutList = (shortcuts = {}) => {
 
 /**
  * Returns a formatted list of active shortcuts for help dialogs.
- * 
+ *
  * @param {Object} shortcuts - Map of shortcut names to { keys, modifiers }
  * @returns {Array} Formatted shortcut list
  */
@@ -287,10 +343,10 @@ export const useShortcutHelp = (shortcuts = {}) => {
       if (config.ctrl) modifiers.push('⌘');
       if (config.alt) modifiers.push('⌥');
       if (config.shift) modifiers.push('⇧');
-      
+
       const key = Array.isArray(config.keys) ? config.keys.join('/') : config.keys;
       const keyDisplay = key.length === 1 ? key.toUpperCase() : key;
-      
+
       return {
         name,
         keys: [...modifiers, keyDisplay].join(' '),

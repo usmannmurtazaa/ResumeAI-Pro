@@ -7,12 +7,7 @@ import { useTheme } from '../../contexts/ThemeContext';
  * Animated theme toggle switch.
  * Supports light/dark mode, keyboard navigation, and accessibility.
  */
-const ThemeToggle = ({ 
-  className = '', 
-  showLabel = false,
-  size = 'md',
-  disabled = false,
-}) => {
+const ThemeToggle = ({ className = '', showLabel = false, size = 'md', disabled = false }) => {
   const { isDark, toggleTheme } = useTheme();
   const prefersReducedMotion = useReducedMotion();
 
@@ -33,10 +28,7 @@ const ThemeToggle = ({
         disabled={disabled}
         className={`
           relative ${sizeConfig.width} ${sizeConfig.height} rounded-full p-1 transition-colors duration-300
-          ${isDark 
-            ? 'bg-gray-600 hover:bg-gray-500' 
-            : 'bg-gray-200 hover:bg-gray-300'
-          }
+          ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'}
           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900
           disabled:opacity-50 disabled:cursor-not-allowed
         `}
@@ -45,7 +37,7 @@ const ThemeToggle = ({
         aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       >
         {/* Track Background Gradient */}
-        <div 
+        <div
           className={`absolute inset-0 rounded-full transition-opacity duration-300 ${
             isDark ? 'opacity-100' : 'opacity-0'
           }`}
@@ -58,19 +50,19 @@ const ThemeToggle = ({
         <motion.div
           className={`absolute ${sizeConfig.ball} rounded-full shadow-md flex items-center justify-center z-10
             ${isDark ? 'bg-gray-800' : 'bg-white'}`}
-          animate={{ 
-            x: isDark ? `calc(${sizeConfig.width === 'w-10' ? '20px' : sizeConfig.width === 'w-14' ? '28px' : '36px'} - ${sizeConfig.width === 'w-10' ? '28px' : sizeConfig.width === 'w-14' ? '40px' : '52px'})` : 4 
+          animate={{
+            x: isDark
+              ? `calc(${sizeConfig.width === 'w-10' ? '20px' : sizeConfig.width === 'w-14' ? '28px' : '36px'} - ${sizeConfig.width === 'w-10' ? '28px' : sizeConfig.width === 'w-14' ? '40px' : '52px'})`
+              : 4,
           }}
           transition={
-            prefersReducedMotion 
-              ? { duration: 0 }
-              : { type: "spring", stiffness: 500, damping: 30 }
+            prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 30 }
           }
         >
           {/* Icon with smooth transition */}
           <motion.div
             initial={false}
-            animate={{ 
+            animate={{
               rotate: isDark ? 360 : 0,
               scale: [0.5, 1],
             }}
@@ -90,14 +82,14 @@ const ThemeToggle = ({
             {/* Sun rays */}
             <motion.div
               className="absolute inset-0 rounded-full"
-              animate={{ 
-                boxShadow: isDark 
-                  ? '0 0 0 0 rgba(99, 102, 241, 0)' 
-                  : '0 0 8px 2px rgba(250, 204, 21, 0.3)'
+              animate={{
+                boxShadow: isDark
+                  ? '0 0 0 0 rgba(99, 102, 241, 0)'
+                  : '0 0 8px 2px rgba(250, 204, 21, 0.3)',
               }}
               transition={{ duration: 0.3 }}
             />
-            
+
             {/* Moon stars (tiny dots) */}
             {isDark && (
               <motion.div

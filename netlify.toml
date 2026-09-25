@@ -10,7 +10,7 @@
   NODE_ENV = "production"
   CI = "true"
   GENERATE_SOURCEMAP = "false"
-  REACT_APP_NAME = "ResumeAI Pro"
+  REACT_APP_NAME = "Resume Ai Pro"
   REACT_APP_VERSION = "2.5.0"
   REACT_APP_ENVIRONMENT = "production"
   REACT_APP_ENABLE_ANALYTICS = "true"

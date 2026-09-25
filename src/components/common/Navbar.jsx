@@ -2,14 +2,32 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMe
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiMenu, FiX, FiUser, FiLogOut, FiSettings,
-  FiFileText, FiHome, FiSearch, FiBell,
-  FiSun, FiMoon, FiChevronDown, FiChevronRight,
-  FiLayout, FiTarget, FiHelpCircle,
-  FiCommand, FiStar, FiZap,
-  FiCreditCard, FiShield, FiWifiOff,
-  FiBookOpen, FiTrendingUp, FiMic, FiMicOff,
-  FiMail, FiMapPin, FiBriefcase, FiUsers,
+  FiMenu,
+  FiX,
+  FiUser,
+  FiLogOut,
+  FiSettings,
+  FiFileText,
+  FiHome,
+  FiSearch,
+  FiBell,
+  FiSun,
+  FiMoon,
+  FiChevronDown,
+  FiChevronRight,
+  FiLayout,
+  FiTarget,
+  FiHelpCircle,
+  FiCommand,
+  FiStar,
+  FiZap,
+  FiCreditCard,
+  FiShield,
+  FiWifiOff,
+  FiBookOpen,
+  FiTrendingUp,
+  FiMail,
+  FiBriefcase,
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -20,18 +38,11 @@ import Avatar from '../ui/Avatar';
 import Tooltip from '../ui/Tooltip';
 import toast from 'react-hot-toast';
 
-// ── Inline Hooks (if not available in your project) ──────────────────────
+// ── Inline Hooks ──────────────────────────────────────────────────────
 
-/**
- * Detects scroll direction (up/down) for hiding/showing navbar.
- */
 const useScrollDirection = () => {
   const [scrollDirection, setScrollDirection] = useState('up');
   const lastScrollY = useRef(0);
-  // FIX: Use a ref to track current direction to avoid stale closure.
-  // Previously scrollDirection was in the useEffect deps which caused the
-  // listener to be removed/re-added on every direction change (inefficient)
-  // and could produce stale reads under rapid scrolling.
   const directionRef = useRef('up');
 
   useEffect(() => {
@@ -60,21 +71,17 @@ const useScrollDirection = () => {
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []); // No deps - uses refs to avoid stale closures
+  }, []);
 
   return scrollDirection;
 };
 
-/**
- * Registers a keyboard shortcut.
- */
 const useKeyboardShortcut = (key, callback, options = {}) => {
-  // FIX: Destructure options to primitives before passing to deps array.
-  // Passing the options object directly caused infinite re-registrations because
-  // a new object reference is created on every render.
   const { ctrl = false, meta = false, shift = false, alt = false } = options;
   const callbackRef = useRef(callback);
-  useLayoutEffect(() => { callbackRef.current = callback; });
+  useLayoutEffect(() => {
+    callbackRef.current = callback;
+  });
 
   useEffect(() => {
     const handler = (event) => {
@@ -92,12 +99,9 @@ const useKeyboardShortcut = (key, callback, options = {}) => {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [key, ctrl, meta, shift, alt]); // primitives only — stable refs
+  }, [key, ctrl, meta, shift, alt]);
 };
 
-/**
- * Monitors online/offline status.
- */
 const useOnlineStatus = () => {
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -119,27 +123,27 @@ const useOnlineStatus = () => {
   return isOnline;
 };
 
-// ── Breadcrumbs Component ────────────────────────────────────────────────
+// ── Breadcrumbs ─────────────────────────────────────────────────────────────
 
 const Breadcrumbs = () => {
   const location = useLocation();
   const paths = location.pathname.split('/').filter(Boolean);
-  
+
   const breadcrumbMap = {
-    'dashboard': { label: 'Dashboard', icon: FiHome },
-    'builder': { label: 'Resume Builder', icon: FiFileText },
-    'templates': { label: 'Templates', icon: FiLayout },
-    'profile': { label: 'Profile', icon: FiUser },
-    'settings': { label: 'Settings', icon: FiSettings },
-    'pricing': { label: 'Pricing', icon: FiCreditCard },
-    'features': { label: 'Features', icon: FiZap },
-    'blog': { label: 'Blog', icon: FiBookOpen },
-    'about': { label: 'About', icon: FiHelpCircle },
-    'contact': { label: 'Contact', icon: FiMail },
-    'help': { label: 'Help Center', icon: FiHelpCircle },
-    'admin': { label: 'Admin', icon: FiShield },
+    dashboard: { label: 'Dashboard', icon: FiHome },
+    builder: { label: 'Resume Builder', icon: FiFileText },
+    templates: { label: 'Templates', icon: FiLayout },
+    profile: { label: 'Profile', icon: FiUser },
+    settings: { label: 'Settings', icon: FiSettings },
+    pricing: { label: 'Pricing', icon: FiCreditCard },
+    features: { label: 'Features', icon: FiZap },
+    blog: { label: 'Blog', icon: FiBookOpen },
+    about: { label: 'About', icon: FiHelpCircle },
+    contact: { label: 'Contact', icon: FiMail },
+    help: { label: 'Help Center', icon: FiHelpCircle },
+    admin: { label: 'Admin', icon: FiShield },
     'ats-scanner': { label: 'ATS Scanner', icon: FiTarget },
-    'analytics': { label: 'Analytics', icon: FiTrendingUp },
+    analytics: { label: 'Analytics', icon: FiTrendingUp },
     'my-resumes': { label: 'My Resumes', icon: FiBriefcase },
     'cover-letter': { label: 'Cover Letter', icon: FiFileText },
   };
@@ -147,11 +151,11 @@ const Breadcrumbs = () => {
   if (paths.length === 0) return null;
 
   return (
-    <nav className="flex items-center text-sm" aria-label="Breadcrumb">
+    <nav className="hidden lg:flex items-center text-sm" aria-label="Breadcrumb">
       <ol className="flex items-center space-x-1.5">
         <li>
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="text-gray-400 hover:text-primary-500 transition-colors p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Home"
           >
@@ -161,10 +165,10 @@ const Breadcrumbs = () => {
         {paths.map((path, index) => {
           const url = `/${paths.slice(0, index + 1).join('/')}`;
           const isLast = index === paths.length - 1;
-          const config = breadcrumbMap[path] || { 
+          const config = breadcrumbMap[path] || {
             label: path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' '),
           };
-          
+
           return (
             <li key={url} className="flex items-center space-x-1.5">
               <FiChevronRight className="w-3 h-3 text-gray-300 dark:text-gray-600 flex-shrink-0" />
@@ -190,11 +194,11 @@ const Breadcrumbs = () => {
   );
 };
 
-// ── Simple Notification Panel (placeholder) ──────────────────────────────
+// ── NotificationPanel ──────────────────────────────────────────────────────
 
 const NotificationPanel = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -204,7 +208,11 @@ const NotificationPanel = ({ isOpen, onClose }) => {
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 p-1"
+          aria-label="Close notifications"
+        >
           <FiX className="w-4 h-4" />
         </button>
       </div>
@@ -216,7 +224,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
   );
 };
 
-// ── Simple Search Bar (placeholder) ──────────────────────────────────────
+// ── SearchBar ──────────────────────────────────────────────────────────────
 
 const SearchBar = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState('');
@@ -280,7 +288,9 @@ const SearchBar = ({ isOpen, onClose }) => {
                 className="flex-1 bg-transparent border-0 outline-none text-gray-900 dark:text-white placeholder-gray-400 text-base"
                 autoComplete="off"
               />
-              <kbd className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">ESC</kbd>
+              <kbd className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                ESC
+              </kbd>
             </div>
           </form>
         </motion.div>
@@ -289,33 +299,7 @@ const SearchBar = ({ isOpen, onClose }) => {
   );
 };
 
-// ── Simple Command Palette (placeholder - use your full version) ─────────
-
-const CommandPalette = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-  
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      >
-        <div className="fixed inset-x-0 top-[15vh] z-[101] mx-auto max-w-xl" onClick={e => e.stopPropagation()}>
-          <div className="glass-card p-4 text-center">
-            <FiCommand className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-gray-500">Command Palette</p>
-            <p className="text-xs text-gray-400 mt-1">Import your full CommandPalette component here</p>
-          </div>
-        </div>
-      </motion.div>
-    </AnimatePresence>
-  );
-};
-
-// ── Navbar Component ─────────────────────────────────────────────────────
+// ── Navbar ──────────────────────────────────────────────────────────────────
 
 const Navbar = () => {
   const { user, logout, userRole } = useAuth();
@@ -330,14 +314,11 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showQuickActions, setShowQuickActions] = useState(false);
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
 
   const profileMenuRef = useRef(null);
   const notificationsRef = useRef(null);
-  const quickActionsRef = useRef(null);
   const mobileMenuButtonRef = useRef(null);
   const mobileNavPanelRef = useRef(null);
   const prevMobileMenuOpenRef = useRef(false);
@@ -347,19 +328,25 @@ const Navbar = () => {
 
   // ── Navigation arrays ──────────────────────────────────────────────────
 
-  const navLinks = useMemo(() => [
-    { to: '/', label: 'Home', icon: FiHome, exact: true },
-    { to: '/templates', label: 'Templates', icon: FiLayout, badge: 'New' },
-    { to: '/features', label: 'Features', icon: FiZap },
-    { to: '/pricing', label: 'Pricing', icon: FiCreditCard },
-  ], []);
+  const navLinks = useMemo(
+    () => [
+      { to: '/', label: 'Home', icon: FiHome, exact: true },
+      { to: '/templates', label: 'Templates', icon: FiLayout, badge: 'New' },
+      { to: '/features', label: 'Features', icon: FiZap },
+      { to: '/pricing', label: 'Pricing', icon: FiCreditCard },
+    ],
+    []
+  );
 
-  const userLinks = useMemo(() => [
-    { to: '/dashboard', label: 'Dashboard', icon: FiHome, shortcut: '⌘D' },
-    { to: '/builder', label: 'New Resume', icon: FiFileText, shortcut: '⌘N', highlight: true },
-    { to: '/ats-scanner', label: 'ATS Scanner', icon: FiTarget },
-    { to: '/my-resumes', label: 'My Resumes', icon: FiFileText },
-  ], []);
+  const userLinks = useMemo(
+    () => [
+      { to: '/dashboard', label: 'Dashboard', icon: FiHome, shortcut: '⌘D' },
+      { to: '/builder', label: 'New Resume', icon: FiFileText, shortcut: '⌘N', highlight: true },
+      { to: '/ats-scanner', label: 'ATS Scanner', icon: FiTarget },
+      { to: '/my-resumes', label: 'My Resumes', icon: FiFileText },
+    ],
+    []
+  );
 
   // ── Effects ────────────────────────────────────────────────────────────
 
@@ -392,9 +379,6 @@ const Navbar = () => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
         setShowNotifications(false);
       }
-      if (quickActionsRef.current && !quickActionsRef.current.contains(event.target)) {
-        setShowQuickActions(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -402,7 +386,6 @@ const Navbar = () => {
 
   useEffect(() => {
     setIsMenuOpen(false);
-    setShowQuickActions(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -430,9 +413,7 @@ const Navbar = () => {
     if (isMenuOpen) {
       prevMobileMenuOpenRef.current = true;
       const id = window.requestAnimationFrame(() => {
-        const first = mobileNavPanelRef.current?.querySelector(
-          'a[href], button:not([disabled])'
-        );
+        const first = mobileNavPanelRef.current?.querySelector('a[href], button:not([disabled])');
         first?.focus({ preventScroll: true });
       });
       return () => window.cancelAnimationFrame(id);
@@ -456,8 +437,11 @@ const Navbar = () => {
   }, []);
 
   // Keyboard shortcuts
-  useKeyboardShortcut('k', () => setShowCommandPalette(true), { meta: true });
-  useKeyboardShortcut('/', (e) => { e.preventDefault(); setShowSearch(true); });
+  useKeyboardShortcut('k', () => setShowSearch(true), { meta: true });
+  useKeyboardShortcut('/', (e) => {
+    e.preventDefault();
+    setShowSearch(true);
+  });
   useKeyboardShortcut('n', () => navigate('/builder'), { meta: true });
   useKeyboardShortcut('d', () => navigate('/dashboard'), { meta: true });
 
@@ -474,23 +458,36 @@ const Navbar = () => {
     }
   }, [logout, navigate]);
 
-  const handleNavigate = useCallback((path) => {
-    navigate(path);
-    suppressNextMobileFocusRestoreRef.current = true;
-    setIsMenuOpen(false);
-    setIsProfileOpen(false);
-    setShowQuickActions(false);
-  }, [navigate]);
+  const handleNavigate = useCallback(
+    (path) => {
+      navigate(path);
+      suppressNextMobileFocusRestoreRef.current = true;
+      setIsMenuOpen(false);
+      setIsProfileOpen(false);
+    },
+    [navigate]
+  );
 
-  const isActive = useCallback((path, exact = false) => {
-    if (exact) return location.pathname === path;
-    return location.pathname.startsWith(path);
-  }, [location.pathname]);
+  const isActive = useCallback(
+    (path, exact = false) => {
+      if (exact) return location.pathname === path;
+      return location.pathname.startsWith(path);
+    },
+    [location.pathname]
+  );
 
   const showBreadcrumbs = location.pathname !== '/' && location.pathname !== '/dashboard';
 
   return (
     <>
+      {/* Skip to main content */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:bg-primary-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {isMenuOpen && (
         <button
           type="button"
@@ -499,6 +496,7 @@ const Navbar = () => {
           onClick={() => setIsMenuOpen(false)}
         />
       )}
+
       {/* Navigation Progress Bar */}
       <AnimatePresence>
         {isNavigating && (
@@ -525,12 +523,18 @@ const Navbar = () => {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.3 }}
+        role="navigation"
+        aria-label="Main navigation"
       >
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo + Breadcrumbs */}
             <div className="flex items-center gap-4">
-              <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
+              <Link
+                to="/"
+                className="flex items-center gap-3 group flex-shrink-0"
+                aria-label="Resume Ai Pro Home"
+              >
                 <motion.div
                   className="relative"
                   whileHover={{ scale: 1.05 }}
@@ -542,7 +546,7 @@ const Navbar = () => {
                   </div>
                 </motion.div>
                 <span className="hidden sm:block font-bold text-lg gradient-text">
-                  ResumeAI Pro
+                  Resume Ai Pro
                 </span>
               </Link>
 
@@ -555,7 +559,7 @@ const Navbar = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-1">
-              {navLinks.map(link => (
+              {navLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
@@ -564,12 +568,15 @@ const Navbar = () => {
                       ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
                       : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
+                  aria-current={isActive(link.to, link.exact) ? 'page' : undefined}
                 >
                   <span className="flex items-center gap-1.5">
                     <link.icon className="w-4 h-4" />
                     <span className="hidden xl:inline">{link.label}</span>
                     {link.badge && (
-                      <Badge variant="primary" size="sm">{link.badge}</Badge>
+                      <Badge variant="primary" size="sm">
+                        {link.badge}
+                      </Badge>
                     )}
                   </span>
                 </Link>
@@ -578,7 +585,7 @@ const Navbar = () => {
               {user && (
                 <>
                   <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1" />
-                  {userLinks.map(link => (
+                  {userLinks.map((link) => (
                     <Link
                       key={link.to}
                       to={link.to}
@@ -604,7 +611,11 @@ const Navbar = () => {
             <div className="flex items-center gap-1">
               {/* Offline Indicator */}
               {!isOnline && (
-                <Badge variant="warning" size="sm" className="hidden sm:inline-flex items-center gap-1">
+                <Badge
+                  variant="warning"
+                  size="sm"
+                  className="hidden sm:inline-flex items-center gap-1"
+                >
                   <FiWifiOff className="w-3 h-3" />
                   <span className="hidden md:inline">Offline</span>
                 </Badge>
@@ -639,6 +650,7 @@ const Navbar = () => {
                     onClick={() => setShowNotifications(!showNotifications)}
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
                     aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+                    aria-expanded={showNotifications}
                   >
                     <FiBell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                     {unreadCount > 0 && (
@@ -647,7 +659,10 @@ const Navbar = () => {
                       </span>
                     )}
                   </button>
-                  <NotificationPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
+                  <NotificationPanel
+                    isOpen={showNotifications}
+                    onClose={() => setShowNotifications(false)}
+                  />
                 </div>
               )}
 
@@ -659,13 +674,18 @@ const Navbar = () => {
                     className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     aria-label="User menu"
                     aria-expanded={isProfileOpen}
+                    aria-haspopup="menu"
                   >
                     <Avatar
                       src={user.photoURL}
                       name={user.displayName || user.email || 'User'}
                       size="sm"
                     />
-                    <FiChevronDown className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                    <FiChevronDown
+                      className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform ${
+                        isProfileOpen ? 'rotate-180' : ''
+                      }`}
+                    />
                   </button>
 
                   <AnimatePresence>
@@ -675,9 +695,12 @@ const Navbar = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         className="absolute right-0 mt-2 w-56 glass-card p-2 shadow-xl z-50"
+                        role="menu"
                       >
                         <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 mb-1">
-                          <p className="font-medium text-sm truncate">{user.displayName || 'User'}</p>
+                          <p className="font-medium text-sm truncate">
+                            {user.displayName || 'User'}
+                          </p>
                           <p className="text-xs text-gray-500 truncate">{user.email}</p>
                         </div>
 
@@ -685,12 +708,13 @@ const Navbar = () => {
                           { to: '/profile', icon: FiUser, label: 'Profile' },
                           { to: '/dashboard', icon: FiHome, label: 'Dashboard' },
                           { to: '/settings', icon: FiSettings, label: 'Settings' },
-                        ].map(item => (
+                        ].map((item) => (
                           <Link
                             key={item.to}
                             to={item.to}
                             onClick={() => setIsProfileOpen(false)}
                             className="flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                            role="menuitem"
                           >
                             <item.icon className="w-4 h-4" />
                             {item.label}
@@ -702,6 +726,7 @@ const Navbar = () => {
                             to="/admin"
                             onClick={() => setIsProfileOpen(false)}
                             className="flex items-center gap-3 px-3 py-2 text-sm rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                            role="menuitem"
                           >
                             <FiShield className="w-4 h-4" />
                             Admin Panel
@@ -713,6 +738,7 @@ const Navbar = () => {
                         <button
                           onClick={handleLogout}
                           className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          role="menuitem"
                         >
                           <FiLogOut className="w-4 h-4" />
                           Sign Out
@@ -726,7 +752,11 @@ const Navbar = () => {
                   <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
                     Sign In
                   </Button>
-                  <Button size="sm" onClick={() => navigate('/signup')} className="bg-gradient-to-r from-primary-500 to-accent-500">
+                  <Button
+                    size="sm"
+                    onClick={() => navigate('/signup')}
+                    className="bg-gradient-to-r from-primary-500 to-accent-500"
+                  >
                     Get Started
                   </Button>
                 </div>
@@ -754,7 +784,7 @@ const Navbar = () => {
                 ref={mobileNavPanelRef}
                 id="mobile-primary-navigation"
                 role="region"
-          aria-hidden={!isMenuOpen}
+                aria-hidden={!isMenuOpen}
                 aria-label="Mobile navigation"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -772,7 +802,7 @@ const Navbar = () => {
                 className="lg:hidden py-2 border-t border-gray-200 bg-white/98 dark:border-gray-700 dark:bg-gray-900/98 max-h-[calc(100vh-4rem)] overflow-y-auto"
               >
                 <div className="space-y-1 pb-2">
-                  {[...navLinks, ...(user ? userLinks : [])].map(link => (
+                  {[...navLinks, ...(user ? userLinks : [])].map((link) => (
                     <Link
                       key={link.to}
                       to={link.to}
@@ -787,7 +817,11 @@ const Navbar = () => {
                     >
                       <link.icon className="w-5 h-5" />
                       <span className="flex-1">{link.label}</span>
-                      {link.badge && <Badge variant="primary" size="sm">{link.badge}</Badge>}
+                      {link.badge && (
+                        <Badge variant="primary" size="sm">
+                          {link.badge}
+                        </Badge>
+                      )}
                     </Link>
                   ))}
 
@@ -836,9 +870,8 @@ const Navbar = () => {
         </div>
       </motion.nav>
 
-      {/* Overlays */}
+      {/* Search Overlay */}
       <SearchBar isOpen={showSearch} onClose={() => setShowSearch(false)} />
-      <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
 
       {/* Spacer for fixed navbar */}
       <div className="h-16" />

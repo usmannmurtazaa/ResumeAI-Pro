@@ -20,7 +20,8 @@ const VARIANTS = {
 };
 
 const OUTLINE_VARIANTS = {
-  default: 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-transparent',
+  default:
+    'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-transparent',
   primary: 'border border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent',
   success: 'border border-green-500 text-green-600 dark:text-green-400 bg-transparent',
   warning: 'border border-yellow-500 text-yellow-600 dark:text-yellow-400 bg-transparent',
@@ -65,110 +66,125 @@ const DOT_COLORS = {
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-const Badge = forwardRef(({ 
-  children, 
-  variant = 'default',
-  size = 'md',
-  className = '',
-  icon,
-  iconPosition = 'left',
-  rounded = 'full',
-  dismissible = false,
-  onDismiss,
-  dot = false,
-  outline = false,
-  gradient = false,
-  disabled = false,
-  as: Component = 'span',
-  href,
-  ...props 
-}, ref) => {
-  // Determine which variant class to use
-  const variantClass = outline 
-    ? (OUTLINE_VARIANTS[variant] || OUTLINE_VARIANTS.default)
-    : gradient 
-      ? (GRADIENT_VARIANTS[variant] || '')
-      : (VARIANTS[variant] || VARIANTS.default);
+const Badge = forwardRef(
+  (
+    {
+      children,
+      variant = 'default',
+      size = 'md',
+      className = '',
+      icon,
+      iconPosition = 'left',
+      rounded = 'full',
+      dismissible = false,
+      onDismiss,
+      dot = false,
+      outline = false,
+      gradient = false,
+      disabled = false,
+      as: Component = 'span',
+      href,
+      ...props
+    },
+    ref
+  ) => {
+    const variantClass = outline
+      ? OUTLINE_VARIANTS[variant] || OUTLINE_VARIANTS.default
+      : gradient
+        ? GRADIENT_VARIANTS[variant] || ''
+        : VARIANTS[variant] || VARIANTS.default;
 
-  const badgeClasses = cn(
-    'inline-flex items-center justify-center font-medium transition-all select-none',
-    variantClass,
-    SIZES[size] || SIZES.md,
-    ROUNDED[rounded] || ROUNDED.full,
-    dismissible && 'pr-1',
-    disabled && 'opacity-50 cursor-not-allowed',
-    className
-  );
+    const badgeClasses = cn(
+      'inline-flex items-center justify-center font-medium transition-all select-none',
+      variantClass,
+      SIZES[size] || SIZES.md,
+      ROUNDED[rounded] || ROUNDED.full,
+      dismissible && 'pr-1',
+      disabled && 'opacity-50 cursor-not-allowed',
+      className
+    );
 
-  // Render icon with proper sizing
-  const iconElement = icon && (
-    <span className="flex-shrink-0 inline-flex">
-      {icon}
-    </span>
-  );
+    const iconElement =
+      icon &&
+      (React.isValidElement(icon) ? (
+        React.cloneElement(icon, {
+          className: cn(icon.props?.className, 'w-3.5 h-3.5 flex-shrink-0'),
+        })
+      ) : (
+        <span className="flex-shrink-0 inline-flex">{icon}</span>
+      ));
 
-  // Render dot indicator
-  const dotElement = dot && (
-    <span className={cn(
-      'inline-block rounded-full flex-shrink-0',
-      size === 'xs' ? 'w-1.5 h-1.5' : size === 'sm' ? 'w-2 h-2' : 'w-2.5 h-2.5',
-      DOT_COLORS[variant] || DOT_COLORS.default
-    )} />
-  );
+    const dotElement =
+      dot &&
+      (typeof dot === 'string' ? (
+        <span
+          className={cn(
+            'inline-block rounded-full flex-shrink-0',
+            size === 'xs' ? 'w-1.5 h-1.5' : size === 'sm' ? 'w-2 h-2' : 'w-2.5 h-2.5',
+            DOT_COLORS[variant] || DOT_COLORS.default
+          )}
+        />
+      ) : (
+        <span
+          className={cn(
+            'inline-block rounded-full flex-shrink-0',
+            size === 'xs' ? 'w-1.5 h-1.5' : size === 'sm' ? 'w-2 h-2' : 'w-2.5 h-2.5',
+            'bg-current'
+          )}
+        />
+      ));
 
-  const content = (
-    <>
-      {dotElement}
-      {icon && iconPosition === 'left' && iconElement}
-      {children}
-      {icon && iconPosition === 'right' && iconElement}
-      {dismissible && !disabled && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDismiss?.();
-          }}
-          className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0"
-          aria-label="Dismiss"
+    const content = (
+      <>
+        {dotElement}
+        {icon && iconPosition === 'left' && iconElement}
+        {children}
+        {icon && iconPosition === 'right' && iconElement}
+        {dismissible && !disabled && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismiss?.();
+            }}
+            className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0"
+            aria-label="Dismiss"
+          >
+            <FiX className="w-3 h-3" />
+          </button>
+        )}
+      </>
+    );
+
+    if (href) {
+      return (
+        <a href={href} className={badgeClasses} ref={ref} {...props}>
+          {content}
+        </a>
+      );
+    }
+
+    if (gradient) {
+      return (
+        <motion.span
+          className={badgeClasses}
+          whileHover={disabled ? {} : { scale: 1.05 }}
+          whileTap={disabled ? {} : { scale: 0.95 }}
+          ref={ref}
+          {...props}
         >
-          <FiX className="w-3 h-3" />
-        </button>
-      )}
-    </>
-  );
+          {content}
+        </motion.span>
+      );
+    }
 
-  // Render as link if href is provided
-  if (href) {
     return (
-      <a href={href} className={badgeClasses} ref={ref} {...props}>
+      <Component className={badgeClasses} ref={ref} {...props}>
         {content}
-      </a>
+      </Component>
     );
   }
-
-  // Render as motion.span if gradient (for animation)
-  if (gradient) {
-    return (
-      <motion.span
-        className={badgeClasses}
-        whileHover={{ scale: disabled ? 1 : 1.05 }}
-        whileTap={{ scale: disabled ? 1 : 0.95 }}
-        ref={ref}
-        {...props}
-      >
-        {content}
-      </motion.span>
-    );
-  }
-
-  // Default render
-  return (
-    <Component className={badgeClasses} ref={ref} {...props}>
-      {content}
-    </Component>
-  );
-});
+);
 
 Badge.displayName = 'Badge';
 
@@ -192,25 +208,53 @@ const STATUS_CONFIG = {
 export const StatusBadge = ({ status, size = 'md', withDot = true, className = '', ...props }) => {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.active;
   return (
-    <Badge variant={config.variant} size={size} icon={config.icon} dot={withDot && !config.icon} className={className} {...props}>
+    <Badge
+      variant={config.variant}
+      size={size}
+      icon={config.icon}
+      dot={withDot && !config.icon}
+      className={className}
+      {...props}
+    >
       {config.label}
     </Badge>
   );
 };
 
+StatusBadge.displayName = 'StatusBadge';
+
 // ── Specialized Badges ────────────────────────────────────────────────────
 
 export const PremiumBadge = ({ size = 'md', className = '', ...props }) => (
-  <Badge variant="primary" gradient size={size} icon={<FiStar className="w-3 h-3" />} className={className} {...props}>PRO</Badge>
+  <Badge
+    variant="primary"
+    gradient
+    size={size}
+    icon={<FiStar className="w-3 h-3" />}
+    className={className}
+    {...props}
+  >
+    PRO
+  </Badge>
 );
+
+PremiumBadge.displayName = 'PremiumBadge';
 
 export const NewBadge = ({ size = 'sm', className = '', ...props }) => (
-  <Badge variant="success" size={size} className={cn('animate-pulse', className)} {...props}>NEW</Badge>
+  <Badge variant="success" size={size} className={cn('animate-pulse', className)} {...props}>
+    NEW
+  </Badge>
 );
 
+NewBadge.displayName = 'NewBadge';
+
 export const BetaBadge = ({ size = 'sm', className = '', ...props }) => (
-  <Badge variant="warning" size={size} className={className} {...props}>BETA</Badge>
+  <Badge variant="warning" size={size} className={className} {...props}>
+    BETA
+  </Badge>
 );
+
+BetaBadge.displayName = 'BetaBadge';
 
 export const CountBadge = ({ count, max = 99, variant = 'danger', size = 'sm', ...props }) => (
   <Badge variant={variant} size={size} rounded="full" {...props}>
@@ -218,8 +262,12 @@ export const CountBadge = ({ count, max = 99, variant = 'danger', size = 'sm', .
   </Badge>
 );
 
+CountBadge.displayName = 'CountBadge';
+
 export const BadgeGroup = ({ children, className = '' }) => (
   <div className={cn('flex flex-wrap gap-1.5', className)}>{children}</div>
 );
+
+BadgeGroup.displayName = 'BadgeGroup';
 
 export default React.memo(Badge);

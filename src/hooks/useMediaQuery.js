@@ -25,13 +25,13 @@ const getMatchMedia = (query) => {
 
 /**
  * Tracks whether a CSS media query matches.
- * 
+ *
  * @param {string} query - CSS media query string (e.g., '(min-width: 768px)')
  * @param {Object} options - Configuration options
  * @param {*} options.defaultValue - Value to use during SSR (default: false)
  * @param {boolean} options.enabled - Whether to listen for changes (default: true)
  * @returns {boolean} Whether the media query currently matches
- * 
+ *
  * @example
  * const isMobile = useMediaQuery('(max-width: 767px)');
  * const isDark = useMediaQuery('(prefers-color-scheme: dark)');
@@ -40,7 +40,7 @@ const getMatchMedia = (query) => {
  */
 export const useMediaQuery = (query, options = {}) => {
   const { defaultValue = false, enabled = true } = options;
-  
+
   // FIXED: Use a ref for the initial value, don't put matches in deps
   const [matches, setMatches] = useState(() => {
     if (typeof window === 'undefined') return defaultValue;
@@ -91,9 +91,9 @@ export const useMediaQuery = (query, options = {}) => {
 /**
  * Returns responsive breakpoint booleans.
  * All breakpoints share a single matchMedia check for efficiency.
- * 
+ *
  * @returns {Object} { sm, md, lg, xl, xxl, current, isMobile, isTablet, isDesktop }
- * 
+ *
  * @example
  * const { isMobile, isTablet, isDesktop } = useBreakpoints();
  * if (isMobile) return <MobileView />;
@@ -121,20 +121,27 @@ export const useBreakpoints = () => {
   const isTablet = sm && !lg;
   const isDesktop = lg;
 
-  return useMemo(() => ({
-    sm, md, lg, xl, xxl,
-    current,
-    isMobile,
-    isTablet,
-    isDesktop,
-  }), [sm, md, lg, xl, xxl, current, isMobile, isTablet, isDesktop]);
+  return useMemo(
+    () => ({
+      sm,
+      md,
+      lg,
+      xl,
+      xxl,
+      current,
+      isMobile,
+      isTablet,
+      isDesktop,
+    }),
+    [sm, md, lg, xl, xxl, current, isMobile, isTablet, isDesktop]
+  );
 };
 
 // ── useReducedMotion ─────────────────────────────────────────────────────
 
 /**
  * Returns whether the user prefers reduced motion.
- * 
+ *
  * @returns {boolean} Whether reduced motion is preferred
  */
 export const useReducedMotion = () => {
@@ -145,7 +152,7 @@ export const useReducedMotion = () => {
 
 /**
  * Returns the user's preferred color scheme.
- * 
+ *
  * @returns {'light' | 'dark'} The preferred color scheme
  */
 export const useColorScheme = () => {
@@ -158,10 +165,10 @@ export const useColorScheme = () => {
 /**
  * Powerful responsive hook that accepts breakpoint-specific values.
  * Similar to the `useResponsive` pattern but with full type safety.
- * 
+ *
  * @param {Object} values - Object with breakpoint keys and their corresponding values
  * @returns {*} The value for the current breakpoint
- * 
+ *
  * @example
  * const columns = useResponsive({
  *   base: 1,    // Mobile (< 640px)
@@ -177,7 +184,7 @@ export const useResponsive = (values = {}) => {
   return useMemo(() => {
     // Return the most specific match, falling back to base
     const priority = ['2xl', 'xl', 'lg', 'md', 'sm', 'base'];
-    
+
     for (const bp of priority) {
       if (bp === 'base') return values.base;
       if (current === bp || (bp === '2xl' && current === '2xl')) {
@@ -195,7 +202,7 @@ export const useResponsive = (values = {}) => {
 
 /**
  * Tracks window dimensions with debounced resize handling.
- * 
+ *
  * @param {Object} options - Configuration
  * @param {number} options.debounceDelay - Debounce delay in ms (default: 100)
  * @returns {{ width: number, height: number }} Window dimensions
@@ -224,7 +231,7 @@ export const useWindowSize = (options = {}) => {
     };
 
     window.addEventListener('resize', handleResize, { passive: true });
-    
+
     // Set initial size
     handleResize();
 
@@ -241,7 +248,7 @@ export const useWindowSize = (options = {}) => {
 
 /**
  * Detects device type based on user agent and screen size.
- * 
+ *
  * @returns {Object} { isMobile, isTablet, isDesktop, isTouch, deviceType }
  */
 export const useDeviceDetection = () => {
@@ -281,11 +288,29 @@ export const useDeviceDetection = () => {
 
   useEffect(() => {
     if (width < 768) {
-      setDevice(prev => ({ ...prev, isMobile: true, isTablet: false, isDesktop: false, deviceType: 'mobile' }));
+      setDevice((prev) => ({
+        ...prev,
+        isMobile: true,
+        isTablet: false,
+        isDesktop: false,
+        deviceType: 'mobile',
+      }));
     } else if (width < 1024) {
-      setDevice(prev => ({ ...prev, isMobile: false, isTablet: true, isDesktop: false, deviceType: 'tablet' }));
+      setDevice((prev) => ({
+        ...prev,
+        isMobile: false,
+        isTablet: true,
+        isDesktop: false,
+        deviceType: 'tablet',
+      }));
     } else {
-      setDevice(prev => ({ ...prev, isMobile: false, isTablet: false, isDesktop: true, deviceType: 'desktop' }));
+      setDevice((prev) => ({
+        ...prev,
+        isMobile: false,
+        isTablet: false,
+        isDesktop: true,
+        deviceType: 'desktop',
+      }));
     }
   }, [width]);
 

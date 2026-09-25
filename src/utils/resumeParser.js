@@ -25,11 +25,10 @@ let mammothModule = null;
 const getPdfJs = async () => {
   if (!pdfjsModule) {
     pdfjsModule = await import('pdfjs-dist');
-    // Point to the worker bundled with the npm package — no external CDN needed
-    pdfjsModule.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url
-    ).toString();
+
+    // Use the official CDN for the worker to avoid bundler resolution issues.
+    // This is safe for the Firebase free plan and does not expose API keys.
+    pdfjsModule.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsModule.version}/pdf.worker.min.js`;
   }
   return pdfjsModule;
 };
@@ -99,7 +98,8 @@ const extractTextFromTXT = async (file) => {
  */
 export const parseResumeFile = async (file, onProgress) => {
   if (!file) throw new Error('No file provided.');
-  if (!validateFileType(file)) throw new Error('Unsupported file format. Please upload PDF, DOCX, or TXT.');
+  if (!validateFileType(file))
+    throw new Error('Unsupported file format. Please upload PDF, DOCX, or TXT.');
 
   const ext = getFileExtension(file.name);
   onProgress?.(10);
@@ -181,10 +181,33 @@ const extractResumeData = (text) => {
 
   // ── Skills ──────────────────────────────────────────────────────────
   const skillKeywords = [
-    'JavaScript', 'Python', 'Java', 'TypeScript', 'React', 'Vue', 'Angular',
-    'Node.js', 'Express', 'Django', 'Flask', 'AWS', 'Azure', 'GCP',
-    'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'PostgreSQL', 'Redis',
-    'Git', 'Linux', 'REST API', 'GraphQL', 'CI/CD', 'Agile', 'Scrum',
+    'JavaScript',
+    'Python',
+    'Java',
+    'TypeScript',
+    'React',
+    'Vue',
+    'Angular',
+    'Node.js',
+    'Express',
+    'Django',
+    'Flask',
+    'AWS',
+    'Azure',
+    'GCP',
+    'Docker',
+    'Kubernetes',
+    'SQL',
+    'MongoDB',
+    'PostgreSQL',
+    'Redis',
+    'Git',
+    'Linux',
+    'REST API',
+    'GraphQL',
+    'CI/CD',
+    'Agile',
+    'Scrum',
   ];
   const foundSkills = skillKeywords.filter((skill) =>
     new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)
@@ -200,8 +223,13 @@ const extractResumeData = (text) => {
 
   const educationText = extractSection('EDUCATION|ACADEMIC');
   if (educationText) {
-    const degrees = educationText.match(/(Bachelor|Master|PhD|B\.?S\.?|M\.?S\.?|MBA)[^.]*\./gi) || [];
-    data.education = degrees.map((d) => ({ degree: d.trim(), institution: '', graduationYear: '' }));
+    const degrees =
+      educationText.match(/(Bachelor|Master|PhD|B\.?S\.?|M\.?S\.?|MBA)[^.]*\./gi) || [];
+    data.education = degrees.map((d) => ({
+      degree: d.trim(),
+      institution: '',
+      graduationYear: '',
+    }));
   }
 
   const experienceText = extractSection('EXPERIENCE|WORK|EMPLOYMENT');
@@ -235,7 +263,7 @@ export const calculateResumeScore = (data) => {
   score += Math.min((data.education?.length || 0) * 5, 15);
   score += Math.min((data.experience?.length || 0) * 8, 25);
   score += Math.min((data.skills?.technical?.length || 0) * 2, 15);
-  score += Math.min((data.skills?.soft?.length || 0), 5);
+  score += Math.min(data.skills?.soft?.length || 0, 5);
   score += Math.min((data.projects?.length || 0) * 3, 10);
   score += Math.min((data.certifications?.length || 0) * 3, 10);
   return Math.min(score, 100);

@@ -1,285 +1,245 @@
+
 # 🚀 ResumeAI Pro
 
 <div align="center">
-  <img src="public/logo.png" alt="ResumeAI Pro Logo" width="200" />
-  
-  <h3>AI-Powered ATS Resume Builder for Modern Job Seekers</h3>
-  
-  <p>
-    <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react&logoColor=white" alt="React" />
-    <img src="https://img.shields.io/badge/Firebase-10.7.0-FFCA28?logo=firebase&logoColor=white" alt="Firebase" />
-    <img src="https://img.shields.io/badge/Tailwind-3.4.0-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind" />
-    <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
-    <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome" />
-    <img src="https://img.shields.io/badge/Version-2.5.0-blue.svg" alt="Version" />
-  </p>
-  
-  <p>
-    <a href="#-features">Features</a> •
-    <a href="#-live-demo">Demo</a> •
-    <a href="#-quick-start">Quick Start</a> •
-    <a href="#-tech-stack">Tech Stack</a> •
-    <a href="#-documentation">Docs</a> •
-    <a href="#-contributing">Contributing</a> •
-    <a href="#-license">License</a>
-  </p>
+  <img src="public/logo.png" alt="Resume Ai Pro Logo" width="200" />
+
+> An AI-powered resume builder that generates ATS-optimised resumes with customisable templates, AI-driven content suggestions, and one-click export.
+
+**Built by [Usman Murtaza](https://usmanmurtaza.netlify.app)** — Full Stack Developer
+
+[![Live Demo](https://img.shields.io/badge/Live_Demo-resumeaixpro.netlify.app-8b5cf6?style=for-the-badge)](https://resumeaixpro.netlify.app)
+[![Portfolio](https://img.shields.io/badge/Portfolio-usmanmurtaza.netlify.app-6366f1?style=for-the-badge)](https://usmanmurtaza.netlify.app)
+
+<p>
+  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/Firebase-10-FFCA28?logo=firebase&logoColor=white" alt="Firebase" />
+  <img src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/OpenAI-API-412991?logo=openai&logoColor=white" alt="OpenAI" />
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
+  <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome" />
+</p>
+
 </div>
 
 ---
 
-## 📖 Table of Contents
+## 📖 Overview
 
-- [🌟 Overview](#-overview)
-- [✨ Features](#-features)
-- [🎬 Live Demo](#-live-demo)
-- [🎨 Screenshots](#-screenshots)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [⚡ Quick Start](#-quick-start)
-- [🔥 Firebase Setup](#-firebase-setup)
-- [🚀 Deployment](#-deployment)
-- [📁 Project Structure](#-project-structure)
-- [📚 Documentation](#-documentation)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-- [👨‍💻 Author](#-author)
-- [🙏 Acknowledgments](#-acknowledgments)
+**ResumeAI Pro** is a full-stack SaaS application that helps job seekers build professional, ATS-friendly resumes with AI assistance. It combines a multi-step resume editor, AI-driven content suggestions, and a clean preview experience so users can move from a blank page to a ready-to-send resume quickly.
 
----
-
-## 🌟 Overview
-
-**ResumeAI Pro** is a premium, production-ready SaaS application that helps job seekers create professional, ATS-optimized resumes. With AI-powered suggestions, real-time preview, and comprehensive analytics, ResumeAI Pro ensures your resume stands out to both algorithms and hiring managers.
-
-### 🎯 Key Metrics
-
-| Metric | Value |
-|--------|-------|
-| 👥 Active Users | 50,000+ |
-| 📄 Resumes Created | 100,000+ |
-| ⭐ User Rating | 4.9/5 |
-| 🎯 Interview Success Rate | 85% |
-| 📋 Free Resumes | 5 |
-
-### 💡 Why ResumeAI Pro?
-
-- **ATS-Optimized**: Pass through applicant tracking systems with ease
-- **AI-Powered**: Smart suggestions for keywords and achievements
-- **Professional Templates**: 25+ beautifully designed templates
-- **Real-Time Preview**: See changes as you make them
-- **Comprehensive Analytics**: Track your resume performance
-- **Secure & Private**: Bank-level encryption and GDPR compliant
-- **Free Tier**: 5 free resumes, no credit card required
+The project was designed and built end-to-end by **[Usman Murtaza](https://usmanmurtaza.netlify.app)** as part of the broader portfolio of products he develops.
 
 ---
 
 ## ✨ Features
 
-### 🔐 Authentication & Security
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 🔑 Email/Password | Secure email and password authentication | ✅ |
-| 🌐 Google Sign-In | One-click Google authentication | ✅ |
-| 📱 Phone OTP | Phone number verification with OTP | ✅ |
-| 🐦 GitHub OAuth | Sign in with GitHub | ✅ |
-| 📘 Facebook OAuth | Sign in with Facebook | ✅ |
-| 🛡️ Role-Based Access | User and Admin role management | ✅ |
-| 🔒 2FA Ready | Two-factor authentication support | 🔄 |
-| 🔐 Firebase Security | Production-ready security rules | ✅ |
+### Resume Builder
+- Multi-step editor covering personal details, experience, education, skills, projects, and certifications
+- Live preview that updates as you type
+- Auto-save to Firestore
+- Multiple resume templates with distinct visual styles
+- Export to PDF
 
-### 📝 Resume Builder
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 📋 Multi-Step Form | 6 comprehensive sections | ✅ |
-| 🎨 25+ Templates | Modern, Classic, Creative, Minimal, Executive, Tech | ✅ |
-| 👁️ Real-time Preview | Live preview as you build | ✅ |
-| 💾 Auto-Save | Automatic saving to Firestore | ✅ |
-| 🔄 Drag & Drop | Reorder sections effortlessly | ✅ |
-| 📤 Multi-Format Export | PDF, DOCX, TXT formats | ✅ |
-| 📎 LinkedIn Import | Import profile from LinkedIn | ✅ |
-| ✨ AI Content Suggestions | Smart writing assistance | ✅ |
+### AI Assistance
+- AI-driven content suggestions for summaries, bullet points, and skill descriptions
+- Suggestions powered by the OpenAI API
+- ATS-focused phrasing prompts
 
-### 🤖 ATS Intelligence
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 📊 Real-Time ATS Score | Live compatibility scoring with letter grade | ✅ |
-| 🔍 Resume Scanner | Upload and analyze existing resumes | ✅ |
-| 💡 Keyword Suggestions | Industry-specific recommendations | ✅ |
-| 📈 Improvement Tips | Actionable optimization suggestions | ✅ |
-| 📑 Detailed Reports | Comprehensive ATS analysis with breakdown | ✅ |
-| 🎯 Industry Detection | Auto-detect target industry | ✅ |
+### Authentication & Data
+- Email/password authentication via Firebase
+- Google sign-in
+- Per-user resume storage in Cloud Firestore
+- User dashboard for managing multiple resumes
 
-### 👤 User Dashboard
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 📁 Resume Management | Create, edit, duplicate, delete, archive | ✅ |
-| 📊 Analytics Overview | Track resume performance and downloads | ✅ |
-| 🎯 Quick Actions | Fast access to common tasks | ✅ |
-| 🔔 Smart Notifications | Stay updated on activity with browser notifications | ✅ |
-| 📱 Mobile Responsive | Full mobile support | ✅ |
-| 🌓 Dark/Light Mode | Theme switching with persistence | ✅ |
-
-### 👑 Admin Dashboard
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 👥 User Management | View and manage all users | ✅ |
-| 📈 Platform Analytics | Comprehensive usage statistics | ✅ |
-| 🎨 Template Management | Manage resume templates | ✅ |
-| ⚙️ System Controls | Platform configuration | ✅ |
-| 📋 Audit Logs | Track system activity | ✅ |
-| 🚫 User Moderation | Suspend/delete users | ✅ |
-
-### 🎨 UI/UX Excellence
-| Feature | Description | Status |
-|---------|-------------|--------|
-| 🌓 Dark/Light Mode | Theme switching with persistence | ✅ |
-| 🎨 Custom Themes | 6 preset + custom color schemes | ✅ |
-| 📱 Fully Responsive | Mobile, tablet, desktop optimized | ✅ |
-| ✨ Smooth Animations | Framer Motion powered | ✅ |
-| 🔲 Glassmorphism | Modern glass design | ✅ |
-| ⚡ Fast Performance | Optimized loading and rendering | ✅ |
-| ♿ Accessibility | WCAG 2.1 AA compliant | ✅ |
-| ⌨️ Keyboard Shortcuts | 15+ shortcuts for power users | ✅ |
+### UI/UX
+- Responsive layout across mobile, tablet, and desktop
+- Dark theme with glassmorphism styling
+- Smooth transitions and micro-interactions
+- Accessible markup and keyboard navigation
 
 ---
 
 ## 🎬 Live Demo
 
-<div align="center">
-  
-| Environment | URL | Status |
-|-------------|-----|--------|
-| 🌍 **Production** | [resumeaixpro.netlify.app](https://resumeaixpro.netlify.app) | 🟢 Live |
+**[resumeaixpro.netlify.app](https://resumeaixpro.netlify.app)**
 
-### 🔑 Demo Credentials
-
-| Role | Email | Password |
-|------|-------|----------|
-| 👤 **User** | demo@resumeaipro.com | demo123456 |
-| 👑 **Admin** | admin@resumeaipro.com | admin123456 |
-
-</div>
+The live demo is connected to a Firebase project and supports real sign-up. You can create a free account to explore the resume builder end to end.
 
 ---
 
-## 🛠️ Tech Stack
-
-<div align="center">
+## 🛠 Tech Stack
 
 ### Frontend
-| Category | Technology | Version |
-|----------|-----------|---------|
-| Framework | React | 18.2.0 |
-| Routing | React Router DOM | 6.21.0 |
-| Styling | Tailwind CSS | 3.4.0 |
-| Animations | Framer Motion | 10.17.0 |
-| Forms | React Hook Form | 7.49.0 |
-| Charts | Recharts | 2.10.3 |
-| Drag & Drop | React DnD | 16.0.1 |
-| Icons | React Icons | 4.12.0 |
-| PDF | jsPDF + html2canvas | 2.5.1 |
-| State | Zustand + Context | 4.5.7 |
-| Query | TanStack Query | 5.14.0 |
+| Category | Technology |
+|---|---|
+| Framework | React 18 |
+| Routing | React Router |
+| Styling | Tailwind CSS |
+| Animations | Framer Motion |
+| Forms | React Hook Form |
+| Icons | Lucide React |
+| PDF export | jsPDF + html2canvas |
 
 ### Backend & Services
 | Category | Technology |
-|----------|-----------|
+|---|---|
 | Platform | Firebase |
 | Database | Cloud Firestore |
-| Auth | Firebase Auth |
-| Storage | Cloud Storage |
-| Functions | Cloud Functions (Node 18) |
-| Hosting | Netlify / Firebase |
-| Analytics | Firebase Analytics |
-
-</div>
+| Auth | Firebase Authentication |
+| Storage | Firebase Storage |
+| AI | OpenAI API |
+| Hosting | Netlify |
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Getting Started
 
-### 📋 Prerequisites
+### Prerequisites
 
-- **Node.js** `18.x` or higher
-- **npm** `9.x` or higher
-- **Firebase** account
-- **Git**
+- Node.js 18 or higher
+- npm 9 or higher
+- A Firebase project
+- An OpenAI API key
 
-### 🚀 One-Command Setup
+### Installation
 
 ```bash
-# Clone, install, and start
-git clone https://github.com/usmannmurtazaa/resumeai-pro.git && cd resumeai-pro && npm install && cp .env.example .env && npm start
-
----
-
-📦 Detailed Installation
-
-# 1. Clone repository
-git clone https://github.com/usmannmurtazaa/resumeai-pro.git
-cd resumeai-pro
+# 1. Clone the repository
+git clone https://github.com/Usmannmurtazaa/ResumeAI-Pro.git
+cd ResumeAI-Pro
 
 # 2. Install dependencies
 npm install
 
-# 3. Configure environment
+# 3. Set up environment variables
 cp .env.example .env
-# Edit .env with your Firebase credentials
+# Edit .env with your Firebase and OpenAI credentials
 
-# 4. Start development server
+# 4. Start the development server
 npm start
+```
 
-# 5. Build for production
+The app runs at `http://localhost:3000`.
+
+### Environment Variables
+
+Create a `.env` file at the project root with:
+
+```
+REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+REACT_APP_OPENAI_API_KEY=your_openai_api_key
+```
+
+Refer to `.env.example` for the full list.
+
+---
+
+## 🚀 Deployment
+
+The project is deployed on Netlify.
+
+```bash
+# Production build
 npm run build
 
----
-
-🤝 Contributing
-
-We ❤️ contributions! Here's how:
-
-Fork the repository
-
-Create a feature branch (git checkout -b feature/amazing-feature)
-
-Commit your changes (git commit -m '✨ Add amazing feature')
-
-Push to the branch (git push origin feature/amazing-feature)
-
-Open a Pull Request
-
-See CONTRIBUTING.md for detailed guidelines.
+# Deploy to Netlify (with Netlify CLI installed)
+netlify deploy --prod
+```
 
 ---
 
-📄 License
+## 📁 Project Structure
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+```
+ResumeAI-Pro/
+├── public/
+├── src/
+│   ├── components/       # Reusable UI components
+│   ├── pages/            # Route-level pages
+│   ├── context/          # React contexts (auth, theme)
+│   ├── firebase/         # Firebase configuration
+│   ├── hooks/            # Custom React hooks
+│   ├── utils/            # Helpers and constants
+│   └── App.js
+├── .env.example
+├── package.json
+└── README.md
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome. To contribute:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m 'Add your feature'`
+4. Push to the branch: `git push origin feature/your-feature`
+5. Open a Pull Request
+
+For larger changes, please open an issue first to discuss the proposal.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 Copyright © 2026 Usman Murtaza
 
 ---
 
-👨‍💻 Author
+## 👨‍💻 Author
 
-<div align="center"> <h3>Usman Murtaza</h3> <p>Full Stack Developer & UI/UX Enthusiast</p> <p> <a href="https://github.com/usmannmurtazaa"><img src="https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white" /></a> <a href="https://linkedin.com/in/usmanmurtaza01"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white" /></a> <a href="https://usmanmurtaza.netlify.app"><img src="https://img.shields.io/badge/Portfolio-6366f1?logo=vercel&logoColor=white" /></a> <a href="https://twitter.com/usmannmurtazaa"><img src="https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white" /></a> </p> </div>
+**Usman Murtaza**  
+Full Stack Developer · Creator of the Maniesta ecosystem
+
+- 🌐 Portfolio: [usmanmurtaza.netlify.app](https://usmanmurtaza.netlify.app)
+- 💻 GitHub: [github.com/Usmannmurtazaa](https://github.com/Usmannmurtazaa)
+- 💼 LinkedIn: [linkedin.com/in/Usmannmurtazaa](https://www.linkedin.com/in/Usmannmurtazaa/)
+- 🐦 Twitter/X: [@usman_murtazaa](https://twitter.com/usman_murtazaa)
+- ✍️ Dev.to: [dev.to/usmanmurtaza](https://dev.to/usmanmurtaza)
 
 ---
 
-⭐ Support
+<div align="center">
 
-If you find this project helpful, please consider:
+If you find this project useful, please consider starring the repository ⭐
 
-⭐ Starring the repository
+Made with ❤️ by [Usman Murtaza](https://usmanmurtaza.netlify.app)
 
-🐦 Sharing on social media
+</div>
+```
 
-💬 Providing feedback
+DEPENDENCIES:
+- No imports or runtime dependencies. This is a documentation file.
+- No new dependencies. No `package.json` change.
+- No other file needs to change.
 
-<div align="center"> <p>Made with ❤️ by <a href="https://usmanmurtaza.netlify.app">Usman Murtaza</a></p>
-<a href="#-resumeai-pro">Back to Top ↑</a>
+VALIDATION:
+- Replace the existing `README.md` in the ResumeAI Pro repo with this content.
+- Commit and push. The GitHub repo page will immediately render the new README.
+- Open `github.com/Usmannmurtazaa/ResumeAI-Pro` in a browser:
+  - The top section shows "Built by Usman Murtaza" and the live demo link.
+  - The badges row renders cleanly.
+  - There are no fabricated metrics anywhere.
+  - There are no exposed demo credentials.
+  - The Author section links to the correct portfolio, GitHub, and LinkedIn.
+- If you want, check the rendering on mobile — GitHub's mobile README view is fine, but the badges stack vertically, which is expected.
+- No console errors expected (this is a markdown file).
+- Optionally, run the README through `markdownlint` if you want to verify structure — but not required.
 
+## What's next
 
+Two follow-ups:
 
+1. **Baaki repos ki list chahiye** — aap ne `MORE_REPOS` kaha tha lekin abhi tak sirf ResumeAI Pro bheja hai. Apni poori GitHub repo list paste karo (ya GitHub pe `https://github.com/Usmannmurtazaa?tab=repositories` ka screenshot bhejo), main baaki repos ke liye descriptions, topics, aur README top sections likh dunga.
 
-<img src="public/logo.png" alt="ResumeAI Pro" width="150" /> <p>© 2026 ResumeAI Pro. All rights reserved.</p> </div> ```
-
+2. **`maniesta-campus-os`, `Maniesta-Suite`, `ZainRealEstate`, `NexaCalculator`, `Usmanmurtaza` (portfolio repo)** — agar aap chaho, main in sab ke README top sections bhi likh sakta hoon jo aap ke existing README mein add karne ke liye hain. Batao kaunse chahiye.

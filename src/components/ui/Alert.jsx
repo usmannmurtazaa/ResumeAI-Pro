@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiCheckCircle, FiAlertTriangle, FiInfo, FiXCircle, FiX,
-} from 'react-icons/fi';
-import Button from '../ui/Button';
+import { FiCheckCircle, FiAlertTriangle, FiInfo, FiXCircle, FiX } from 'react-icons/fi';
+import Button from './Button';
+
+// ── Utility ───────────────────────────────────────────────────────────────
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -40,14 +42,14 @@ const ALERT_CONFIG = {
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-const Alert = ({ 
-  type = 'info', 
-  title, 
-  message, 
+const Alert = ({
+  type = 'info',
+  title,
+  message,
   onClose,
   closable = true,
-  autoDismiss = 0, // Auto-dismiss after milliseconds (0 = disabled)
-  actions = [],    // Array of { label, onClick, variant } for action buttons
+  autoDismiss = 0,
+  actions = [],
   className = '',
   id,
 }) => {
@@ -55,13 +57,9 @@ const Alert = ({
   const config = ALERT_CONFIG[type] || ALERT_CONFIG.info;
   const Icon = config.icon;
 
-  // ── Reset visibility when props change ───────────────────────────────
-
   useEffect(() => {
     setIsVisible(true);
   }, [title, message, type, id]);
-
-  // ── Auto-dismiss ─────────────────────────────────────────────────────
 
   useEffect(() => {
     if (autoDismiss > 0 && isVisible) {
@@ -72,11 +70,8 @@ const Alert = ({
     }
   }, [autoDismiss, isVisible]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────
-
   const handleClose = useCallback(() => {
     setIsVisible(false);
-    // Delay the callback to allow exit animation
     setTimeout(() => {
       onClose?.();
     }, 200);
@@ -94,25 +89,16 @@ const Alert = ({
           role="alert"
           aria-live="polite"
         >
-          {/* Icon */}
           <div className={`flex-shrink-0 mt-0.5 ${config.iconColor}`}>
             <Icon className="w-5 h-5" />
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             {title && (
-              <h4 className={`font-medium text-sm mb-0.5 ${config.titleColor}`}>
-                {title}
-              </h4>
+              <h4 className={`font-medium text-sm mb-0.5 ${config.titleColor}`}>{title}</h4>
             )}
-            {message && (
-              <p className={`text-sm ${config.textColor}`}>
-                {message}
-              </p>
-            )}
+            {message && <p className={`text-sm ${config.textColor}`}>{message}</p>}
 
-            {/* Action Buttons */}
             {actions.length > 0 && (
               <div className="flex gap-2 mt-2">
                 {actions.map((action, index) => (
@@ -129,7 +115,6 @@ const Alert = ({
             )}
           </div>
 
-          {/* Close Button */}
           {closable && (
             <button
               onClick={handleClose}
@@ -145,5 +130,7 @@ const Alert = ({
     </AnimatePresence>
   );
 };
+
+Alert.displayName = 'Alert';
 
 export default React.memo(Alert);

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  FiAlertTriangle, 
-  FiRefreshCw, 
-  FiHome, 
-  FiCopy, 
+import {
+  FiAlertTriangle,
+  FiRefreshCw,
+  FiHome,
+  FiCopy,
   FiChevronLeft,
-  FiSend
+  FiSend,
 } from 'react-icons/fi';
 import ErrorBoundary from './ErrorBoundary';
 import Button from '../ui/Button';
@@ -15,11 +15,11 @@ import toast from 'react-hot-toast';
 
 // ── Fallback UI Component ──────────────────────────────────────────────────
 
-const RouteErrorFallback = ({ 
-  error, 
-  errorInfo, 
-  errorId, 
-  reset, 
+const RouteErrorFallback = ({
+  error,
+  errorInfo,
+  errorId,
+  reset,
   reload,
   title = 'Something went wrong on this page',
   message = 'An unexpected error occurred while loading this page.',
@@ -76,7 +76,7 @@ const RouteErrorFallback = ({
         <div className="glass-card p-6 sm:p-8 text-center">
           {/* Error Icon */}
           <div className="relative mb-6">
-            <motion.div 
+            <motion.div
               className="absolute inset-0 bg-red-500/20 rounded-full blur-xl"
               animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.3, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
@@ -87,12 +87,8 @@ const RouteErrorFallback = ({
           </div>
 
           {/* Error Message */}
-          <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-            {title}
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
-            {message}
-          </p>
+          <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">{title}</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">{message}</p>
 
           {/* Error ID (for support) */}
           {errorId && (
@@ -124,18 +120,10 @@ const RouteErrorFallback = ({
             </Button>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                onClick={handleGoHome}
-                icon={<FiHome />}
-              >
+              <Button variant="outline" onClick={handleGoHome} icon={<FiHome />}>
                 Go Home
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleGoBack}
-                icon={<FiChevronLeft />}
-              >
+              <Button variant="outline" onClick={handleGoBack} icon={<FiChevronLeft />}>
                 Go Back
               </Button>
             </div>
@@ -165,13 +153,13 @@ const RouteErrorFallback = ({
           {/* Help Text */}
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-6">
             If this keeps happening, please{' '}
-            <a 
-              href="mailto:support@resumeaipro.com"
+            <a
+              href="mailto:support@maniestaresumeai.com"
               className="text-primary-500 hover:text-primary-600 underline"
             >
               contact support
-            </a>
-            {' '}and include the error ID above.
+            </a>{' '}
+            and include the error ID above.
           </p>
         </div>
       </motion.div>
@@ -183,15 +171,15 @@ const RouteErrorFallback = ({
 
 /**
  * A pre-configured error boundary for route-level error isolation.
- * 
+ *
  * @example
  * <RouteErrorBoundary>
  *   <MyPageComponent />
  * </RouteErrorBoundary>
- * 
+ *
  * @example
  * // With custom props
- * <RouteErrorBoundary 
+ * <RouteErrorBoundary
  *   title="Dashboard Error"
  *   message="We couldn't load your dashboard."
  *   onReset={() => clearCache()}
@@ -199,7 +187,7 @@ const RouteErrorFallback = ({
  *   <Dashboard />
  * </RouteErrorBoundary>
  */
-const RouteErrorBoundary = ({ 
+const RouteErrorBoundary = ({
   children,
   title,
   message,
@@ -212,11 +200,7 @@ const RouteErrorBoundary = ({
       onReset={onReset}
       maxRecoveryAttempts={2}
       fallback={(errorProps) => (
-        <RouteErrorFallback 
-          {...errorProps}
-          title={title}
-          message={message}
-        />
+        <RouteErrorFallback {...errorProps} title={title} message={message} />
       )}
     >
       {children}

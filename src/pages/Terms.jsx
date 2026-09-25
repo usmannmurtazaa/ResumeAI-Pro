@@ -2,8 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  FiFileText, FiCheckCircle, FiAlertCircle, FiUsers, FiCreditCard,
-  FiShield, FiMail, FiChevronRight, FiGlobe, FiEdit3, FiXCircle,
+  FiFileText,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiUsers,
+  FiCreditCard,
+  FiShield,
+  FiMail,
+  FiChevronRight,
+  FiGlobe,
+  FiEdit3,
+  FiXCircle,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
@@ -19,7 +28,7 @@ const SECTIONS = [
     icon: FiCheckCircle,
     title: 'Acceptance of Terms',
     content: `
-      By accessing or using ResumeAI Pro ("the Service"), you agree to be bound by these Terms of Service.
+      By accessing or using Resume Ai Pro ("the Service"), you agree to be bound by these Terms of Service.
       
       • If you do not agree to these terms, you may not access or use the Service.
       • These terms apply to all visitors, users, and others who access the Service.
@@ -45,7 +54,7 @@ const SECTIONS = [
     icon: FiFileText,
     title: 'Content Ownership & License',
     content: `
-      You retain full ownership of all content you create using ResumeAI Pro.
+      You retain full ownership of all content you create using Resume Ai Pro.
       
       • You grant us a limited, worldwide, non-exclusive license to host, store, and display your content solely for the purpose of providing the Service.
       • We do not claim any ownership rights over your resume content, personal information, or data.
@@ -89,11 +98,11 @@ const SECTIONS = [
     icon: FiEdit3,
     title: 'Intellectual Property',
     content: `
-      ResumeAI Pro and its original content, features, and functionality are owned by us.
+      Resume Ai Pro and its original content, features, and functionality are owned by us.
       
       • Our templates, designs, logos, and software are protected by copyright and intellectual property laws.
       • You may not copy, modify, or distribute our proprietary content without permission.
-      • The "ResumeAI Pro" name, logo, and brand are our trademarks.
+      • The "Resume Ai Pro" name, logo, and brand are our trademarks.
       • User feedback and suggestions become our property and may be used without compensation.
     `,
   },
@@ -131,7 +140,7 @@ const SECTIONS = [
     content: `
       To the fullest extent permitted by law:
       
-      • ResumeAI Pro is provided "as is" and "as available" without warranties of any kind.
+      • Resume Ai Pro is provided "as is" and "as available" without warranties of any kind.
       • We are not liable for any indirect, incidental, special, or consequential damages.
       • Our total liability for any claims is limited to the amount you paid us in the last 12 months.
       • We are not responsible for hiring outcomes, interview success, or job placement.
@@ -172,12 +181,13 @@ const SECTIONS = [
 const Terms = () => {
   usePageTitle({
     title: 'Terms of Service',
-    description: 'Read the terms and conditions for using ResumeAI Pro. Learn about account responsibilities, subscriptions, and acceptable use.',
+    description:
+      'Read the terms and conditions for using Resume Ai Pro. Learn about account responsibilities, subscriptions, and acceptable use.',
   });
 
   const [activeSection, setActiveSection] = useState(null);
 
-  const tocItems = useMemo(() => SECTIONS.map(s => ({ id: s.id, title: s.title })), []);
+  const tocItems = useMemo(() => SECTIONS.map((s) => ({ id: s.id, title: s.title })), []);
 
   const handleScrollTo = (id) => {
     const element = document.getElementById(id);
@@ -193,7 +203,8 @@ const Terms = () => {
         <div className="container mx-auto px-4 max-w-5xl">
           {/* Header */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-12"
           >
@@ -201,9 +212,7 @@ const Terms = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Terms of <span className="gradient-text">Service</span>
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Last updated: {LAST_UPDATED}
-            </p>
+            <p className="text-gray-500 dark:text-gray-400">Last updated: {LAST_UPDATED}</p>
           </motion.div>
 
           <div className="grid lg:grid-cols-4 gap-8">
@@ -240,11 +249,11 @@ const Terms = () => {
                     Contact our legal team for questions about these terms.
                   </p>
                   <a
-                    href="mailto:legal@resumeaipro.com"
+                    href="mailto:legal@maniestaresumeai.com"
                     className="flex items-center gap-2 text-sm text-primary-500 hover:text-primary-600"
                   >
                     <FiMail className="w-4 h-4" />
-                    legal@resumeaipro.com
+                    legal@maniestaresumeai.com
                   </a>
                 </Card>
               </div>
@@ -255,9 +264,10 @@ const Terms = () => {
               <Card className="p-6 md:p-8">
                 <div className="prose dark:prose-invert max-w-none mb-8">
                   <p className="lead text-gray-600 dark:text-gray-400">
-                    Welcome to ResumeAI Pro. These Terms of Service ("Terms") govern your access to and use of 
-                    our resume building platform, including any associated websites, applications, and services 
-                    (collectively, the "Service"). Please read these Terms carefully before using the Service.
+                    Welcome to Resume Ai Pro. These Terms of Service ("Terms") govern your
+                    access to and use of our resume building platform, including any associated
+                    websites, applications, and services (collectively, the "Service"). Please read
+                    these Terms carefully before using the Service.
                   </p>
                 </div>
 
@@ -297,8 +307,11 @@ const Terms = () => {
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     📧 Email:{' '}
-                    <a href="mailto:legal@resumeaipro.com" className="text-primary-500 hover:text-primary-600">
-                      legal@resumeaipro.com
+                    <a
+                      href="mailto:legal@maniestaresumeai.com"
+                      className="text-primary-500 hover:text-primary-600"
+                    >
+                      legal@maniestaresumeai.com
                     </a>
                   </p>
                 </div>

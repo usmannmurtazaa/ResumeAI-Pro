@@ -1,18 +1,18 @@
 {
-  "name": "resumeai-pro",
-  "version": "2.5.0",
+  "name": "maniestaresumeai",
+  "version": "3.1.0",
   "private": true,
   "description": "Professional ATS Resume Builder with AI-powered optimization - Create stunning, ATS-friendly resumes that land interviews",
-  "author": "Usman Murtaza <usman@resumeaipro.com> (https://usmanmurtaza.netlify.app)",
+  "author": "Usman Murtaza <usman@maniestaresumeai.com> (https://usmanmurtaza.netlify.app)",
   "license": "MIT",
-  "homepage": "https://resumeaixpro.netlify.app",
+  "homepage": "https://maniestaresumeai.netlify.app",
   "repository": {
     "type": "git",
-    "url": "https://github.com/usmannmurtazaa/resumeai-pro.git"
+    "url": "https://github.com/usmannmurtazaa/maniestaresumeai.git"
   },
   "bugs": {
-    "url": "https://github.com/usmannmurtazaa/resumeai-pro/issues",
-    "email": "support@resumeaipro.com"
+    "url": "https://github.com/usmannmurtazaa/maniestaresumeai/issues",
+    "email": "support@maniestaresumeai.com"
   },
   "keywords": [
     "resume-builder",
@@ -33,25 +33,22 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
-    "@react-pdf/renderer": "^3.1.14",
     "@sentry/react": "10.49.0",
     "@stripe/react-stripe-js": "^2.4.0",
     "@stripe/stripe-js": "^2.2.0",
     "axios": "^1.6.2",
-    "chart.js": "4.5.1",
     "clsx": "^2.0.0",
     "cross-env": "10.1.0",
     "date-fns": "3.6.0",
     "firebase": "^10.7.1",
+    "firebase-admin": "^13.6.0",
     "framer-motion": "^10.17.0",
-    "html-to-image": "^1.11.11",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
-    "lodash": "^4.17.21",
     "mammoth": "1.12.0",
     "pdfjs-dist": "3.11.174",
     "react": "^18.3.1",
-    "react-chartjs-2": "5.3.1",
+    "react-beautiful-dnd": "^13.1.1",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.3.1",
@@ -65,13 +62,11 @@
     "react-otp-input": "3.1.1",
     "react-phone-number-input": "3.4.16",
     "react-router-dom": "^6.21.0",
-    "react-share": "^5.1.0",
     "recharts": "^2.10.3",
+    "stripe": "^17.0.0",
     "tailwind-merge": "^2.2.0",
     "use-debounce": "^10.0.0",
-    "uuid": "^9.0.1",
-    "web-vitals": "5.2.0",
-    "zustand": "4.5.7"
+    "web-vitals": "5.2.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -109,6 +104,8 @@
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
+    "ajv": "^8.12.0",
+    "ajv-keywords": "^5.1.0",
     "autoprefixer": "10.4.16",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
@@ -272,5 +269,13 @@
   "overrides": {
     "protobufjs": "^7.2.5",
     "nth-check": "^2.1.1"
+  },
+  "allowScripts": {
+    "canvas@2.11.2": true,
+    "re2@1.24.0": true,
+    "core-js@3.50.0": true,
+    "core-js-pure@3.50.0": true,
+    "protobufjs@7.6.5": true,
+    "@firebase/util@1.15.3": true
   }
 }

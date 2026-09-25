@@ -1,6 +1,6 @@
 {
-  "name": "ResumeAI Pro - AI-Powered ATS Resume Builder",
-  "short_name": "ResumeAI Pro",
+  "name": "Resume Ai Pro - AI-Powered ATS Resume Builder",
+  "short_name": "Resume Ai Pro",
   "description": "Create professional, ATS-optimized resumes with AI-powered suggestions",
   "start_url": "/",
   "scope": "/",
@@ -75,14 +75,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "ResumeAI Pro Dashboard"
+      "label": "Resume Ai Pro Dashboard"
     },
     {
       "src": "/screenshot-mobile.png",
       "sizes": "750x1334",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "ResumeAI Pro Mobile View"
+      "label": "Resume Ai Pro Mobile View"
     }
   ],
   "related_applications": [],

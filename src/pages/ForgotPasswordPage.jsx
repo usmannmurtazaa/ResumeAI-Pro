@@ -13,7 +13,8 @@ const ForgotPasswordPage = () => {
   // Set page title
   usePageTitle({
     title: 'Forgot Password',
-    description: 'Reset your ResumeAI Pro account password. We\'ll send you a secure link to create a new password.',
+    description:
+      "Reset your Resume Ai Pro account password. We'll send you a secure link to create a new password.",
   });
 
   // Show loader while auth is initializing

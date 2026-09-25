@@ -1,10 +1,18 @@
 import React, { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiBell, FiX, FiInfo, FiCheck, FiCheckCircle, 
-  FiAlertTriangle, FiFileText, FiUser, FiClock,
-  FiChevronRight, FiInbox
+import {
+  FiBell,
+  FiX,
+  FiInfo,
+  FiCheck,
+  FiCheckCircle,
+  FiAlertTriangle,
+  FiFileText,
+  FiUser,
+  FiClock,
+  FiChevronRight,
+  FiInbox,
 } from 'react-icons/fi';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,7 +22,11 @@ import toast from 'react-hot-toast';
 
 const NOTIFICATION_CONFIG = {
   success: { icon: FiCheckCircle, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20' },
-  warning: { icon: FiAlertTriangle, color: 'text-yellow-500', bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
+  warning: {
+    icon: FiAlertTriangle,
+    color: 'text-yellow-500',
+    bg: 'bg-yellow-50 dark:bg-yellow-900/20',
+  },
   error: { icon: FiAlertTriangle, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' },
   info: { icon: FiInfo, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
   resume: { icon: FiFileText, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20' },
@@ -25,17 +37,17 @@ const NOTIFICATION_CONFIG = {
 
 /**
  * NotificationPanel - Controlled component for use inside Navbar.
- * 
+ *
  * @param {boolean} isOpen - Whether the panel is visible
  * @param {function} onClose - Callback to close the panel
  */
 const NotificationPanel = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
-  const { 
-    notifications = [], 
-    unreadCount = 0, 
-    markAsRead, 
-    markAllAsRead 
+  const {
+    notifications = [],
+    unreadCount = 0,
+    markAsRead,
+    markAllAsRead,
   } = useNotifications?.() || {};
 
   // ── Escape Key Handler ─────────────────────────────────────────────────
@@ -55,32 +67,38 @@ const NotificationPanel = ({ isOpen, onClose }) => {
 
   // ── Handlers ───────────────────────────────────────────────────────────
 
-  const handleNotificationClick = useCallback(async (notification) => {
-    if (!notification.read && markAsRead) {
-      try {
-        await markAsRead(notification.id);
-      } catch (error) {
-        console.error('Failed to mark as read:', error);
+  const handleNotificationClick = useCallback(
+    async (notification) => {
+      if (!notification.read && markAsRead) {
+        try {
+          await markAsRead(notification.id);
+        } catch (error) {
+          console.error('Failed to mark as read:', error);
+        }
       }
-    }
 
-    if (notification.link) {
-      onClose?.();
-      setTimeout(() => navigate(notification.link), 150);
-    }
-  }, [markAsRead, navigate, onClose]);
+      if (notification.link) {
+        onClose?.();
+        setTimeout(() => navigate(notification.link), 150);
+      }
+    },
+    [markAsRead, navigate, onClose]
+  );
 
-  const handleMarkAllAsRead = useCallback(async (e) => {
-    e.stopPropagation();
-    if (!markAllAsRead) return;
-    
-    try {
-      await markAllAsRead();
-      toast.success('All notifications marked as read');
-    } catch (error) {
-      toast.error('Failed to mark all as read');
-    }
-  }, [markAllAsRead]);
+  const handleMarkAllAsRead = useCallback(
+    async (e) => {
+      e.stopPropagation();
+      if (!markAllAsRead) return;
+
+      try {
+        await markAllAsRead();
+        toast.success('All notifications marked as read');
+      } catch (error) {
+        toast.error('Failed to mark all as read');
+      }
+    },
+    [markAllAsRead]
+  );
 
   const handleViewAll = useCallback(() => {
     onClose?.();
@@ -106,16 +124,14 @@ const NotificationPanel = ({ isOpen, onClose }) => {
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2">
               <FiBell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
-                Notifications
-              </h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Notifications</h3>
               {hasUnread && (
                 <span className="bg-primary-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium">
                   {unreadCount} new
                 </span>
               )}
             </div>
-            
+
             <div className="flex items-center gap-1">
               {hasUnread && (
                 <button
@@ -127,7 +143,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                   <FiCheck className="w-3.5 h-3.5" />
                 </button>
               )}
-              <button 
+              <button
                 onClick={onClose}
                 className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                 aria-label="Close notifications"
@@ -163,8 +179,8 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                       key={notif.id}
                       whileTap={{ scale: 0.98 }}
                       className={`relative px-4 py-3 transition-colors group ${
-                        notif.read 
-                          ? 'hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer' 
+                        notif.read
+                          ? 'hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer'
                           : 'bg-primary-50/30 dark:bg-primary-900/10 hover:bg-primary-50/50 dark:hover:bg-primary-900/20 cursor-pointer'
                       }`}
                       onClick={() => handleNotificationClick(notif)}
@@ -182,18 +198,23 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                       )}
 
                       <div className="flex gap-3">
-                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${config.bg}`}>
+                        <div
+                          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${config.bg}`}
+                        >
                           <Icon className={`w-4 h-4 ${config.color}`} />
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className={`text-sm truncate ${notif.read ? 'text-gray-700 dark:text-gray-300 font-medium' : 'text-gray-900 dark:text-white font-semibold'}`}>
+                            <h4
+                              className={`text-sm truncate ${notif.read ? 'text-gray-700 dark:text-gray-300 font-medium' : 'text-gray-900 dark:text-white font-semibold'}`}
+                            >
                               {notif.title}
                             </h4>
                             <span className="text-[10px] text-gray-400 flex-shrink-0 mt-0.5 flex items-center gap-1">
                               <FiClock className="w-2.5 h-2.5" />
-                              {notif.time || formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
+                              {notif.time ||
+                                formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
                             </span>
                           </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
@@ -215,7 +236,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
           {/* Footer */}
           {notifications.length > 0 && (
             <div className="border-t border-gray-200 dark:border-gray-700">
-              <button 
+              <button
                 onClick={handleViewAll}
                 className="w-full text-center text-sm text-primary-500 hover:text-primary-600 dark:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 py-3 px-4 transition-colors flex items-center justify-center gap-1 font-medium"
                 type="button"

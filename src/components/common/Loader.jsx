@@ -52,7 +52,7 @@ const PROGRESS_WIDTHS = {
 
 // ── Main Loader Component ──────────────────────────────────────────────────
 
-const Loader = ({ 
+const Loader = ({
   fullScreen = false,
   size = 'md',
   variant = 'spinner',
@@ -89,16 +89,16 @@ const Loader = ({
   };
 
   const loaderContent = (
-    <div 
+    <div
       className="flex flex-col items-center justify-center space-y-4"
       role="status"
       aria-live="polite"
       aria-label={ariaLabel || displayText}
     >
       {renderLoader()}
-      
+
       {showText && !prefersReducedMotion && (
-        <motion.p 
+        <motion.p
           className={`${sizeConfig.text} text-gray-500 dark:text-gray-400 font-medium`}
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 1.5, repeat: Infinity }}
@@ -106,7 +106,7 @@ const Loader = ({
           {displayText}
         </motion.p>
       )}
-      
+
       {/* Static text for reduced motion preference */}
       {showText && prefersReducedMotion && (
         <p className={`${sizeConfig.text} text-gray-500 dark:text-gray-400 font-medium`}>
@@ -118,11 +118,9 @@ const Loader = ({
 
   if (fullScreen) {
     return (
-      <div 
+      <div
         className={`fixed inset-0 z-50 flex items-center justify-center ${
-          transparent 
-            ? 'bg-white/50 dark:bg-gray-900/50' 
-            : 'bg-white/80 dark:bg-gray-900/80'
+          transparent ? 'bg-white/50 dark:bg-gray-900/50' : 'bg-white/80 dark:bg-gray-900/80'
         } backdrop-blur-sm ${className}`}
       >
         {loaderContent}
@@ -130,11 +128,7 @@ const Loader = ({
     );
   }
 
-  return (
-    <div className={`flex items-center justify-center p-8 ${className}`}>
-      {loaderContent}
-    </div>
-  );
+  return <div className={`flex items-center justify-center p-8 ${className}`}>{loaderContent}</div>;
 };
 
 // ── Spinner Loader ─────────────────────────────────────────────────────────
@@ -142,7 +136,9 @@ const Loader = ({
 const SpinnerLoader = ({ sizeConfig, prefersReducedMotion }) => {
   if (prefersReducedMotion) {
     return (
-      <div className={`${sizeConfig.spinner} border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center`}>
+      <div
+        className={`${sizeConfig.spinner} border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center`}
+      >
         <FiLoader className="w-1/2 h-1/2 text-gray-400 dark:text-gray-500" />
       </div>
     );
@@ -156,7 +152,7 @@ const SpinnerLoader = ({ sizeConfig, prefersReducedMotion }) => {
       <motion.div
         className={`absolute top-0 left-0 ${sizeConfig.spinner} border-transparent border-t-primary-500 dark:border-t-primary-400 rounded-full`}
         animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         style={{ borderWidth: 'inherit' }}
       />
     </div>
@@ -170,10 +166,7 @@ const DotsLoader = ({ sizeConfig, prefersReducedMotion }) => {
     return (
       <div className="flex space-x-2">
         {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className={`${sizeConfig.dot} bg-gray-400 dark:bg-gray-500 rounded-full`}
-          />
+          <div key={i} className={`${sizeConfig.dot} bg-gray-400 dark:bg-gray-500 rounded-full`} />
         ))}
       </div>
     );
@@ -190,7 +183,7 @@ const DotsLoader = ({ sizeConfig, prefersReducedMotion }) => {
             duration: 0.6,
             repeat: Infinity,
             delay: i * 0.15,
-            ease: "easeInOut",
+            ease: 'easeInOut',
           }}
         />
       ))}
@@ -202,16 +195,14 @@ const DotsLoader = ({ sizeConfig, prefersReducedMotion }) => {
 
 const PulseLoader = ({ sizeConfig, prefersReducedMotion }) => {
   if (prefersReducedMotion) {
-    return (
-      <div className={`${sizeConfig.pulse} bg-gray-300 dark:bg-gray-600 rounded-full`} />
-    );
+    return <div className={`${sizeConfig.pulse} bg-gray-300 dark:bg-gray-600 rounded-full`} />;
   }
 
   return (
     <motion.div
       className={`${sizeConfig.pulse} bg-primary-500 dark:bg-primary-400 rounded-full`}
       animate={{ scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
-      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+      transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
       role="presentation"
     />
   );
@@ -223,7 +214,9 @@ const BrandLoader = ({ sizeConfig, prefersReducedMotion }) => {
   if (prefersReducedMotion) {
     return (
       <div className="relative">
-        <div className={`${sizeConfig.spinner} border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center`}>
+        <div
+          className={`${sizeConfig.spinner} border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center`}
+        >
           <FiFileText className="text-primary-500 dark:text-primary-400" size={sizeConfig.icon} />
         </div>
       </div>
@@ -236,13 +229,13 @@ const BrandLoader = ({ sizeConfig, prefersReducedMotion }) => {
       <motion.div
         className={`${sizeConfig.spinner} border-gray-200 dark:border-gray-700 rounded-full`}
         animate={{ rotate: 360 }}
-        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
       />
       {/* Inner spinning arc */}
       <motion.div
         className={`absolute top-0 left-0 ${sizeConfig.spinner} border-transparent border-t-primary-500 dark:border-t-primary-400 rounded-full`}
         animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
       />
       {/* Center icon */}
       <div className="absolute inset-0 flex items-center justify-center">
@@ -259,14 +252,16 @@ const ProgressLoader = ({ size, prefersReducedMotion }) => {
 
   if (prefersReducedMotion) {
     return (
-      <div className={`${widthClass} h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden`}>
+      <div
+        className={`${widthClass} h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden`}
+      >
         <div className="h-full w-2/3 bg-primary-500 dark:bg-primary-400 rounded-full" />
       </div>
     );
   }
 
   return (
-    <div 
+    <div
       className={`${widthClass} h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden`}
       role="progressbar"
       aria-valuemin={0}
@@ -277,7 +272,7 @@ const ProgressLoader = ({ size, prefersReducedMotion }) => {
         className="h-full bg-gradient-to-r from-primary-500 via-accent-500 to-primary-500 rounded-full"
         style={{ width: '40%' }}
         animate={{ x: ['-100%', '250%'] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
       />
     </div>
   );
@@ -298,7 +293,7 @@ const SkeletonLoader = ({ prefersReducedMotion }) => {
           <div className={`h-3 bg-gray-200 dark:bg-gray-700 rounded ${animationClass} w-1/2`} />
         </div>
       </div>
-      
+
       {/* Content skeleton */}
       <div className="space-y-3 pt-2">
         <div className={`h-3 bg-gray-200 dark:bg-gray-700 rounded ${animationClass}`} />
@@ -306,13 +301,13 @@ const SkeletonLoader = ({ prefersReducedMotion }) => {
         <div className={`h-3 bg-gray-200 dark:bg-gray-700 rounded ${animationClass} w-4/5`} />
         <div className={`h-3 bg-gray-200 dark:bg-gray-700 rounded ${animationClass} w-9/12`} />
       </div>
-      
+
       {/* Action skeleton */}
       <div className="flex space-x-3 pt-4">
         <div className={`h-10 bg-gray-200 dark:bg-gray-700 rounded-lg ${animationClass} w-24`} />
         <div className={`h-10 bg-gray-200 dark:bg-gray-700 rounded-lg ${animationClass} w-32`} />
       </div>
-      
+
       <span className="sr-only">Loading...</span>
     </div>
   );
@@ -335,13 +330,11 @@ export const PageLoader = ({ message = 'Loading amazing things...' }) => {
         className="text-center"
       >
         <Loader variant="brand" size="lg" showText={false} />
-        
+
         {prefersReducedMotion ? (
-          <p className="mt-4 text-gray-500 dark:text-gray-400">
-            {message}
-          </p>
+          <p className="mt-4 text-gray-500 dark:text-gray-400">{message}</p>
         ) : (
-          <motion.p 
+          <motion.p
             className="mt-4 text-gray-500 dark:text-gray-400"
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
@@ -365,7 +358,7 @@ export const InlineLoader = ({ className = '', size = 16 }) => (
  * Overlay loader with backdrop for containers.
  */
 export const OverlayLoader = ({ message = 'Loading...' }) => (
-  <div 
+  <div
     className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-xl"
     role="status"
     aria-label={message}
@@ -376,7 +369,7 @@ export const OverlayLoader = ({ message = 'Loading...' }) => (
 
 /**
  * Suspense fallback wrapper for lazy-loaded components.
- * 
+ *
  * @example
  * <Suspense fallback={<SuspenseLoader />}>
  *   <LazyComponent />

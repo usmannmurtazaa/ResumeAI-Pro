@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiMail, 
-  FiLock, 
-  FiEye, 
-  FiEyeOff, 
+import {
+  FiMail,
+  FiLock,
+  FiEye,
+  FiEyeOff,
   FiAlertCircle,
   FiCheckCircle,
   FiArrowRight,
@@ -14,13 +14,16 @@ import {
   FiInfo,
   FiGithub,
   FiTwitter,
-  FiRefreshCw
+  FiRefreshCw,
+  FiKey,
+  FiSmile,
 } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { FcPhone } from 'react-icons/fc';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import Progress from '../ui/Progress';
 import GoogleAuthButton from './GoogleAuthButton';
 import PhoneAuth from './PhoneAuth';
 import toast from 'react-hot-toast';
@@ -30,6 +33,36 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+// ── Password Strength Meter ──────────────────────────────────────────────
+
+const calculatePasswordStrength = (password) => {
+  if (!password) return 0;
+  let strength = 0;
+  if (password.length >= 8) strength += 25;
+  if (password.length >= 12) strength += 10;
+  if (/[a-z]/.test(password)) strength += 10;
+  if (/[A-Z]/.test(password)) strength += 15;
+  if (/[0-9]/.test(password)) strength += 10;
+  if (/[^A-Za-z0-9]/.test(password)) strength += 15;
+  if (/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(password)) strength += 10;
+  if (/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])/.test(password)) strength += 5;
+  return Math.min(strength, 100);
+};
+
+const getPasswordStrengthColor = (strength) => {
+  if (strength >= 80) return 'success';
+  if (strength >= 50) return 'warning';
+  return 'danger';
+};
+
+const getPasswordStrengthLabel = (strength) => {
+  if (strength >= 80) return 'Strong';
+  if (strength >= 60) return 'Good';
+  if (strength >= 40) return 'Fair';
+  if (strength > 0) return 'Weak';
+  return '';
+};
 
 // ── Security Utilities ──────────────────────────────────────────────────────
 
@@ -46,43 +79,42 @@ const useLoginRateLimiter = () => {
       return { count: 0, lastAttempt: 0 };
     }
   });
-  
-  const isLocked = attempts.count >= MAX_LOGIN_ATTEMPTS && 
-                   Date.now() - attempts.lastAttempt < LOCKOUT_DURATION;
-  
-  const timeRemaining = isLocked 
+
+  const isLocked =
+    attempts.count >= MAX_LOGIN_ATTEMPTS && Date.now() - attempts.lastAttempt < LOCKOUT_DURATION;
+
+  const timeRemaining = isLocked
     ? Math.ceil((LOCKOUT_DURATION - (Date.now() - attempts.lastAttempt)) / 1000 / 60)
     : 0;
-  
+
   const recordAttempt = useCallback(() => {
     const newAttempts = {
       count: attempts.count + 1,
-      lastAttempt: Date.now()
+      lastAttempt: Date.now(),
     };
     setAttempts(newAttempts);
     sessionStorage.setItem('login_attempts', JSON.stringify(newAttempts));
   }, [attempts]);
-  
+
   const resetAttempts = useCallback(() => {
     setAttempts({ count: 0, lastAttempt: 0 });
     sessionStorage.removeItem('login_attempts');
   }, []);
-  
+
   return { isLocked, timeRemaining, recordAttempt, resetAttempts };
 };
 
 // ── Demo Credentials (Development Only) ────────────────────────────────────
 
 /**
- * FIXED: Demo credentials are only available in development mode.
+ * Demo credentials are only available in development mode.
  * In production, this returns empty values.
  */
 const getDemoCredentials = (role) => {
-  // NEVER return real credentials in production
   if (IS_PRODUCTION) {
     return { email: '', password: '' };
   }
-  
+
   const credentials = {
     user: {
       email: process.env.REACT_APP_DEMO_USER_EMAIL || 'demo@example.com',
@@ -93,7 +125,7 @@ const getDemoCredentials = (role) => {
       password: process.env.REACT_APP_DEMO_ADMIN_PASSWORD || 'admin123456',
     },
   };
-  
+
   return credentials[role] || credentials.user;
 };
 
@@ -103,7 +135,7 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
   const { login, loginWithProvider } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPhoneAuth, setShowPhoneAuth] = useState(false);
@@ -116,11 +148,18 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
   });
   const [loginError, setLoginError] = useState(null);
   const [showDemoCredentials, setShowDemoCredentials] = useState(false);
-  const [providerLoading, setProviderLoading] = useState(null); // Track which provider is loading
-  
+  const [providerLoading, setProviderLoading] = useState(null);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+
   const { isLocked, timeRemaining, recordAttempt, resetAttempts } = useLoginRateLimiter();
-  
-  const { register, handleSubmit, setValue, watch, resetField, formState: { errors, isValid, isDirty } } = useForm({
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isValid, isDirty },
+  } = useForm({
     mode: 'onChange',
     defaultValues: {
       email: (() => {
@@ -130,45 +169,54 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
           return '';
         }
       })(),
-      password: ''
-    }
+      password: '',
+    },
   });
 
   const emailValue = watch('email');
   const passwordValue = watch('password');
 
-  // Check for redirect message from protected route
   const fromLocation = location.state?.from?.pathname || redirectTo;
   const authMessage = location.state?.message;
   const requireAdmin = location.state?.requireAdmin;
 
+  // ── Password strength calculation ──────────────────────────────────────
+
   useEffect(() => {
-    // Show message if redirected from protected route
+    if (passwordValue) {
+      setPasswordStrength(calculatePasswordStrength(passwordValue));
+    } else {
+      setPasswordStrength(0);
+    }
+  }, [passwordValue]);
+
+  // Show message if redirected from protected route
+  useEffect(() => {
     if (authMessage) {
       toast(authMessage, {
-        icon: '🔒',
+        icon: <FiShield className="w-4 h-4" />,
         duration: 5000,
         id: 'auth-redirect-message',
       });
     }
-    
+
     if (requireAdmin) {
       toast('This area requires admin access', {
-        icon: '🛡️',
+        icon: <FiShield className="w-4 h-4" />,
         duration: 5000,
         id: 'admin-required-message',
       });
     }
   }, [authMessage, requireAdmin]);
 
-  // FIXED: Clear error when user starts typing
+  // Clear error when user starts typing
   useEffect(() => {
     if (isDirty && loginError) {
       setLoginError(null);
     }
   }, [emailValue, passwordValue, isDirty, loginError]);
 
-  // FIXED: Save email to localStorage securely
+  // Save email to localStorage securely
   useEffect(() => {
     try {
       if (rememberMe && emailValue) {
@@ -182,19 +230,14 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
   }, [rememberMe, emailValue]);
 
   /**
-   * FIXED: Proper admin role check using Firebase token claims.
+   * Proper admin role check using Firebase token claims.
    */
   const checkAdminRole = async (user) => {
     if (!user) return false;
-    
+
     try {
-      // Force refresh to get latest claims
       const idTokenResult = await user.getIdTokenResult(true);
-      
-      // Check for admin claim in Firebase custom claims
-      // These must be set via Firebase Admin SDK or backend
-      return idTokenResult.claims.admin === true || 
-             idTokenResult.claims.superAdmin === true;
+      return idTokenResult.claims.admin === true || idTokenResult.claims.superAdmin === true;
     } catch (error) {
       console.error('Admin role check failed:', error);
       return false;
@@ -202,49 +245,44 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
   };
 
   /**
-   * FIXED: Handle redirect after successful login.
+   * Handle redirect after successful login.
    */
   const handleRedirectAfterLogin = async (userCredential) => {
     try {
       const isAdmin = await checkAdminRole(userCredential.user);
-      
+
       if (isAdmin) {
         toast.success('Welcome, Administrator!', {
-          icon: '🛡️',
+          icon: <FiShield className="w-4 h-4" />,
           duration: 2000,
         });
         navigate('/admin', { replace: true });
       } else {
         toast.success('Welcome back!', {
-          icon: '👋',
+          icon: <FiSmile className="w-4 h-4" />,
           duration: 2000,
         });
         navigate(fromLocation, { replace: true });
       }
     } catch (error) {
-      // Fallback to dashboard if admin check fails
       console.error('Redirect error:', error);
       navigate('/dashboard', { replace: true });
     }
   };
 
   const onSubmit = async (data) => {
-    // Check rate limiting
     if (isLocked) {
       setLoginError(`Account temporarily locked. Try again in ${timeRemaining} minute(s).`);
       return;
     }
-    
+
     setLoading(true);
     setLoginError(null);
-    
+
     try {
       const userCredential = await login(data.email, data.password);
-      
-      // Reset attempts on successful login
       resetAttempts();
-      
-      // Handle remember me
+
       try {
         if (rememberMe) {
           localStorage.setItem('remembered_email', data.email);
@@ -254,19 +292,14 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
       } catch (error) {
         console.warn('Could not update localStorage:', error);
       }
-      
-      // Redirect to appropriate page
+
       await handleRedirectAfterLogin(userCredential);
-      
     } catch (error) {
       console.error('Login error:', error);
-      
-      // Record failed attempt
       recordAttempt();
-      
-      // Handle specific Firebase auth errors
+
       let errorMessage = 'Failed to sign in. Please try again.';
-      
+
       switch (error.code) {
         case 'auth/user-not-found':
           errorMessage = 'No account found with this email address. Would you like to create one?';
@@ -292,7 +325,7 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
         default:
           errorMessage = error.message || 'An unexpected error occurred. Please try again.';
       }
-      
+
       setLoginError(errorMessage);
       toast.error(errorMessage, {
         id: 'login-error',
@@ -308,29 +341,24 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
       setLoginError(`Account temporarily locked. Try again in ${timeRemaining} minute(s).`);
       return;
     }
-    
+
     setProviderLoading(provider);
     setLoginError(null);
-    
+
     try {
       const userCredential = await loginWithProvider(provider);
-      
-      // Reset attempts on successful login
       resetAttempts();
-      
       await handleRedirectAfterLogin(userCredential);
-      
     } catch (error) {
       console.error(`${provider} login error:`, error);
-      
-      // Record failed attempt
       recordAttempt();
-      
+
       let errorMessage = `Failed to sign in with ${provider}.`;
-      
+
       switch (error.code) {
         case 'auth/account-exists-with-different-credential':
-          errorMessage = 'An account already exists with the same email. Please sign in using your original method.';
+          errorMessage =
+            'An account already exists with the same email. Please sign in using your original method.';
           break;
         case 'auth/popup-closed-by-user':
           errorMessage = 'Sign-in window was closed. Please try again.';
@@ -347,7 +375,7 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
         default:
           errorMessage = error.message || `Failed to sign in with ${provider}.`;
       }
-      
+
       setLoginError(errorMessage);
       toast.error(errorMessage, {
         id: 'provider-login-error',
@@ -369,26 +397,26 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
   };
 
   /**
-   * FIXED: Fill demo credentials only in development mode.
+   * Fill demo credentials only in development mode.
    */
   const fillDemoCredentials = (role = 'user') => {
     if (IS_PRODUCTION) {
       toast.error('Demo credentials are not available in production');
       return;
     }
-    
+
     const cred = getDemoCredentials(role);
-    
+
     if (!cred.email || !cred.password) {
       toast.error('Demo credentials not configured');
       return;
     }
-    
+
     setValue('email', cred.email, { shouldValidate: true });
     setValue('password', cred.password, { shouldValidate: true });
-    
+
     toast.success(`Demo ${role} credentials filled`, {
-      icon: '🔑',
+      icon: <FiKey className="w-4 h-4" />,
       duration: 3000,
     });
   };
@@ -396,19 +424,16 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
   // Animation variants
   const formVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
-      transition: { 
-        duration: 0.5,
-        staggerChildren: 0.1
-      }
-    }
+      transition: { duration: 0.5, staggerChildren: 0.1 },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0 }
+    visible: { opacity: 1, y: 0 },
   };
 
   return (
@@ -425,14 +450,11 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-accent-500 rounded-2xl mb-4 shadow-lg">
               <FiShield className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-1 gradient-text">
-              Welcome Back
-            </h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-1 gradient-text">Welcome Back</h2>
             <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
               Sign in to access your professional resume builder
             </p>
-            
-            {/* Admin required badge */}
+
             {requireAdmin && (
               <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-full">
                 <FiShield className="w-3 h-3" />
@@ -441,7 +463,7 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
             )}
           </motion.div>
 
-          {/* FIXED: Demo Credentials - Only visible in development */}
+          {/* Demo Credentials - Only visible in development */}
           {IS_DEVELOPMENT && (
             <motion.div variants={itemVariants} className="mb-4">
               <button
@@ -452,7 +474,7 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
                 <FiInfo className="w-4 h-4" />
                 {showDemoCredentials ? 'Hide demo credentials' : 'Need a demo account?'}
               </button>
-              
+
               <AnimatePresence>
                 {showDemoCredentials && (
                   <motion.div
@@ -492,12 +514,12 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
 
           {/* Social Sign In Options */}
           <motion.div variants={itemVariants} className="space-y-3 mb-6">
-            <GoogleAuthButton 
-              onSuccess={handleGoogleSuccess} 
+            <GoogleAuthButton
+              onSuccess={handleGoogleSuccess}
               mode="signin"
               disabled={loading || isLocked}
             />
-            
+
             <Button
               type="button"
               variant="outline"
@@ -509,7 +531,6 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
               Continue with Phone
             </Button>
 
-            {/* Additional Providers */}
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
@@ -549,11 +570,10 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
               </span>
             </div>
           </motion.div>
-          
+
           {/* Email/Password Form */}
           <form onSubmit={handleSubmit(onSubmit)}>
             <motion.div variants={itemVariants} className="space-y-4">
-              {/* Rate Limit Warning */}
               {isLocked && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -572,7 +592,6 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
                 </motion.div>
               )}
 
-              {/* Error Alert */}
               <AnimatePresence mode="wait">
                 {loginError && !isLocked && (
                   <motion.div
@@ -585,7 +604,6 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
                     <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm text-red-700 dark:text-red-300">{loginError}</p>
-                      {/* Show helpful actions based on error */}
                       {loginError.includes('password') && (
                         <button
                           type="button"
@@ -620,11 +638,14 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
                   required: 'Email is required',
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Please enter a valid email address'
-                  }
+                    message: 'Please enter a valid email address',
+                  },
                 })}
                 error={errors.email?.message}
-                success={emailValue && !errors.email && <FiCheckCircle className="w-4 h-4 text-green-500" />}
+                success={
+                  emailValue &&
+                  !errors.email && <FiCheckCircle className="w-4 h-4 text-green-500" />
+                }
               />
 
               <div>
@@ -643,34 +664,72 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
                       tabIndex={-1}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                      {showPassword ? (
+                        <FiEyeOff className="w-4 h-4" />
+                      ) : (
+                        <FiEye className="w-4 h-4" />
+                      )}
                     </button>
                   }
                   {...register('password', {
                     required: 'Password is required',
                     minLength: {
                       value: 6,
-                      message: 'Password must be at least 6 characters'
-                    }
+                      message: 'Password must be at least 6 characters',
+                    },
                   })}
                   error={errors.password?.message}
                 />
+
+                {/* Password Strength Indicator */}
+                {passwordValue && !errors.password && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-2"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Password strength:
+                      </span>
+                      <span
+                        className={`text-xs font-medium ${
+                          passwordStrength >= 80
+                            ? 'text-green-500'
+                            : passwordStrength >= 60
+                              ? 'text-green-600'
+                              : passwordStrength >= 40
+                                ? 'text-yellow-500'
+                                : 'text-red-500'
+                        }`}
+                      >
+                        {getPasswordStrengthLabel(passwordStrength)}
+                      </span>
+                    </div>
+                    <Progress
+                      value={passwordStrength}
+                      color={getPasswordStrengthColor(passwordStrength)}
+                      size="sm"
+                      animated
+                    />
+                  </motion.div>
+                )}
               </div>
 
               <div className="flex items-center justify-between">
                 <label className="flex items-center cursor-pointer group">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     disabled={loading || isLocked}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer disabled:opacity-50" 
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer disabled:opacity-50"
                   />
                   <span className="ml-2 text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors">
                     Remember me
                   </span>
                 </label>
-                
+
                 <Link
                   to="/forgot-password"
                   className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline transition-all"
@@ -684,7 +743,13 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
                 loading={loading}
                 disabled={!isValid || loading || isLocked}
                 className="w-full group"
-                icon={loading ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : <FiArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
+                icon={
+                  loading ? (
+                    <FiRefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FiArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  )
+                }
                 iconPosition="right"
               >
                 {loading ? 'Signing in...' : 'Sign In'}
@@ -708,9 +773,13 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
           {/* Terms */}
           <motion.p variants={itemVariants} className="text-center text-xs text-gray-400 mt-4">
             By signing in, you agree to our{' '}
-            <Link to="/terms" className="hover:text-primary-500">Terms of Service</Link>
-            {' '}and{' '}
-            <Link to="/privacy" className="hover:text-primary-500">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-primary-500">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" className="hover:text-primary-500">
+              Privacy Policy
+            </Link>
           </motion.p>
         </div>
       </motion.div>

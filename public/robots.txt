@@ -1,5 +1,5 @@
-# robots.txt — ResumeAI Pro
-# https://resumeaixpro.netlify.app
+# robots.txt — Resume Ai Pro
+# https://maniestaresumeai.netlify.app
 
 User-agent: *
 Allow: /
@@ -32,4 +32,4 @@ Disallow: /verify-email
 # /login (allow for SEO signal but private in practice)
 # /signup
 
-Sitemap: https://resumeaixpro.netlify.app/sitemap.xml
+Sitemap: https://maniestaresumeai.netlify.app/sitemap.xml

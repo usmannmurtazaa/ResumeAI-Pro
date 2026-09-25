@@ -1,6 +1,10 @@
-import { 
-  ref, uploadBytesResumable, getDownloadURL, deleteObject,
-  listAll, uploadBytes,
+import {
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+  listAll,
+  uploadBytes,
 } from 'firebase/storage';
 import { storage } from './firebase';
 
@@ -18,7 +22,9 @@ const ALLOWED_DOC_TYPES = [
 // ── Utilities ──────────────────────────────────────────────────────────────
 
 const generateFileName = (originalName, prefix = '') => {
-  const ext = originalName.includes('.') ? originalName.substring(originalName.lastIndexOf('.')) : '';
+  const ext = originalName.includes('.')
+    ? originalName.substring(originalName.lastIndexOf('.'))
+    : '';
   const sanitized = originalName.replace(/[^a-zA-Z0-9_\-\.]/g, '_').slice(0, 50);
   return `${prefix}${Date.now()}_${sanitized}${ext}`;
 };
@@ -46,7 +52,9 @@ const validateFile = (file, allowedTypes, maxSize = MAX_FILE_SIZE) => {
     throw new Error(`Invalid file type: ${file.type}. Allowed: ${allowedTypes.join(', ')}`);
   }
   if (file.size > maxSize) {
-    throw new Error(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Max: ${maxSize / 1024 / 1024}MB`);
+    throw new Error(
+      `File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Max: ${maxSize / 1024 / 1024}MB`
+    );
   }
 };
 
@@ -55,7 +63,7 @@ const validateFile = (file, allowedTypes, maxSize = MAX_FILE_SIZE) => {
 export const storageService = {
   /**
    * Upload a resume PDF with progress tracking.
-   * 
+   *
    * @param {string} userId - User ID
    * @param {string} resumeId - Resume ID
    * @param {File} file - PDF file to upload
@@ -78,9 +86,10 @@ export const storageService = {
       uploadTask.on(
         'state_changed',
         (snapshot) => {
-          const progress = snapshot.totalBytes > 0
-            ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-            : 0;
+          const progress =
+            snapshot.totalBytes > 0
+              ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+              : 0;
           onProgress?.(progress);
         },
         (error) => {
@@ -101,7 +110,7 @@ export const storageService = {
 
   /**
    * Upload a profile picture with progress tracking.
-   * 
+   *
    * @param {string} userId - User ID
    * @param {File} file - Image file
    * @param {Function} onProgress - Progress callback (0-100)
@@ -123,9 +132,10 @@ export const storageService = {
       uploadTask.on(
         'state_changed',
         (snapshot) => {
-          const progress = snapshot.totalBytes > 0
-            ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-            : 0;
+          const progress =
+            snapshot.totalBytes > 0
+              ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+              : 0;
           onProgress?.(progress);
         },
         (error) => {
@@ -146,7 +156,7 @@ export const storageService = {
 
   /**
    * Quick upload for small files (no progress tracking).
-   * 
+   *
    * @param {string} path - Storage path
    * @param {File} file - File to upload
    * @returns {Promise<string>} Download URL
@@ -159,7 +169,7 @@ export const storageService = {
 
   /**
    * Delete a file by its download URL or storage path.
-   * 
+   *
    * @param {string} urlOrPath - Download URL or storage path
    * @returns {Promise<boolean>}
    */
@@ -181,7 +191,7 @@ export const storageService = {
 
   /**
    * Delete multiple files at once.
-   * 
+   *
    * @param {string[]} urlsOrPaths - Array of download URLs or storage paths
    * @returns {Promise<{deleted: number, failed: number}>}
    */
@@ -189,11 +199,9 @@ export const storageService = {
     let deleted = 0;
     let failed = 0;
 
-    const results = await Promise.allSettled(
-      urlsOrPaths.map(url => this.deleteFile(url))
-    );
+    const results = await Promise.allSettled(urlsOrPaths.map((url) => this.deleteFile(url)));
 
-    results.forEach(result => {
+    results.forEach((result) => {
       if (result.status === 'fulfilled' && result.value) deleted++;
       else failed++;
     });
@@ -203,7 +211,7 @@ export const storageService = {
 
   /**
    * Get all files in a user's resumes folder.
-   * 
+   *
    * @param {string} userId - User ID
    * @param {number} maxResults - Maximum files to return (default: 100)
    * @returns {Promise<Array<{name: string, url: string, path: string}>>}
@@ -212,7 +220,7 @@ export const storageService = {
     try {
       const folderRef = ref(storage, `resumes/${userId}`);
       const result = await listAll(folderRef);
-      
+
       // Limit results
       const items = result.items.slice(0, maxResults);
 
@@ -233,7 +241,7 @@ export const storageService = {
 
   /**
    * Delete all files in a user's folder (for account deletion).
-   * 
+   *
    * @param {string} userId - User ID
    * @returns {Promise<{deleted: number, failed: number}>}
    */
@@ -256,7 +264,7 @@ export const storageService = {
       const allRefs = await getRecursiveRefs(`resumes/${userId}`);
       const avatarRefs = await getRecursiveRefs(`avatars/${userId}`);
 
-      const allPaths = [...allRefs, ...avatarRefs].map(r => r.fullPath);
+      const allPaths = [...allRefs, ...avatarRefs].map((r) => r.fullPath);
       return this.deleteMultipleFiles(allPaths);
     } catch (error) {
       console.error('Error deleting all user files:', error);
@@ -266,7 +274,7 @@ export const storageService = {
 
   /**
    * Get a download URL from a storage path.
-   * 
+   *
    * @param {string} path - Storage path
    * @returns {Promise<string>} Download URL
    */

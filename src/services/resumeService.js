@@ -1,7 +1,19 @@
-import { 
-  collection, doc, getDoc, getDocs, setDoc, updateDoc,
-  deleteDoc, query, where, orderBy, limit, startAfter,
-  writeBatch, serverTimestamp, increment,
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  startAfter,
+  writeBatch,
+  serverTimestamp,
+  increment,
 } from 'firebase/firestore';
 import { db, logAnalyticsEvent } from './firebase';
 import { FREE_RESUME_LIMIT } from '../data/constants';
@@ -31,7 +43,11 @@ const calculateATSScoreSafe = (data) => {
 
 const toDateISO = (value) => {
   if (!value) return null;
-  try { return value.toDate?.()?.toISOString() || value; } catch { return value; }
+  try {
+    return value.toDate?.()?.toISOString() || value;
+  } catch {
+    return value;
+  }
 };
 
 const formatResume = (docSnapshot) => {
@@ -66,9 +82,18 @@ export const resumeService = {
       };
 
       await setDoc(resumeRef, data);
-      logAnalyticsEvent('resume_created', { resumeId: resumeRef.id, template: resumeData.template, atsScore });
+      logAnalyticsEvent('resume_created', {
+        resumeId: resumeRef.id,
+        template: resumeData.template,
+        atsScore,
+      });
 
-      return { id: resumeRef.id, ...data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      return {
+        id: resumeRef.id,
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
     } catch (error) {
       console.error('Error creating resume:', error);
       throw new Error('Failed to create resume');
@@ -116,7 +141,11 @@ export const resumeService = {
 
   async getUserResumes(userId) {
     try {
-      const q = query(collection(db, 'resumes'), where('userId', '==', userId), orderBy('updatedAt', 'desc'));
+      const q = query(
+        collection(db, 'resumes'),
+        where('userId', '==', userId),
+        orderBy('updatedAt', 'desc')
+      );
       const snap = await getDocs(q);
       return snap.docs.map(formatResume);
     } catch (error) {
@@ -127,7 +156,12 @@ export const resumeService = {
 
   async getUserResumesPaginated(userId, pageSize = 10, lastDoc = null) {
     try {
-      let q = query(collection(db, 'resumes'), where('userId', '==', userId), orderBy('updatedAt', 'desc'), limit(pageSize));
+      let q = query(
+        collection(db, 'resumes'),
+        where('userId', '==', userId),
+        orderBy('updatedAt', 'desc'),
+        limit(pageSize)
+      );
       if (lastDoc) q = query(q, startAfter(lastDoc));
 
       const snap = await getDocs(q);
@@ -144,7 +178,12 @@ export const resumeService = {
 
   async getRecentResumes(userId, count = 5) {
     try {
-      const q = query(collection(db, 'resumes'), where('userId', '==', userId), orderBy('updatedAt', 'desc'), limit(count));
+      const q = query(
+        collection(db, 'resumes'),
+        where('userId', '==', userId),
+        orderBy('updatedAt', 'desc'),
+        limit(count)
+      );
       return (await getDocs(q)).docs.map(formatResume);
     } catch (error) {
       console.error('Error fetching recent resumes:', error);
@@ -182,7 +221,7 @@ export const resumeService = {
         ...resumeData,
         atsScore,
         updatedAt: serverTimestamp(),
-        status: atsScore >= 80 ? 'completed' : (resumeData.status || 'draft'),
+        status: atsScore >= 80 ? 'completed' : resumeData.status || 'draft',
       };
 
       await updateDoc(ref, updates);
@@ -198,24 +237,41 @@ export const resumeService = {
     try {
       const ref = doc(db, 'resumes', resumeId);
       const atsScore = calculateATSScoreSafe(data);
-      await updateDoc(ref, { data, atsScore, updatedAt: serverTimestamp(), status: atsScore >= 80 ? 'completed' : 'draft' });
+      await updateDoc(ref, {
+        data,
+        atsScore,
+        updatedAt: serverTimestamp(),
+        status: atsScore >= 80 ? 'completed' : 'draft',
+      });
       return true;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   },
 
   async incrementViewCount(resumeId) {
     try {
-      await updateDoc(doc(db, 'resumes', resumeId), { viewCount: increment(1), lastViewed: serverTimestamp() });
+      await updateDoc(doc(db, 'resumes', resumeId), {
+        viewCount: increment(1),
+        lastViewed: serverTimestamp(),
+      });
       return true;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   },
 
   async incrementDownloadCount(resumeId) {
     try {
-      await updateDoc(doc(db, 'resumes', resumeId), { downloadCount: increment(1), lastDownloaded: serverTimestamp() });
+      await updateDoc(doc(db, 'resumes', resumeId), {
+        downloadCount: increment(1),
+        lastDownloaded: serverTimestamp(),
+      });
       logAnalyticsEvent('resume_downloaded', { resumeId });
       return true;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   },
 
   // ── Delete ──────────────────────────────────────────────────────────────
@@ -235,7 +291,9 @@ export const resumeService = {
     try {
       for (let i = 0; i < resumeIds.length; i += MAX_BATCH_SIZE) {
         const batch = writeBatch(db);
-        resumeIds.slice(i, i + MAX_BATCH_SIZE).forEach(id => batch.delete(doc(db, 'resumes', id)));
+        resumeIds
+          .slice(i, i + MAX_BATCH_SIZE)
+          .forEach((id) => batch.delete(doc(db, 'resumes', id)));
         await batch.commit();
       }
       logAnalyticsEvent('resumes_bulk_deleted', { count: resumeIds.length });
@@ -250,27 +308,43 @@ export const resumeService = {
 
   async canCreateResume(userId, isPremium = false) {
     if (isPremium) return true;
-    try { return (await this.getUserResumes(userId)).length < FREE_RESUME_LIMIT; } catch { return false; }
+    try {
+      return (await this.getUserResumes(userId)).length < FREE_RESUME_LIMIT;
+    } catch {
+      return false;
+    }
   },
 
   async getRemainingFreeResumes(userId, isPremium = false) {
     if (isPremium) return Infinity;
-    try { return Math.max(0, FREE_RESUME_LIMIT - (await this.getUserResumes(userId)).length); } catch { return 0; }
+    try {
+      return Math.max(0, FREE_RESUME_LIMIT - (await this.getUserResumes(userId)).length);
+    } catch {
+      return 0;
+    }
   },
 
   async getUserResumeStats(userId) {
     try {
       const resumes = await this.getUserResumes(userId);
       const total = resumes.length;
-      const completed = resumes.filter(r => r.status === 'completed' || r.atsScore >= 80).length;
-      const scores = resumes.map(r => r.atsScore || 0).filter(s => s > 0);
-      const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      const completed = resumes.filter((r) => r.status === 'completed' || r.atsScore >= 80).length;
+      const scores = resumes.map((r) => r.atsScore || 0).filter((s) => s > 0);
+      const avgScore = scores.length
+        ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+        : 0;
 
       const templateCounts = {};
-      resumes.forEach(r => { const t = r.template || 'modern'; templateCounts[t] = (templateCounts[t] || 0) + 1; });
+      resumes.forEach((r) => {
+        const t = r.template || 'modern';
+        templateCounts[t] = (templateCounts[t] || 0) + 1;
+      });
 
       return {
-        total, completed, inProgress: total - completed, avgScore,
+        total,
+        completed,
+        inProgress: total - completed,
+        avgScore,
         bestScore: scores.length ? Math.max(...scores) : 0,
         totalDownloads: resumes.reduce((s, r) => s + (r.downloadCount || 0), 0),
         totalViews: resumes.reduce((s, r) => s + (r.viewCount || 0), 0),
@@ -279,7 +353,18 @@ export const resumeService = {
         freeRemaining: FREE_RESUME_LIMIT - total,
       };
     } catch {
-      return { total: 0, completed: 0, inProgress: 0, avgScore: 0, bestScore: 0, totalDownloads: 0, totalViews: 0, templateCounts: {}, lastUpdated: null, freeRemaining: FREE_RESUME_LIMIT };
+      return {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        avgScore: 0,
+        bestScore: 0,
+        totalDownloads: 0,
+        totalViews: 0,
+        templateCounts: {},
+        lastUpdated: null,
+        freeRemaining: FREE_RESUME_LIMIT,
+      };
     }
   },
 
@@ -288,19 +373,20 @@ export const resumeService = {
   async searchResumes(userId, searchTerm) {
     const resumes = await this.getUserResumes(userId);
     const term = searchTerm.toLowerCase();
-    return resumes.filter(r =>
-      r.name?.toLowerCase().includes(term) ||
-      r.data?.personal?.fullName?.toLowerCase().includes(term) ||
-      r.data?.personal?.title?.toLowerCase().includes(term)
+    return resumes.filter(
+      (r) =>
+        r.name?.toLowerCase().includes(term) ||
+        r.data?.personal?.fullName?.toLowerCase().includes(term) ||
+        r.data?.personal?.title?.toLowerCase().includes(term)
     );
   },
 
   async filterResumes(userId, filters = {}) {
     let resumes = await this.getUserResumes(userId);
-    if (filters.template) resumes = resumes.filter(r => r.template === filters.template);
-    if (filters.status) resumes = resumes.filter(r => r.status === filters.status);
-    if (filters.minScore) resumes = resumes.filter(r => (r.atsScore || 0) >= filters.minScore);
-    if (filters.maxScore) resumes = resumes.filter(r => (r.atsScore || 0) <= filters.maxScore);
+    if (filters.template) resumes = resumes.filter((r) => r.template === filters.template);
+    if (filters.status) resumes = resumes.filter((r) => r.status === filters.status);
+    if (filters.minScore) resumes = resumes.filter((r) => (r.atsScore || 0) >= filters.minScore);
+    if (filters.maxScore) resumes = resumes.filter((r) => (r.atsScore || 0) <= filters.maxScore);
     return resumes;
   },
 

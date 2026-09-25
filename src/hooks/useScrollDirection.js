@@ -12,7 +12,7 @@ const getWindow = () => {
 /**
  * Detects scroll direction with RAF-based throttling.
  * Does NOT remove/re-add listeners on state changes.
- * 
+ *
  * @param {number} threshold - Minimum scroll distance before direction changes (default: 10)
  * @returns {Object} { scrollDirection, scrollY, isScrolled }
  */
@@ -21,7 +21,7 @@ export const useScrollDirection = (threshold = 10) => {
   const [scrollDirection, setScrollDirection] = useState('up');
   const [scrollY, setScrollY] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
-  
+
   const lastScrollYRef = useRef(0);
   const lastDirectionRef = useRef('up');
   const tickingRef = useRef(false);
@@ -79,7 +79,7 @@ export const useScrollDirection = (threshold = 10) => {
 
 /**
  * Tracks the scroll position with configurable debounce/throttle.
- * 
+ *
  * @param {Object} options - Configuration
  * @param {number} options.throttle - Throttle interval in ms (default: 0 = RAF)
  * @returns {{ x: number, y: number }} Scroll position
@@ -125,7 +125,7 @@ export const useScrollPosition = (options = {}) => {
 /**
  * Returns the scroll progress as a percentage (0-100).
  * Useful for progress bars, reading indicators, etc.
- * 
+ *
  * @returns {number} Scroll percentage (0-100)
  */
 export const useScrollProgress = () => {
@@ -161,7 +161,7 @@ export const useScrollProgress = () => {
 
 /**
  * Returns a boolean indicating whether to show a "scroll to top" button.
- * 
+ *
  * @param {number} threshold - Pixel threshold to show the button (default: 400)
  * @returns {boolean} Whether to show the button
  */
@@ -200,7 +200,7 @@ export const useScrollToTop = (threshold = 400) => {
 /**
  * Tracks which section is currently in view based on scroll position.
  * More efficient than IntersectionObserver for simple cases.
- * 
+ *
  * @param {string[]} sectionIds - Array of section element IDs
  * @param {number} offset - Offset from top (default: 100)
  * @returns {string|null} Currently visible section ID
@@ -246,7 +246,7 @@ export const useScrollSpy = (sectionIds = [], offset = 100) => {
 
 /**
  * Triggers a callback when the user scrolls near the bottom of the page.
- * 
+ *
  * @param {Function} callback - Called when near the bottom
  * @param {Object} options - Configuration
  * @param {number} options.threshold - Distance from bottom (px) to trigger (default: 200)
@@ -292,7 +292,7 @@ export const useInfiniteScroll = (callback, options = {}) => {
 
 /**
  * Locks body scroll when active.
- * 
+ *
  * @param {boolean} isLocked - Whether to lock scrolling
  */
 export const useScrollLock = (isLocked) => {

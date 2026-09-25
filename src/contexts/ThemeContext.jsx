@@ -2,20 +2,20 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-export const ThemeModes = {
+export const ThemeModes = Object.freeze({
   LIGHT: 'light',
   DARK: 'dark',
   SYSTEM: 'system',
-};
+});
 
-export const FONT_SIZES = {
+export const FONT_SIZES = Object.freeze({
   small: '14px',
   medium: '16px',
   large: '18px',
   'x-large': '20px',
-};
+});
 
-export const themePresets = {
+export const themePresets = Object.freeze({
   default: { name: 'Default', primary: '#6366f1', accent: '#8b5cf6' },
   ocean: { name: 'Ocean', primary: '#0ea5e9', accent: '#06b6d4' },
   forest: { name: 'Forest', primary: '#10b981', accent: '#059669' },
@@ -24,7 +24,9 @@ export const themePresets = {
   midnight: { name: 'Midnight', primary: '#1e293b', accent: '#334155' },
   lavender: { name: 'Lavender', primary: '#a855f7', accent: '#d946ef' },
   mint: { name: 'Mint', primary: '#14b8a6', accent: '#2dd4bf' },
-};
+});
+
+const THEME_MODE_STORAGE_KEY = 'themeMode';
 
 // ── Context ───────────────────────────────────────────────────────────────
 
@@ -42,18 +44,19 @@ export const useTheme = () => {
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-const adjustColor = (hex, percent) => {
-  hex = hex.replace(/^#/, '');
+const adjustColor = (hex, amount) => {
+  const cleanHex = hex.replace(/^#/, '');
+  const normalized =
+    cleanHex.length === 3
+      ? cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2]
+      : cleanHex.padEnd(6, '0');
 
-  // Normalize 3-digit hex to 6-digit
-  if (hex.length === 3) {
-    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-  }
+  const num = parseInt(normalized, 16);
+  if (isNaN(num)) return hex;
 
-  const num = parseInt(hex, 16);
-  const r = clamp((num >> 16) + percent, 0, 255);
-  const g = clamp(((num >> 8) & 0x00ff) + percent, 0, 255);
-  const b = clamp((num & 0x0000ff) + percent, 0, 255);
+  const r = clamp((num >> 16) + amount, 0, 255);
+  const g = clamp(((num >> 8) & 0x00ff) + amount, 0, 255);
+  const b = clamp((num & 0x0000ff) + amount, 0, 255);
 
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 };
@@ -63,6 +66,8 @@ const resolveIsDark = (mode, systemPrefersDark) => {
   if (mode === ThemeModes.LIGHT) return false;
   return systemPrefersDark;
 };
+
+const isValidHexColor = (value) => /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(value);
 
 // ── Provider ──────────────────────────────────────────────────────────────
 
@@ -88,8 +93,8 @@ export const ThemeProvider = ({ children }) => {
 
   const [themeMode, setThemeModeState] = useState(() => {
     try {
-      const saved = localStorage.getItem('themeMode');
-      return saved || ThemeModes.SYSTEM;
+      const saved = localStorage.getItem(THEME_MODE_STORAGE_KEY);
+      return Object.values(ThemeModes).includes(saved) ? saved : ThemeModes.SYSTEM;
     } catch {
       return ThemeModes.SYSTEM;
     }
@@ -102,7 +107,8 @@ export const ThemeProvider = ({ children }) => {
 
   const [fontSize, setFontSizeState] = useState(() => {
     try {
-      return localStorage.getItem('fontSize') || 'medium';
+      const saved = localStorage.getItem('fontSize');
+      return saved in FONT_SIZES ? saved : 'medium';
     } catch {
       return 'medium';
     }
@@ -125,7 +131,6 @@ export const ThemeProvider = ({ children }) => {
     }
   });
 
-  // Derived dark mode state
   const isDark = resolveIsDark(themeMode, systemPrefersDark);
 
   // ── System Preference Listener ──────────────────────────────────────
@@ -139,21 +144,18 @@ export const ThemeProvider = ({ children }) => {
       setSystemPrefersDark(e.matches);
     };
 
-    // Set initial value
     setSystemPrefersDark(mediaQuery.matches);
 
-    // Modern browsers
     if (typeof mediaQuery.addEventListener === 'function') {
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
 
-    // Fallback for older browsers
     mediaQuery.addListener(handleChange);
     return () => mediaQuery.removeListener(handleChange);
   }, []);
 
-  // ── Apply CSS Variables (Theme Colors) ──────────────────────────────
+  // ── Apply CSS Variables ──────────────────────────────────────────────
 
   useEffect(() => {
     const root = document.documentElement;
@@ -173,7 +175,6 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     const root = document.documentElement;
-    
     if (isDark) {
       root.classList.add('dark');
       root.style.colorScheme = 'dark';
@@ -183,7 +184,7 @@ export const ThemeProvider = ({ children }) => {
     }
 
     try {
-      localStorage.setItem('themeMode', themeMode);
+      localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
     } catch {}
   }, [isDark, themeMode]);
 
@@ -239,6 +240,10 @@ export const ThemeProvider = ({ children }) => {
   }, []);
 
   const updateThemeColor = useCallback((colorType, value) => {
+    if (!isValidHexColor(value)) {
+      console.warn(`Invalid color value: ${value}. Must be a hex color like #ff0000.`);
+      return;
+    }
     setTheme((prev) => ({ ...prev, [colorType]: value }));
     setCurrentPreset('custom');
     try {
@@ -269,7 +274,7 @@ export const ThemeProvider = ({ children }) => {
     setHighContrastState(false);
     try {
       localStorage.setItem('themePreset', 'default');
-      localStorage.setItem('themeMode', ThemeModes.SYSTEM);
+      localStorage.setItem(THEME_MODE_STORAGE_KEY, ThemeModes.SYSTEM);
       localStorage.setItem('fontSize', 'medium');
       localStorage.setItem('reducedMotion', 'false');
       localStorage.setItem('highContrast', 'false');
@@ -284,35 +289,48 @@ export const ThemeProvider = ({ children }) => {
     return themePresets[currentPreset]?.name || 'Default';
   }, [currentPreset]);
 
-  // ── Context Value ───────────────────────────────────────────────────
+  // ── Memoized Context Value ──────────────────────────────────────────
 
-  const value = useMemo(() => ({
-    theme,
-    setTheme,
-    currentPreset,
-    currentThemeName,
-    themeMode,
-    isDark,
-    systemPrefersDark,
-    fontSize,
-    setFontSize,
-    reducedMotion,
-    setReducedMotion,
-    highContrast,
-    setHighContrast,
-    toggleTheme,
-    setThemeMode,
-    applyPreset,
-    updateThemeColor,
-    resetTheme,
-    themePresets,
-    ThemeModes,
-  }), [
-    theme, currentPreset, currentThemeName,
-    themeMode, isDark, systemPrefersDark,
-    fontSize, reducedMotion, highContrast,
-    toggleTheme, setThemeMode, applyPreset, updateThemeColor, resetTheme,
-  ]);
+  const value = useMemo(
+    () => ({
+      theme,
+      setTheme,
+      currentPreset,
+      currentThemeName,
+      themeMode,
+      isDark,
+      systemPrefersDark,
+      fontSize,
+      setFontSize,
+      reducedMotion,
+      setReducedMotion,
+      highContrast,
+      setHighContrast,
+      toggleTheme,
+      setThemeMode,
+      applyPreset,
+      updateThemeColor,
+      resetTheme,
+      themePresets,
+      ThemeModes,
+    }),
+    [
+      theme,
+      currentPreset,
+      currentThemeName,
+      themeMode,
+      isDark,
+      systemPrefersDark,
+      fontSize,
+      reducedMotion,
+      highContrast,
+      toggleTheme,
+      setThemeMode,
+      applyPreset,
+      updateThemeColor,
+      resetTheme,
+    ]
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };

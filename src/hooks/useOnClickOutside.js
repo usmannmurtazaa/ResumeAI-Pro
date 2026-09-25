@@ -12,27 +12,23 @@ const getDocument = () => {
 /**
  * Detects clicks/touches outside a ref element and fires a handler.
  * Also handles Escape key for accessibility.
- * 
+ *
  * @param {React.RefObject|React.RefObject[]} refs - Ref or array of refs to monitor
  * @param {Function} handler - Called when click/touch is outside all refs
  * @param {Object} options - Configuration options
  * @param {boolean} options.enabled - Whether the listener is active (default: true)
  * @param {boolean} options.listenEscape - Also fire on Escape key (default: true)
  * @param {string[]} options.events - Custom events to listen for
- * 
+ *
  * @example
  * const dropdownRef = useRef(null);
  * useOnClickOutside(dropdownRef, () => setIsOpen(false));
- * 
+ *
  * // Multiple refs
  * useOnClickOutside([modalRef, buttonRef], closeModal);
  */
 export const useOnClickOutside = (refs, handler, options = {}) => {
-  const {
-    enabled = true,
-    listenEscape = true,
-    events = ['mousedown', 'touchstart'],
-  } = options;
+  const { enabled = true, listenEscape = true, events = ['mousedown', 'touchstart'] } = options;
 
   // FIXED: Use ref for handler to avoid re-attaching listeners
   const handlerRef = useRef(handler);
@@ -72,7 +68,7 @@ export const useOnClickOutside = (refs, handler, options = {}) => {
 
     const handleEscape = (event) => {
       if (!enabledRef.current || !listenEscape) return;
-      
+
       if (event.key === 'Escape') {
         handlerRef.current(event);
       }
@@ -105,23 +101,19 @@ export const useOnClickOutside = (refs, handler, options = {}) => {
 /**
  * Traps keyboard focus within a container element.
  * Essential for modal dialogs and drawers.
- * 
+ *
  * @param {React.RefObject} containerRef - Ref to the container element
  * @param {Object} options - Configuration
  * @param {boolean} options.enabled - Whether the trap is active
  * @param {React.RefObject} options.initialFocusRef - Element to focus on mount
  * @param {boolean} options.autoFocus - Auto-focus first element on mount (default: true)
- * 
+ *
  * @example
  * const modalRef = useRef(null);
  * useFocusTrap(modalRef, { enabled: isOpen });
  */
 export const useFocusTrap = (containerRef, options = {}) => {
-  const {
-    enabled = true,
-    initialFocusRef = null,
-    autoFocus = true,
-  } = options;
+  const { enabled = true, initialFocusRef = null, autoFocus = true } = options;
 
   useEffect(() => {
     if (!enabled || !containerRef.current) return;
@@ -136,9 +128,10 @@ export const useFocusTrap = (containerRef, options = {}) => {
       '[tabindex]:not([tabindex="-1"])',
     ].join(',');
 
-    const getFocusableElements = () => 
-      Array.from(container.querySelectorAll(focusableSelector))
-        .filter(el => el.offsetParent !== null); // Visible elements only
+    const getFocusableElements = () =>
+      Array.from(container.querySelectorAll(focusableSelector)).filter(
+        (el) => el.offsetParent !== null
+      ); // Visible elements only
 
     // ── Handle tab key ───────────────────────────────────────────────
 
@@ -167,7 +160,7 @@ export const useFocusTrap = (containerRef, options = {}) => {
 
     if (autoFocus) {
       const initialElement = initialFocusRef?.current;
-      
+
       if (initialElement && initialElement.focus) {
         initialElement.focus();
       } else {
@@ -204,7 +197,7 @@ export const useFocusTrap = (containerRef, options = {}) => {
 /**
  * Fires a callback when the Escape key is pressed.
  * Respects element hierarchy (closest handler wins).
- * 
+ *
  * @param {Function} handler - Called when Escape is pressed
  * @param {Object} options - Configuration
  * @param {boolean} options.enabled - Whether to listen (default: true)
@@ -243,11 +236,11 @@ export const useEscapeKey = (handler, options = {}) => {
 /**
  * Alternative API that returns a ref to attach to the element.
  * Better DX when you don't need a separate ref variable.
- * 
+ *
  * @param {Function} handler - Called when click is outside
  * @param {Object} options - Same as useOnClickOutside
  * @returns {React.RefObject} Ref to attach to your element
- * 
+ *
  * @example
  * function Dropdown() {
  *   const ref = useClickOutside(() => setIsOpen(false));
@@ -265,7 +258,7 @@ export const useClickOutside = (handler, options = {}) => {
 /**
  * Combines click-outside, escape key, and scroll lock for modal/dialog patterns.
  * The ultimate hook for dismissible overlays.
- * 
+ *
  * @param {React.RefObject} ref - Ref to the element
  * @param {Function} onDismiss - Called when interaction outside is detected
  * @param {Object} options - Configuration

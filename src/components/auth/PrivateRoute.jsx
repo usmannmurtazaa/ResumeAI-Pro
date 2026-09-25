@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import Loader from '../common/Loader';
-import { FiLock, FiAlertCircle, FiLogIn, FiMail, FiShield, FiRefreshCw, FiCheckCircle } from 'react-icons/fi';
+import { FiLock, FiMail, FiShield, FiRefreshCw, FiCheckCircle } from 'react-icons/fi';
 import Button from '../ui/Button';
 import toast from 'react-hot-toast';
 
@@ -17,7 +17,6 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 /**
  * Polls for email verification status and provides manual check capability.
- * FIXED: Replaces window.location.reload() with proper polling and real-time listener.
  */
 const useEmailVerificationPoller = (user, isEmailVerified) => {
   const [isPolling, setIsPolling] = useState(false);
@@ -67,7 +66,7 @@ const useEmailVerificationPoller = (user, isEmailVerified) => {
 
   const manualCheck = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       await user.reload();
       await user.getIdToken(true);
@@ -75,20 +74,24 @@ const useEmailVerificationPoller = (user, isEmailVerified) => {
         icon: '✅',
         duration: 2000,
       });
+      // Restart polling if still not verified
+      if (!user.emailVerified) {
+        setPollCount(0);
+        startPolling();
+      }
     } catch (error) {
       console.error('Manual verification check failed:', error);
       toast.error('Failed to check verification status');
     }
-  }, [user]);
+  }, [user, startPolling]);
 
   useEffect(() => {
     mountedRef.current = true;
-    
-    // Start polling if email is not verified
+
     if (!isEmailVerified && user) {
       startPolling();
     }
-    
+
     return () => {
       mountedRef.current = false;
       stopPolling();
@@ -107,8 +110,8 @@ const useEmailVerificationPoller = (user, isEmailVerified) => {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-const PrivateRoute = ({ 
-  children, 
+const PrivateRoute = ({
+  children,
   redirectTo = '/login',
   requireEmailVerified = false,
   allowedRoles = null,
@@ -116,40 +119,35 @@ const PrivateRoute = ({
   onAccessDenied = null,
   requirePremium = false,
 }) => {
-  const { user, loading, initializing, isEmailVerified, userRole, sendVerificationEmail } = useAuth();
+  const { user, loading, initializing, isEmailVerified, userRole, sendVerificationEmail } =
+    useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const [showAccessDenied, setShowAccessDenied] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [tokenExpired, setTokenExpired] = useState(false);
-  
-  const { isPolling, pollsRemaining, manualCheck, startPolling } = useEmailVerificationPoller(user, isEmailVerified);
-  
-  const accessDeniedRef = useRef(null);
+  const [tokenExpired] = useState(false);
 
-  // FIXED: Cooldown timer with cleanup
+  const { isPolling, pollsRemaining, manualCheck, startPolling } = useEmailVerificationPoller(
+    user,
+    isEmailVerified
+  );
+
+  // ── Cooldown Timer ──────────────────────────────────────────────────
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    
+
     const timer = setTimeout(() => {
-      setResendCooldown(prev => Math.max(0, prev - 1));
+      setResendCooldown((prev) => Math.max(0, prev - 1));
     }, 1000);
-    
+
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // FIX: Removed aggressive getIdToken(true) force-refresh on every route mount.
-  // Firebase SDK auto-refreshes tokens internally (5 min before expiry).
-  // Forcing a refresh on every PrivateRoute mount added 500-1000ms latency and
-  // could cause intermittent auth failures under poor connectivity.
-  // Session expiry is handled by the Firebase SDK + onIdTokenChanged in AuthContext.
-  // tokenExpired state is kept but only triggered via auth errors, not proactively.
-
   const authBusy = loading || initializing;
 
-  // Toast once when redirecting unauthenticated users (avoid spam on re-renders)
+  // Toast for unauthenticated redirect
   useEffect(() => {
     if (authBusy || user || tokenExpired) return;
     toast.error('Please sign in to access this page', {
@@ -159,51 +157,23 @@ const PrivateRoute = ({
     });
   }, [authBusy, user, tokenExpired]);
 
-  // Log access attempt for analytics
-  useEffect(() => {
-    if (!authBusy && user && !tokenExpired) {
-      const logAccess = async () => {
-        try {
-          console.info(
-            `[Private Route] Access: ${user.email} to ${location.pathname} at ${new Date().toISOString()}`
-          );
-          
-          // In production, send to your analytics/logging service
-          // await logRouteAccess({
-          //   userId: user.uid,
-          //   email: user.email,
-          //   path: location.pathname,
-          //   timestamp: new Date().toISOString(),
-          // });
-        } catch (error) {
-          if (IS_DEVELOPMENT) {
-            console.error('Failed to log route access:', error);
-          }
-        }
-      };
-      
-      logAccess();
-    }
-  }, [authBusy, user, location.pathname, tokenExpired]);
-
-  // FIXED: Enhanced role-based access check
+  // ── Role & Premium Check ────────────────────────────────────────────
   const hasRequiredRole = useCallback(() => {
     if (!allowedRoles) return true;
     if (!user || !userRole) return false;
-    
-    // Check for premium requirement
+
     if (requirePremium && userRole !== 'premium' && userRole !== 'admin') {
       return false;
     }
-    
+
     if (Array.isArray(allowedRoles)) {
       return allowedRoles.includes(userRole);
     }
-    
+
     return userRole === allowedRoles;
   }, [user, userRole, allowedRoles, requirePremium]);
 
-  // Handle resend verification email
+  // ── Handlers ────────────────────────────────────────────────────────
   const handleResendVerification = async () => {
     if (resendCooldown > 0) {
       toast.error(`Please wait ${resendCooldown} seconds before requesting again`);
@@ -211,23 +181,23 @@ const PrivateRoute = ({
     }
 
     setIsVerifying(true);
-    
+
     try {
       await sendVerificationEmail();
       toast.success('Verification email sent! Check your inbox and spam folder.');
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
-      
+
       // Restart polling after resend
       startPolling();
     } catch (error) {
       console.error('Failed to send verification email:', error);
-      
+
       let errorMessage = 'Failed to send verification email. Please try again.';
-      
+
       switch (error.code) {
         case 'auth/too-many-requests':
           errorMessage = 'Too many attempts. Please wait a few minutes before trying again.';
-          setResendCooldown(120); // 2 minutes cooldown on rate limit
+          setResendCooldown(120);
           break;
         case 'auth/network-request-failed':
           errorMessage = 'Network error. Please check your connection.';
@@ -235,42 +205,40 @@ const PrivateRoute = ({
         default:
           errorMessage = error.message || errorMessage;
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setIsVerifying(false);
     }
   };
 
-  // FIXED: Handle back navigation safely
   const handleGoBack = useCallback(() => {
-    // Check if there's a previous page in history
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      // Fallback to dashboard
       navigate('/dashboard', { replace: true });
     }
   }, [navigate]);
 
-  // FIXED: Handle access denied callback
-  const handleAccessDenied = useCallback((details) => {
-    if (onAccessDenied) {
-      onAccessDenied(details);
-    }
-    
-    // Log access denied event
-    if (IS_DEVELOPMENT) {
-      console.warn('[Private Route] Access denied:', details);
-    }
-  }, [onAccessDenied]);
+  const handleAccessDenied = useCallback(
+    (details) => {
+      if (onAccessDenied) {
+        onAccessDenied(details);
+      }
 
-  // ── Render States ──────────────────────────────────────────────────────────
+      if (IS_DEVELOPMENT) {
+        console.warn('[Private Route] Access denied:', details);
+      }
+    },
+    [onAccessDenied]
+  );
 
-  // Loading state — wait for Firebase auth + first profile hydration
+  // ── Render States ───────────────────────────────────────────────────
+
+  // Loading state
   if (authBusy) {
     return (
-      <div 
+      <div
         className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
         role="status"
         aria-live="polite"
@@ -283,59 +251,55 @@ const PrivateRoute = ({
         >
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
             className="mb-6"
           >
             <FiShield className="w-16 h-16 text-primary-500 mx-auto" />
           </motion.div>
           <Loader size="lg" />
-          <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">
-            Verifying access...
-          </p>
-          <p className="text-xs text-gray-400 mt-2">
-            Please wait while we check your credentials
-          </p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">Verifying access...</p>
+          <p className="text-xs text-gray-400 mt-2">Please wait while we check your credentials</p>
         </motion.div>
       </div>
     );
   }
 
-  // FIXED: Token expired - redirect to login
+  // Token expired
   if (tokenExpired) {
     handleAccessDenied({ reason: 'token_expired', path: location.pathname });
-    
+
     return (
-      <Navigate 
-        to={redirectTo} 
-        state={{ 
+      <Navigate
+        to={redirectTo}
+        state={{
           from: location,
           message: 'Your session has expired. Please sign in again.',
           returnPath: location.pathname,
           reason: 'token_expired',
-        }} 
-        replace 
+        }}
+        replace
       />
     );
   }
 
-  // Not authenticated - redirect to login with return path
+  // Not authenticated
   if (!user) {
     handleAccessDenied({ reason: 'not_authenticated', path: location.pathname });
 
     return (
-      <Navigate 
-        to={redirectTo} 
-        state={{ 
+      <Navigate
+        to={redirectTo}
+        state={{
           from: location,
           message: 'Please sign in to access this page',
           returnPath: location.pathname,
-        }} 
-        replace 
+        }}
+        replace
       />
     );
   }
 
-  // Email verification check
+  // Email verification required
   if (requireEmailVerified && !isEmailVerified) {
     return (
       <AnimatePresence>
@@ -353,7 +317,7 @@ const PrivateRoute = ({
             >
               {/* Icon */}
               <div className="relative mb-6">
-                <motion.div 
+                <motion.div
                   className="absolute inset-0 bg-yellow-500/20 rounded-full"
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -363,10 +327,8 @@ const PrivateRoute = ({
                 </div>
               </div>
 
-              <h2 className="text-2xl font-bold mb-2 gradient-text">
-                Verify Your Email
-              </h2>
-              
+              <h2 className="text-2xl font-bold mb-2 gradient-text">Verify Your Email</h2>
+
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 Please verify your email address to access this page.
               </p>
@@ -380,16 +342,19 @@ const PrivateRoute = ({
                   {user.email}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">
-                  Check your inbox and spam folder. 
+                  Check your inbox and spam folder.
                   {isPolling && (
-                    <span className="text-primary-500 ml-1">
-                      Automatically checking...
+                    <span className="text-primary-500 ml-1">Automatically checking...</span>
+                  )}
+                  {!isPolling && pollsRemaining === 0 && (
+                    <span className="text-red-500 ml-1">
+                      Automatic check stopped. Use the button below.
                     </span>
                   )}
                 </p>
               </div>
 
-              {/* FIXED: Verification Status */}
+              {/* Verification Status */}
               {isPolling && (
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
@@ -408,12 +373,11 @@ const PrivateRoute = ({
                   className="w-full"
                   icon={<FiMail className="w-4 h-4" />}
                 >
-                  {resendCooldown > 0 
-                    ? `Resend in ${resendCooldown}s` 
+                  {resendCooldown > 0
+                    ? `Resend in ${resendCooldown}s`
                     : 'Resend Verification Email'}
                 </Button>
-                
-                {/* FIXED: Manual check button instead of page reload */}
+
                 <Button
                   variant="outline"
                   onClick={manualCheck}
@@ -423,7 +387,7 @@ const PrivateRoute = ({
                 >
                   Check Verification Status
                 </Button>
-                
+
                 <Button
                   variant="ghost"
                   onClick={() => navigate('/dashboard', { replace: true })}
@@ -437,9 +401,11 @@ const PrivateRoute = ({
               <p className="text-xs text-gray-400 mt-4">
                 Didn't receive the email? Check your spam folder or{' '}
                 <button
-                  onClick={() => navigate('/contact', { 
-                    state: { subject: 'Email Verification Issue' }
-                  })}
+                  onClick={() =>
+                    navigate('/contact', {
+                      state: { subject: 'Email Verification Issue' },
+                    })
+                  }
                   className="text-primary-500 hover:text-primary-600 underline"
                 >
                   contact support
@@ -452,16 +418,18 @@ const PrivateRoute = ({
     );
   }
 
-  // Role-based or premium access check
-  if ((allowedRoles && !hasRequiredRole()) || (requirePremium && userRole !== 'premium' && userRole !== 'admin')) {
-    handleAccessDenied({ 
-      reason: requirePremium ? 'premium_required' : 'insufficient_permissions', 
+  // Role / Premium access check
+  if (
+    (allowedRoles && !hasRequiredRole()) ||
+    (requirePremium && userRole !== 'premium' && userRole !== 'admin')
+  ) {
+    handleAccessDenied({
+      reason: requirePremium ? 'premium_required' : 'insufficient_permissions',
       path: location.pathname,
       requiredRoles: allowedRoles,
       userRole,
     });
 
-    // Show fallback component if provided
     if (fallbackComponent) {
       return fallbackComponent;
     }
@@ -474,7 +442,7 @@ const PrivateRoute = ({
           exit={{ opacity: 0, scale: 0.95 }}
           className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20"
         >
-          <div className="max-w-md w-full" ref={accessDeniedRef}>
+          <div className="max-w-md w-full">
             <motion.div
               initial={{ y: 20 }}
               animate={{ y: 0 }}
@@ -482,7 +450,7 @@ const PrivateRoute = ({
             >
               {/* Icon */}
               <div className="relative mb-6">
-                <motion.div 
+                <motion.div
                   className="absolute inset-0 bg-red-500/20 rounded-full"
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -499,20 +467,18 @@ const PrivateRoute = ({
               <h2 className="text-2xl font-bold mb-2 gradient-text">
                 {requirePremium ? 'Premium Required' : 'Access Denied'}
               </h2>
-              
+
               <p className="text-gray-600 dark:text-gray-400 mb-2">
-                {requirePremium 
-                  ? 'This feature requires a premium account.' 
+                {requirePremium
+                  ? 'This feature requires a premium account.'
                   : "You don't have permission to access this page."}
               </p>
-              
+
               {allowedRoles && !requirePremium && (
                 <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
                   This area requires{' '}
                   <span className="font-medium">
-                    {Array.isArray(allowedRoles) 
-                      ? allowedRoles.join(' or ') 
-                      : allowedRoles}
+                    {Array.isArray(allowedRoles) ? allowedRoles.join(' or ') : allowedRoles}
                   </span>{' '}
                   access.
                 </p>
@@ -520,15 +486,11 @@ const PrivateRoute = ({
 
               {/* User Info */}
               <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg mb-6">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Signed in as:
-                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Signed in as:</p>
                 <p className="font-medium text-gray-800 dark:text-gray-200 break-all">
                   {user.email}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Current plan: {userRole || 'Free'}
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Current plan: {userRole || 'Free'}</p>
               </div>
 
               {/* Action Buttons */}
@@ -541,7 +503,7 @@ const PrivateRoute = ({
                     Upgrade to Premium
                   </Button>
                 )}
-                
+
                 <Button
                   onClick={() => navigate('/dashboard', { replace: true })}
                   variant={requirePremium ? 'outline' : 'primary'}
@@ -549,12 +511,8 @@ const PrivateRoute = ({
                 >
                   Go to Dashboard
                 </Button>
-                
-                <Button
-                  variant="ghost"
-                  onClick={handleGoBack}
-                  className="w-full"
-                >
+
+                <Button variant="ghost" onClick={handleGoBack} className="w-full">
                   Go Back
                 </Button>
               </div>
@@ -563,9 +521,11 @@ const PrivateRoute = ({
               <p className="text-xs text-gray-400 mt-4">
                 Think this is a mistake?{' '}
                 <button
-                  onClick={() => navigate('/contact', {
-                    state: { subject: 'Access Issue' }
-                  })}
+                  onClick={() =>
+                    navigate('/contact', {
+                      state: { subject: 'Access Issue' },
+                    })
+                  }
                   className="text-primary-500 hover:text-primary-600 underline"
                 >
                   Contact Support
@@ -578,7 +538,7 @@ const PrivateRoute = ({
     );
   }
 
-  // FIXED: Development indicator - completely stripped in production
+  // Development indicator (stripped in production)
   if (IS_DEVELOPMENT) {
     return (
       <>
@@ -591,13 +551,13 @@ const PrivateRoute = ({
             )}
           </div>
         </div>
-        
+
         {children}
       </>
     );
   }
 
-  // Production: authenticated and authorized - render children
+  // Production: authenticated and authorized
   return <>{children}</>;
 };
 
@@ -611,11 +571,11 @@ export const withPrivateRoute = (WrappedComponent, options = {}) => {
       </PrivateRoute>
     );
   };
-  
+
   WithPrivateRoute.displayName = `WithPrivateRoute(${
     WrappedComponent.displayName || WrappedComponent.name || 'Component'
   })`;
-  
+
   return WithPrivateRoute;
 };
 
@@ -623,7 +583,7 @@ export const withPrivateRoute = (WrappedComponent, options = {}) => {
 
 export const useRouteAccess = () => {
   const { user, loading, initializing, isEmailVerified, userRole } = useAuth();
-  
+
   return {
     isAuthenticated: !!user,
     isLoading: loading || initializing,

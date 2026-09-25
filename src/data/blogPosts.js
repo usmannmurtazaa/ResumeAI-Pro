@@ -6,7 +6,8 @@ export const BLOG_POSTS = [
     id: 1,
     slug: 'resume-mistakes-costing-interviews',
     title: '10 Resume Mistakes That Are Costing You Interviews',
-    excerpt: 'Discover the most common resume mistakes and how to fix them to increase your chances of landing interviews.',
+    excerpt:
+      'Discover the most common resume mistakes and how to fix them to increase your chances of landing interviews.',
     content: `
       <p class="lead">Your resume is often your first impression with a potential employer. Yet, many qualified candidates are being filtered out before a human ever sees their application. Here are the 10 most common resume mistakes and how to fix them.</p>
       
@@ -29,7 +30,7 @@ export const BLOG_POSTS = [
       <p>Typos suggest a lack of attention to detail. <strong>Solution:</strong> Use spell-check tools, read your resume aloud, and have someone else review it.</p>
       
       <h2>7. Missing Keywords for ATS</h2>
-      <p>Applicant Tracking Systems scan for specific keywords. <strong>Solution:</strong> Use ResumeAI Pro's ATS Scanner to identify missing keywords from your target job description.</p>
+      <p>Applicant Tracking Systems scan for specific keywords. <strong>Solution:</strong> Use Resume Ai Pro's ATS Scanner to identify missing keywords from your target job description.</p>
       
       <h2>8. Including Personal Information</h2>
       <p>Never include your photo, age, marital status, religion, or social security number. <strong>Solution:</strong> Stick to professional contact information only.</p>
@@ -38,14 +39,14 @@ export const BLOG_POSTS = [
       <p>Word documents can lose formatting across different systems. <strong>Solution:</strong> Always submit your resume as a PDF unless otherwise specified.</p>
       
       <h2>Conclusion</h2>
-      <p>Avoiding these common mistakes will significantly improve your chances of getting past ATS filters and landing interviews. Ready to create an optimized resume? <a href="/builder">Start building with ResumeAI Pro today</a>.</p>
+      <p>Avoiding these common mistakes will significantly improve your chances of getting past ATS filters and landing interviews. Ready to create an optimized resume? <a href="/builder">Start building with Resume Ai Pro today</a>.</p>
     `,
     category: 'resume-tips',
     author: {
       name: 'Sarah Chen',
       avatar: 'SC',
       role: 'Career Coach',
-      bio: 'Sarah is a certified career coach with over 10 years of experience helping professionals land their dream jobs at Fortune 500 companies.'
+      bio: 'Sarah is a certified career coach with over 10 years of experience helping professionals land their dream jobs at Fortune 500 companies.',
     },
     coverImage: '📄',
     readTime: '6 min read',
@@ -53,13 +54,14 @@ export const BLOG_POSTS = [
     tags: ['Resume', 'Job Search', 'Career', 'ATS'],
     featured: true,
     views: 12453,
-    likes: 342
+    likes: 342,
   },
   {
     id: 2,
     slug: 'optimize-resume-for-ats-systems-2025',
     title: 'How to Optimize Your Resume for ATS Systems in 2025',
-    excerpt: 'Learn the latest strategies to ensure your resume passes through Applicant Tracking Systems and reaches human recruiters.',
+    excerpt:
+      'Learn the latest strategies to ensure your resume passes through Applicant Tracking Systems and reaches human recruiters.',
     content: `
       <p class="lead">With over 75% of resumes never reaching human eyes, understanding how to optimize for Applicant Tracking Systems (ATS) is crucial for job search success in 2025.</p>
       
@@ -72,7 +74,7 @@ export const BLOG_POSTS = [
       <p>Stick to conventional headings like "Work Experience," "Education," and "Skills." Avoid creative alternatives like "Where I've Been" or "What I Know."</p>
       
       <h3>2. Incorporate Keywords Naturally</h3>
-      <p>Analyze the job description and incorporate relevant keywords throughout your resume. Use ResumeAI Pro's AI-powered keyword suggestions to identify the most important terms.</p>
+      <p>Analyze the job description and incorporate relevant keywords throughout your resume. Use Resume Ai Pro's AI-powered keyword suggestions to identify the most important terms.</p>
       
       <h3>3. Avoid Complex Formatting</h3>
       <p>Tables, columns, graphics, and unusual fonts can confuse ATS software. Stick to a clean, single-column layout with standard fonts like Arial, Calibri, or Times New Roman.</p>
@@ -87,14 +89,14 @@ export const BLOG_POSTS = [
       <p>While most modern ATS can read PDFs, some older systems prefer .docx files. Check the job posting for specific instructions.</p>
       
       <h2>Test Your Resume's ATS Compatibility</h2>
-      <p>Use ResumeAI Pro's free ATS Scanner to analyze your resume and get a detailed compatibility score with actionable improvement suggestions.</p>
+      <p>Use Resume Ai Pro's free ATS Scanner to analyze your resume and get a detailed compatibility score with actionable improvement suggestions.</p>
     `,
     category: 'ats-guide',
     author: {
       name: 'Usman Murtaza',
       avatar: 'UM',
       role: 'Founder & CEO',
-      bio: 'Usman is the founder of ResumeAI Pro and a full-stack developer passionate about helping job seekers leverage technology to advance their careers.'
+      bio: 'Usman is the founder of Resume Ai Pro and a full-stack developer passionate about helping job seekers leverage technology to advance their careers.',
     },
     coverImage: '🤖',
     readTime: '8 min read',
@@ -102,13 +104,14 @@ export const BLOG_POSTS = [
     tags: ['ATS', 'Resume Optimization', 'Job Search', 'Technology'],
     featured: true,
     views: 18934,
-    likes: 567
+    likes: 567,
   },
   {
     id: 3,
     slug: 'achievement-based-resume-bullets-guide',
     title: 'The Ultimate Guide to Writing Achievement-Based Resume Bullets',
-    excerpt: 'Transform your resume from a list of duties to a compelling story of achievements with these proven techniques.',
+    excerpt:
+      'Transform your resume from a list of duties to a compelling story of achievements with these proven techniques.',
     content: `
       <p class="lead">Recruiters spend an average of 6-7 seconds scanning a resume. Achievement-based bullet points grab attention and demonstrate your value proposition immediately.</p>
       
@@ -131,7 +134,7 @@ export const BLOG_POSTS = [
       name: 'Michael Rodriguez',
       avatar: 'MR',
       role: 'Senior Recruiter',
-      bio: 'Michael has reviewed over 50,000 resumes during his 12-year career in talent acquisition at Fortune 500 companies.'
+      bio: 'Michael has reviewed over 50,000 resumes during his 12-year career in talent acquisition at Fortune 500 companies.',
     },
     coverImage: '🎯',
     readTime: '7 min read',
@@ -139,13 +142,14 @@ export const BLOG_POSTS = [
     tags: ['Resume Writing', 'Achievements', 'Career', 'STAR Method'],
     featured: false,
     views: 8765,
-    likes: 234
+    likes: 234,
   },
   {
     id: 4,
     slug: 'top-20-action-verbs-resume',
     title: 'Top 20 Action Verbs That Will Make Your Resume Stand Out',
-    excerpt: 'Powerful action verbs that grab attention and showcase your accomplishments effectively.',
+    excerpt:
+      'Powerful action verbs that grab attention and showcase your accomplishments effectively.',
     content: `
       <p class="lead">The words you choose on your resume matter. Strong action verbs convey confidence, competence, and impact.</p>
       
@@ -160,7 +164,7 @@ export const BLOG_POSTS = [
       name: 'Emily Watson',
       avatar: 'EW',
       role: 'Content Strategist',
-      bio: 'Emily specializes in creating compelling career content that helps professionals tell their unique stories effectively.'
+      bio: 'Emily specializes in creating compelling career content that helps professionals tell their unique stories effectively.',
     },
     coverImage: '⚡',
     readTime: '5 min read',
@@ -168,13 +172,14 @@ export const BLOG_POSTS = [
     tags: ['Resume Tips', 'Writing', 'Keywords', 'Action Verbs'],
     featured: false,
     views: 6543,
-    likes: 189
+    likes: 189,
   },
   {
     id: 5,
     slug: 'write-cover-letter-complements-resume',
     title: 'How to Write a Cover Letter That Complements Your Resume',
-    excerpt: 'Learn how to craft a compelling cover letter that works in harmony with your resume to land more interviews.',
+    excerpt:
+      'Learn how to craft a compelling cover letter that works in harmony with your resume to land more interviews.',
     content: `
       <p class="lead">A great cover letter doesn't just repeat your resume—it tells the story behind your achievements.</p>
       
@@ -188,7 +193,7 @@ export const BLOG_POSTS = [
       name: 'David Kim',
       avatar: 'DK',
       role: 'HR Director',
-      bio: 'David has 15+ years of HR leadership experience and has hired hundreds of professionals across various industries.'
+      bio: 'David has 15+ years of HR leadership experience and has hired hundreds of professionals across various industries.',
     },
     coverImage: '📝',
     readTime: '6 min read',
@@ -196,13 +201,14 @@ export const BLOG_POSTS = [
     tags: ['Cover Letter', 'Job Application', 'Career', 'Writing'],
     featured: false,
     views: 5432,
-    likes: 156
+    likes: 156,
   },
   {
     id: 6,
     slug: 'networking-strategies-2025',
     title: 'Networking Strategies That Actually Work in 2025',
-    excerpt: 'Modern networking techniques to build meaningful professional relationships and uncover hidden job opportunities.',
+    excerpt:
+      'Modern networking techniques to build meaningful professional relationships and uncover hidden job opportunities.',
     content: `
       <p class="lead">Networking isn't about collecting business cards or LinkedIn connections—it's about building genuine relationships.</p>
       
@@ -216,7 +222,7 @@ export const BLOG_POSTS = [
       name: 'Jessica Lee',
       avatar: 'JL',
       role: 'Career Strategist',
-      bio: 'Jessica helps professionals navigate career transitions and has been featured in Forbes, Business Insider, and The Muse.'
+      bio: 'Jessica helps professionals navigate career transitions and has been featured in Forbes, Business Insider, and The Muse.',
     },
     coverImage: '🤝',
     readTime: '7 min read',
@@ -224,6 +230,6 @@ export const BLOG_POSTS = [
     tags: ['Networking', 'Job Search', 'Career Growth', 'LinkedIn'],
     featured: false,
     views: 4321,
-    likes: 123
-  }
+    likes: 123,
+  },
 ];

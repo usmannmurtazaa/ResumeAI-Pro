@@ -15,24 +15,19 @@ import { app, db, logAnalyticsEvent as firebaseAnalyticsEvent } from './firebase
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const BATCH_INTERVAL = 30000;     // Send batched events every 30 seconds
-const MAX_BATCH_SIZE = 50;        // Max events per Firestore batch write
-const MAX_EVENTS_TO_FETCH = 200;  // Max events to retrieve per query
+const BATCH_INTERVAL = 30000; // Send batched events every 30 seconds
+const MAX_BATCH_SIZE = 50; // Max events per Firestore batch write
+const MAX_EVENTS_TO_FETCH = 200; // Max events to retrieve per query
 
 // Events that should be sampled (not every occurrence needs logging)
 const SAMPLED_EVENTS = {
-  page_view: 0.2,          // Log 20% of page views to Firestore
-  scroll_depth: 0.1,       // Log 10% of scroll events
-  input_focus: 0.05,       // Log 5% of input focus events
+  page_view: 0.2, // Log 20% of page views to Firestore
+  scroll_depth: 0.1, // Log 10% of scroll events
+  input_focus: 0.05, // Log 5% of input focus events
 };
 
 // Events that should NOT be written to Firestore at all (GA4 only)
-const GA4_ONLY_EVENTS = [
-  'scroll_depth',
-  'input_focus',
-  'button_hover',
-  'tab_switch',
-];
+const GA4_ONLY_EVENTS = ['scroll_depth', 'input_focus', 'button_hover', 'tab_switch'];
 
 // ── Utility ────────────────────────────────────────────────────────────────
 
@@ -149,7 +144,14 @@ export const analyticsService = {
     });
 
     // Auto-flush on important events
-    const IMPORTANT_EVENTS = ['resume_created', 'resume_downloaded', 'sign_up', 'login', 'subscription_changed', 'account_deleted'];
+    const IMPORTANT_EVENTS = [
+      'resume_created',
+      'resume_downloaded',
+      'sign_up',
+      'login',
+      'subscription_changed',
+      'account_deleted',
+    ];
     if (IMPORTANT_EVENTS.includes(eventName)) {
       await flushEventQueue();
     }
@@ -159,43 +161,59 @@ export const analyticsService = {
    * Tracks a page view event.
    */
   async trackPageView(pageName, userId = null) {
-    return this.trackEvent('page_view', {
-      page: pageName,
-      page_title: isBrowser ? document.title : '',
-      page_referrer: isBrowser ? document.referrer : '',
-    }, userId);
+    return this.trackEvent(
+      'page_view',
+      {
+        page: pageName,
+        page_title: isBrowser ? document.title : '',
+        page_referrer: isBrowser ? document.referrer : '',
+      },
+      userId
+    );
   },
 
   /**
    * Tracks a resume-related event.
    */
   async trackResumeEvent(eventName, resumeId, userId = null) {
-    return this.trackEvent(eventName, {
-      resume_id: resumeId,
-      event_category: 'resume',
-    }, userId);
+    return this.trackEvent(
+      eventName,
+      {
+        resume_id: resumeId,
+        event_category: 'resume',
+      },
+      userId
+    );
   },
 
   /**
    * Tracks a conversion event (higher priority, flushes immediately).
    */
   async trackConversion(eventName, eventData = {}, userId = null) {
-    return this.trackEvent(eventName, {
-      ...eventData,
-      is_conversion: true,
-      event_category: 'conversion',
-    }, userId);
+    return this.trackEvent(
+      eventName,
+      {
+        ...eventData,
+        is_conversion: true,
+        event_category: 'conversion',
+      },
+      userId
+    );
   },
 
   /**
    * Tracks an error event (flushes immediately for debugging).
    */
   async trackError(errorType, errorMessage, userId = null) {
-    return this.trackEvent('app_error', {
-      error_type: errorType,
-      error_message: errorMessage?.substring(0, 500),
-      url: isBrowser ? window.location.href : '',
-    }, userId);
+    return this.trackEvent(
+      'app_error',
+      {
+        error_type: errorType,
+        error_message: errorMessage?.substring(0, 500),
+        url: isBrowser ? window.location.href : '',
+      },
+      userId
+    );
   },
 
   /**
@@ -214,7 +232,7 @@ export const analyticsService = {
       );
 
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
+      return snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp,
@@ -239,10 +257,10 @@ export const analyticsService = {
       );
 
       const snapshot = await getDocs(q);
-      const events = snapshot.docs.map(doc => doc.data());
+      const events = snapshot.docs.map((doc) => doc.data());
 
       const counts = {};
-      events.forEach(e => {
+      events.forEach((e) => {
         counts[e.name] = (counts[e.name] || 0) + 1;
       });
 
@@ -252,7 +270,7 @@ export const analyticsService = {
         resumesCreated: counts['resume_created'] || 0,
         resumesDownloaded: counts['resume_downloaded'] || 0,
         resumesUpdated: counts['resume_updated'] || 0,
-        conversions: events.filter(e => e.data?.is_conversion).length,
+        conversions: events.filter((e) => e.data?.is_conversion).length,
         lastActive: events[0]?.timestamp?.toDate?.()?.toISOString() || events[0]?.timestamp || null,
         eventBreakdown: counts,
       };

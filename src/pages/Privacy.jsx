@@ -2,8 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  FiShield, FiLock, FiEye, FiTrash2, FiGlobe, FiServer,
-  FiFileText, FiUserCheck, FiMail, FiChevronRight,
+  FiShield,
+  FiLock,
+  FiEye,
+  FiTrash2,
+  FiGlobe,
+  FiServer,
+  FiFileText,
+  FiUserCheck,
+  FiMail,
+  FiChevronRight,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
@@ -35,7 +43,7 @@ const SECTIONS = [
     content: `
       We use your information for the following purposes:
       
-      • Service Delivery: To provide, maintain, and improve ResumeAI Pro.
+      • Service Delivery: To provide, maintain, and improve Resume Ai Pro.
       • Account Management: To manage your account, process payments, and send service notifications.
       • Improvement: To analyze usage patterns and enhance user experience.
       • Communication: To respond to inquiries and send relevant updates (with your consent).
@@ -103,7 +111,7 @@ const SECTIONS = [
       • Objection: Object to certain processing activities.
       • Withdraw Consent: Withdraw previously given consent at any time.
       
-      For GDPR (EU/UK) or CCPA (California) requests, contact privacy@resumeaipro.com.
+      For GDPR (EU/UK) or CCPA (California) requests, contact privacy@maniestaresumeai.com.
     `,
   },
   {
@@ -111,7 +119,7 @@ const SECTIONS = [
     icon: FiShield,
     title: "Children's Privacy",
     content: `
-      ResumeAI Pro is not intended for use by children under the age of 16.
+      Resume Ai Pro is not intended for use by children under the age of 16.
       
       • We do not knowingly collect personal information from children under 16.
       • If we become aware that a child under 16 has provided us with personal data, we will delete it immediately.
@@ -155,7 +163,7 @@ const SECTIONS = [
       
       • Material changes will be communicated via email or in-app notification.
       • The "Last Updated" date at the top of this page will be revised.
-      • Continued use of ResumeAI Pro after changes constitutes acceptance.
+      • Continued use of Resume Ai Pro after changes constitutes acceptance.
       
       We encourage you to review this policy periodically.
     `,
@@ -167,12 +175,13 @@ const SECTIONS = [
 const Privacy = () => {
   usePageTitle({
     title: 'Privacy Policy',
-    description: 'Learn how ResumeAI Pro collects, uses, and protects your personal information. We take your privacy seriously.',
+    description:
+      'Learn how Resume Ai Pro collects, uses, and protects your personal information. We take your privacy seriously.',
   });
 
   const [activeSection, setActiveSection] = useState(null);
 
-  const tocItems = useMemo(() => SECTIONS.map(s => ({ id: s.id, title: s.title })), []);
+  const tocItems = useMemo(() => SECTIONS.map((s) => ({ id: s.id, title: s.title })), []);
 
   const handleScrollTo = (id) => {
     const element = document.getElementById(id);
@@ -188,7 +197,8 @@ const Privacy = () => {
         <div className="container mx-auto px-4 max-w-5xl">
           {/* Header */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-12"
           >
@@ -196,9 +206,7 @@ const Privacy = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Privacy <span className="gradient-text">Policy</span>
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Last updated: {LAST_UPDATED}
-            </p>
+            <p className="text-gray-500 dark:text-gray-400">Last updated: {LAST_UPDATED}</p>
           </motion.div>
 
           <div className="grid lg:grid-cols-4 gap-8">
@@ -232,15 +240,13 @@ const Privacy = () => {
                 {/* Contact Card */}
                 <Card className="p-4 mt-4">
                   <h4 className="font-semibold text-sm mb-2">Questions?</h4>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Contact our Data Protection Officer
-                  </p>
+                  <p className="text-xs text-gray-500 mb-3">Contact our Data Protection Officer</p>
                   <a
-                    href="mailto:privacy@resumeaipro.com"
+                    href="mailto:privacy@maniestaresumeai.com"
                     className="flex items-center gap-2 text-sm text-primary-500 hover:text-primary-600"
                   >
                     <FiMail className="w-4 h-4" />
-                    privacy@resumeaipro.com
+                    privacy@maniestaresumeai.com
                   </a>
                 </Card>
               </div>
@@ -251,9 +257,9 @@ const Privacy = () => {
               <Card className="p-6 md:p-8">
                 <div className="prose dark:prose-invert max-w-none mb-8">
                   <p className="lead text-gray-600 dark:text-gray-400">
-                    At ResumeAI Pro, we take your privacy seriously. This Privacy Policy explains how we collect, 
-                    use, disclose, and safeguard your information when you use our resume builder platform.
-                    Please read this policy carefully.
+                    At Resume Ai Pro, we take your privacy seriously. This Privacy Policy
+                    explains how we collect, use, disclose, and safeguard your information when you
+                    use our resume builder platform. Please read this policy carefully.
                   </p>
                 </div>
 
@@ -289,19 +295,20 @@ const Privacy = () => {
                     Contact Us
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    If you have any questions about this Privacy Policy or wish to exercise your data rights, 
-                    please contact us:
+                    If you have any questions about this Privacy Policy or wish to exercise your
+                    data rights, please contact us:
                   </p>
                   <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                     <p>
                       📧 Email:{' '}
-                      <a href="mailto:privacy@resumeaipro.com" className="text-primary-500 hover:text-primary-600">
-                        privacy@resumeaipro.com
+                      <a
+                        href="mailto:privacy@maniestaresumeai.com"
+                        className="text-primary-500 hover:text-primary-600"
+                      >
+                        privacy@maniestaresumeai.com
                       </a>
                     </p>
-                    <p>
-                      📬 Mail: ResumeAI Pro, 123 Market Street, San Francisco, CA 94105
-                    </p>
+                    <p>📬 Mail: Resume Ai Pro, 123 Market Street, San Francisco, CA 94105</p>
                   </div>
                 </div>
               </Card>

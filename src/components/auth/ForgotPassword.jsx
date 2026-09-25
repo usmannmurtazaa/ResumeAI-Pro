@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiMail, 
-  FiArrowLeft, 
-  FiCheckCircle, 
+import {
+  FiMail,
+  FiArrowLeft,
+  FiCheckCircle,
   FiAlertCircle,
   FiSend,
   FiRefreshCw,
@@ -13,7 +13,7 @@ import {
   FiInfo,
   FiLock,
   FiHelpCircle,
-  FiX
+  FiX,
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../ui/Button';
@@ -56,14 +56,14 @@ const COMMON_EMAIL_TYPOS = {
  */
 const getEmailSuggestion = (email) => {
   if (!email || !email.includes('@')) return null;
-  
+
   const [localPart, domain] = email.split('@');
   const lowerDomain = domain.toLowerCase();
-  
+
   if (COMMON_EMAIL_TYPOS[lowerDomain]) {
     return `${localPart}@${COMMON_EMAIL_TYPOS[lowerDomain]}`;
   }
-  
+
   return null;
 };
 
@@ -74,7 +74,7 @@ const useResendRateLimiter = () => {
     try {
       const saved = sessionStorage.getItem('password_reset_attempts');
       if (!saved) return { count: 0, timestamp: Date.now() };
-      
+
       const data = JSON.parse(saved);
       // Reset if lockout period has passed
       if (Date.now() - data.timestamp > LOCKOUT_DURATION) {
@@ -85,28 +85,29 @@ const useResendRateLimiter = () => {
       return { count: 0, timestamp: Date.now() };
     }
   });
-  
-  const isLocked = resendAttempts.count >= MAX_RESEND_ATTEMPTS &&
+
+  const isLocked =
+    resendAttempts.count >= MAX_RESEND_ATTEMPTS &&
     Date.now() - resendAttempts.timestamp < LOCKOUT_DURATION;
-  
+
   const timeUntilUnlock = isLocked
     ? Math.ceil((LOCKOUT_DURATION - (Date.now() - resendAttempts.timestamp)) / 1000 / 60)
     : 0;
-  
+
   const recordAttempt = useCallback(() => {
     const newData = {
       count: resendAttempts.count + 1,
       timestamp: Date.now(),
     };
     setResendAttempts(newData);
-    
+
     try {
       sessionStorage.setItem('password_reset_attempts', JSON.stringify(newData));
     } catch {
       // Ignore storage errors
     }
   }, [resendAttempts]);
-  
+
   return { isLocked, timeUntilUnlock, recordAttempt };
 };
 
@@ -115,19 +116,25 @@ const useResendRateLimiter = () => {
 const ForgotPassword = () => {
   const { resetPassword } = useAuth();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [sentEmail, setSentEmail] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [error, setError] = useState(null);
   const [emailSuggestion, setEmailSuggestion] = useState(null);
-  
+
   const { isLocked, timeUntilUnlock, recordAttempt } = useResendRateLimiter();
   const abortControllerRef = useRef(null);
   const mountedRef = useRef(false);
-  
-  const { register, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm({
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isValid },
+  } = useForm({
     mode: 'onChange',
     defaultValues: {
       email: '',
@@ -140,7 +147,7 @@ const ForgotPassword = () => {
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     return () => {
       mountedRef.current = false;
       // Abort any pending operations
@@ -154,11 +161,11 @@ const ForgotPassword = () => {
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    
+
     const timer = setInterval(() => {
-      setResendCooldown(prev => Math.max(0, prev - 1));
+      setResendCooldown((prev) => Math.max(0, prev - 1));
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
@@ -181,28 +188,28 @@ const ForgotPassword = () => {
       setError(`Too many attempts. Please try again in ${timeUntilUnlock} minute(s).`);
       return;
     }
-    
+
     // Create abort controller
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       await resetPassword(data.email);
-      
+
       if (signal.aborted) return;
       if (!mountedRef.current) return;
-      
+
       setSentEmail(data.email);
       setEmailSent(true);
       setResendCooldown(RESEND_COOLDOWN);
       recordAttempt();
-      
+
       toast.success('Password reset email sent! Check your inbox.', {
         icon: '📧',
         duration: 5000,
@@ -211,46 +218,44 @@ const ForgotPassword = () => {
     } catch (error) {
       if (signal.aborted) return;
       if (!mountedRef.current) return;
-      
+
       console.error('Password reset error:', error);
-      
+
       let errorMessage;
-      
+
       switch (error.code) {
         case 'auth/user-not-found':
-          // FIXED: Consistent security - don't reveal if email exists
-          // Show success message but mark internally
+          // For security, show success message even if email doesn't exist
           setSentEmail(data.email);
           setEmailSent(true);
           setResendCooldown(RESEND_COOLDOWN);
-          
-          // Use console.info instead of error for expected security behavior
+
           if (process.env.NODE_ENV === 'development') {
             console.info('Password reset attempted for non-existent email:', data.email);
           }
           return; // Exit early - don't show error
-          
+
         case 'auth/invalid-email':
           errorMessage = 'Please enter a valid email address.';
           break;
-          
+
         case 'auth/too-many-requests':
           errorMessage = 'Too many requests. Please try again later.';
           setResendCooldown(300); // 5 minutes
           break;
-          
+
         case 'auth/network-request-failed':
           errorMessage = 'Network error. Please check your internet connection.';
           break;
-          
+
         case 'auth/operation-not-allowed':
           errorMessage = 'Password reset is not enabled. Please contact support.';
           break;
-          
+
         default:
           errorMessage = error.message || 'Failed to send reset email. Please try again.';
       }
-      
+
       setError(errorMessage);
       toast.error(errorMessage, { id: 'reset-error' });
     } finally {
@@ -269,32 +274,32 @@ const ForgotPassword = () => {
       });
       return;
     }
-    
+
     if (isLocked) {
       setError(`Too many attempts. Please try again in ${timeUntilUnlock} minute(s).`);
       return;
     }
-    
+
     if (sentEmail) {
       setLoading(true);
-      
+
       try {
         await resetPassword(sentEmail);
-        
+
         if (!mountedRef.current) return;
-        
+
         setResendCooldown(RESEND_COOLDOWN);
         recordAttempt();
-        
+
         toast.success('Password reset email resent!', {
           icon: '📧',
           id: 'reset-email-resent',
         });
       } catch (error) {
         if (!mountedRef.current) return;
-        
+
         console.error('Resend error:', error);
-        
+
         if (error.code === 'auth/too-many-requests') {
           toast.error('Too many requests. Please try again later.', {
             id: 'resend-error',
@@ -333,7 +338,7 @@ const ForgotPassword = () => {
   const handleContactSupport = useCallback(() => {
     // Try to open email client first
     const mailtoLink = `mailto:support@resumeai.com?subject=Password%20Reset%20Help&body=I%20need%20help%20resetting%20my%20password%20for%20${encodeURIComponent(sentEmail || 'my account')}.`;
-    
+
     try {
       window.open(mailtoLink, '_blank');
     } catch {
@@ -351,12 +356,12 @@ const ForgotPassword = () => {
 
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
-      transition: { 
+      transition: {
         duration: 0.5,
-        when: "beforeChildren",
+        when: 'beforeChildren',
         staggerChildren: 0.1,
       },
     },
@@ -391,9 +396,7 @@ const ForgotPassword = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-accent-500 rounded-2xl mb-4 shadow-lg">
             <FiLock className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2 gradient-text">
-            Reset Password
-          </h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2 gradient-text">Reset Password</h2>
           <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
             Enter your email and we'll send you a reset link
           </p>
@@ -412,30 +415,30 @@ const ForgotPassword = () => {
             >
               {/* Success Message */}
               <div className="p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-center">
-                <motion.div 
+                <motion.div
                   className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                  transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
                 >
                   <FiCheckCircle className="w-8 h-8 text-green-500" />
                 </motion.div>
-                
+
                 <h3 className="text-lg font-semibold text-green-700 dark:text-green-400 mb-2">
                   Check Your Email
                 </h3>
-                
+
                 <p className="text-green-600 dark:text-green-300 mb-4">
                   We've sent a password reset link to:
                 </p>
-                
+
                 <p className="font-medium text-gray-800 dark:text-gray-200 mb-4 p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg break-all">
                   {sentEmail}
                 </p>
-                
+
                 <p className="text-sm text-green-600 dark:text-green-400">
-                  Click the link in the email to reset your password.
-                  The link will expire in 1 hour.
+                  Click the link in the email to reset your password. The link will expire in 1
+                  hour.
                 </p>
               </div>
 
@@ -452,11 +455,15 @@ const ForgotPassword = () => {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-400 mt-1">•</span>
-                    <span>Ensure <strong>{sentEmail}</strong> is the correct email</span>
+                    <span>
+                      Ensure <strong>{sentEmail}</strong> is the correct email
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-400 mt-1">•</span>
-                    <span>Add <strong>noreply@resumeai.com</strong> to your contacts</span>
+                    <span>
+                      Add <strong>noreply@resumeai.com</strong> to your contacts
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-400 mt-1">•</span>
@@ -470,7 +477,8 @@ const ForgotPassword = () => {
                 <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-start gap-2">
                   <FiAlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    Too many reset attempts. Please wait {timeUntilUnlock} minute(s) or try another method.
+                    Too many reset attempts. Please wait {timeUntilUnlock} minute(s) or try another
+                    method.
                   </p>
                 </div>
               )}
@@ -484,11 +492,9 @@ const ForgotPassword = () => {
                   className="w-full"
                   icon={<FiRefreshCw className="w-4 h-4" />}
                 >
-                  {resendCooldown > 0 
-                    ? `Resend in ${resendCooldown}s` 
-                    : 'Resend Email'}
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Email'}
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   onClick={handleTryDifferentEmail}
@@ -568,9 +574,10 @@ const ForgotPassword = () => {
                     },
                   })}
                   error={errors.email?.message}
-                  success={emailValue && !errors.email && (
-                    <FiCheckCircle className="w-4 h-4 text-green-500" />
-                  )}
+                  success={
+                    emailValue &&
+                    !errors.email && <FiCheckCircle className="w-4 h-4 text-green-500" />
+                  }
                 />
 
                 {/* Email Typo Suggestion */}
@@ -585,8 +592,7 @@ const ForgotPassword = () => {
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs text-yellow-700 dark:text-yellow-300 flex items-center gap-1">
                           <FiInfo className="w-3 h-3 flex-shrink-0" />
-                          Did you mean{' '}
-                          <span className="font-medium">{emailSuggestion}</span>?
+                          Did you mean <span className="font-medium">{emailSuggestion}</span>?
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -701,47 +707,47 @@ const ForgotPassword = () => {
 export const ResetPasswordHandler = () => {
   const { confirmPasswordReset } = useAuth();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  
+
   // Get oobCode from URL
   const queryParams = new URLSearchParams(window.location.search);
   const oobCode = queryParams.get('oobCode');
-  
+
   const handleReset = async (e) => {
     e.preventDefault();
-    
+
     if (!oobCode) {
       setError('Invalid or missing reset code. Please request a new password reset.');
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
-    
+
     if (newPassword.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       await confirmPasswordReset(oobCode, newPassword);
       setSuccess(true);
-      
+
       toast.success('Password reset successfully! You can now sign in.', {
         icon: '✅',
         duration: 5000,
       });
-      
+
       // Redirect to login after delay
       setTimeout(() => {
         navigate('/login', {
@@ -751,7 +757,7 @@ export const ResetPasswordHandler = () => {
       }, 2000);
     } catch (error) {
       console.error('Password reset confirmation failed:', error);
-      
+
       switch (error.code) {
         case 'auth/expired-action-code':
           setError('Reset link has expired. Please request a new one.');
@@ -775,16 +781,14 @@ export const ResetPasswordHandler = () => {
       setLoading(false);
     }
   };
-  
+
   if (!oobCode) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="glass-card p-8 text-center max-w-md">
           <FiAlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Invalid Reset Link</h2>
-          <p className="text-gray-600 mb-4">
-            This password reset link is invalid or has expired.
-          </p>
+          <p className="text-gray-600 mb-4">This password reset link is invalid or has expired.</p>
           <Link to="/forgot-password" className="text-primary-500 hover:underline">
             Request a new reset link
           </Link>
@@ -792,14 +796,12 @@ export const ResetPasswordHandler = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="glass-card p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-6 text-center gradient-text">
-          Reset Your Password
-        </h2>
-        
+        <h2 className="text-2xl font-bold mb-6 text-center gradient-text">Reset Your Password</h2>
+
         <AnimatePresence>
           {success ? (
             <motion.div
@@ -809,9 +811,7 @@ export const ResetPasswordHandler = () => {
             >
               <FiCheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Password Reset!</h3>
-              <p className="text-gray-600">
-                Redirecting to sign in...
-              </p>
+              <p className="text-gray-600">Redirecting to sign in...</p>
             </motion.div>
           ) : (
             <motion.form
@@ -826,7 +826,7 @@ export const ResetPasswordHandler = () => {
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
               )}
-              
+
               <Input
                 label="New Password"
                 type="password"
@@ -835,7 +835,7 @@ export const ResetPasswordHandler = () => {
                 placeholder="Enter new password"
                 required
               />
-              
+
               <Input
                 label="Confirm Password"
                 type="password"
@@ -844,12 +844,8 @@ export const ResetPasswordHandler = () => {
                 placeholder="Confirm new password"
                 required
               />
-              
-              <Button
-                type="submit"
-                loading={loading}
-                className="w-full"
-              >
+
+              <Button type="submit" loading={loading} className="w-full">
                 Reset Password
               </Button>
             </motion.form>

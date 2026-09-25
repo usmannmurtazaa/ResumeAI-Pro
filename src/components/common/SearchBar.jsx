@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiSearch, FiX, FiFileText, FiLayout, FiBookOpen,
-  FiHelpCircle, FiArrowRight, FiClock, FiTrendingUp,
-  FiCornerDownLeft, FiArrowUp, FiArrowDown, FiMic,
-  FiLoader
+import {
+  FiSearch,
+  FiX,
+  FiFileText,
+  FiLayout,
+  FiBookOpen,
+  FiHelpCircle,
+  FiArrowRight,
+  FiClock,
+  FiTrendingUp,
+  FiCornerDownLeft,
+  FiArrowUp,
+  FiArrowDown,
+  FiMic,
+  FiLoader,
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -24,21 +34,116 @@ const MIN_SEARCH_LENGTH = 1;
  */
 const SEARCH_INDEX = [
   // Pages
-  { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: FiTrendingUp, category: 'Pages', keywords: ['home', 'main', 'overview'] },
-  { id: 'builder', label: 'Resume Builder', path: '/builder', icon: FiFileText, category: 'Pages', keywords: ['create', 'build', 'new resume'] },
-  { id: 'templates', label: 'Templates', path: '/templates', icon: FiLayout, category: 'Pages', keywords: ['designs', 'layouts', 'themes'] },
-  { id: 'ats-scanner', label: 'ATS Scanner', path: '/ats-scanner', icon: FiTrendingUp, category: 'Tools', keywords: ['scan', 'score', 'optimize', 'ats'] },
-  { id: 'pricing', label: 'Pricing', path: '/pricing', icon: FiLayout, category: 'Pages', keywords: ['plans', 'upgrade', 'premium', 'cost'] },
-  { id: 'blog', label: 'Blog', path: '/blog', icon: FiBookOpen, category: 'Content', keywords: ['articles', 'tips', 'career'] },
-  { id: 'help', label: 'Help Center', path: '/help', icon: FiHelpCircle, category: 'Support', keywords: ['support', 'faq', 'docs', 'guide'] },
-  { id: 'profile', label: 'Profile', path: '/profile', icon: FiFileText, category: 'Account', keywords: ['account', 'settings', 'personal'] },
-  { id: 'settings', label: 'Settings', path: '/settings', icon: FiFileText, category: 'Account', keywords: ['preferences', 'config', 'options'] },
-  { id: 'my-resumes', label: 'My Resumes', path: '/my-resumes', icon: FiFileText, category: 'Pages', keywords: ['documents', 'files', 'saved'] },
-  
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    path: '/dashboard',
+    icon: FiTrendingUp,
+    category: 'Pages',
+    keywords: ['home', 'main', 'overview'],
+  },
+  {
+    id: 'builder',
+    label: 'Resume Builder',
+    path: '/builder',
+    icon: FiFileText,
+    category: 'Pages',
+    keywords: ['create', 'build', 'new resume'],
+  },
+  {
+    id: 'templates',
+    label: 'Templates',
+    path: '/templates',
+    icon: FiLayout,
+    category: 'Pages',
+    keywords: ['designs', 'layouts', 'themes'],
+  },
+  {
+    id: 'ats-scanner',
+    label: 'ATS Scanner',
+    path: '/ats-scanner',
+    icon: FiTrendingUp,
+    category: 'Tools',
+    keywords: ['scan', 'score', 'optimize', 'ats'],
+  },
+  {
+    id: 'pricing',
+    label: 'Pricing',
+    path: '/pricing',
+    icon: FiLayout,
+    category: 'Pages',
+    keywords: ['plans', 'upgrade', 'premium', 'cost'],
+  },
+  {
+    id: 'blog',
+    label: 'Blog',
+    path: '/blog',
+    icon: FiBookOpen,
+    category: 'Content',
+    keywords: ['articles', 'tips', 'career'],
+  },
+  {
+    id: 'help',
+    label: 'Help Center',
+    path: '/help',
+    icon: FiHelpCircle,
+    category: 'Support',
+    keywords: ['support', 'faq', 'docs', 'guide'],
+  },
+  {
+    id: 'profile',
+    label: 'Profile',
+    path: '/profile',
+    icon: FiFileText,
+    category: 'Account',
+    keywords: ['account', 'settings', 'personal'],
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    path: '/settings',
+    icon: FiFileText,
+    category: 'Account',
+    keywords: ['preferences', 'config', 'options'],
+  },
+  {
+    id: 'my-resumes',
+    label: 'My Resumes',
+    path: '/my-resumes',
+    icon: FiFileText,
+    category: 'Pages',
+    keywords: ['documents', 'files', 'saved'],
+  },
+
   // Quick Actions
-  { id: 'action-new-resume', label: 'Create New Resume', path: '/builder', icon: FiFileText, category: 'Actions', keywords: ['new', 'create', 'start'], isAction: true },
-  { id: 'action-templates', label: 'Browse Templates', path: '/templates', icon: FiLayout, category: 'Actions', keywords: ['browse', 'explore'], isAction: true },
-  { id: 'action-upgrade', label: 'Upgrade to Pro', path: '/pricing', icon: FiTrendingUp, category: 'Actions', keywords: ['upgrade', 'pro', 'premium'], isAction: true, premium: true },
+  {
+    id: 'action-new-resume',
+    label: 'Create New Resume',
+    path: '/builder',
+    icon: FiFileText,
+    category: 'Actions',
+    keywords: ['new', 'create', 'start'],
+    isAction: true,
+  },
+  {
+    id: 'action-templates',
+    label: 'Browse Templates',
+    path: '/templates',
+    icon: FiLayout,
+    category: 'Actions',
+    keywords: ['browse', 'explore'],
+    isAction: true,
+  },
+  {
+    id: 'action-upgrade',
+    label: 'Upgrade to Pro',
+    path: '/pricing',
+    icon: FiTrendingUp,
+    category: 'Actions',
+    keywords: ['upgrade', 'pro', 'premium'],
+    isAction: true,
+    premium: true,
+  },
 ];
 
 // ── Custom Hook: Recent Searches ───────────────────────────────────────────
@@ -55,9 +160,9 @@ const useRecentSearches = () => {
 
   const addRecent = useCallback((query) => {
     if (!query.trim()) return;
-    
-    setRecent(prev => {
-      const updated = [query, ...prev.filter(s => s !== query)].slice(0, MAX_RECENT_SEARCHES);
+
+    setRecent((prev) => {
+      const updated = [query, ...prev.filter((s) => s !== query)].slice(0, MAX_RECENT_SEARCHES);
       try {
         localStorage.setItem('recent_searches', JSON.stringify(updated));
       } catch {}
@@ -95,12 +200,12 @@ const SearchBar = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const inputRef = useRef(null);
   const resultsRef = useRef(null);
-  
+
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const { recent, addRecent, clearRecent } = useRecentSearches();
-  
+
   const debouncedQuery = useDebounce(query);
 
   // ── Focus Management ──────────────────────────────────────────────────
@@ -131,25 +236,22 @@ const SearchBar = ({ isOpen, onClose }) => {
 
   const results = useMemo(() => {
     const term = debouncedQuery.toLowerCase().trim();
-    
+
     if (!term || term.length < MIN_SEARCH_LENGTH) return [];
-    
-    return SEARCH_INDEX
-      .filter(item => {
-        const searchable = [
-          item.label,
-          item.category,
-          ...(item.keywords || []),
-        ].join(' ').toLowerCase();
-        
-        return searchable.includes(term);
-      })
-      .slice(0, MAX_RESULTS);
+
+    return SEARCH_INDEX.filter((item) => {
+      const searchable = [item.label, item.category, ...(item.keywords || [])]
+        .join(' ')
+        .toLowerCase();
+
+      return searchable.includes(term);
+    }).slice(0, MAX_RESULTS);
   }, [debouncedQuery]);
 
   const showResults = results.length > 0;
   const showRecent = !debouncedQuery && recent.length > 0;
-  const showEmpty = debouncedQuery && debouncedQuery.length >= MIN_SEARCH_LENGTH && results.length === 0;
+  const showEmpty =
+    debouncedQuery && debouncedQuery.length >= MIN_SEARCH_LENGTH && results.length === 0;
 
   // ── Keyboard Navigation ───────────────────────────────────────────────
 
@@ -157,16 +259,16 @@ const SearchBar = ({ isOpen, onClose }) => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
-      const listItems = results.length > 0 ? results : (showRecent ? recent : []);
-      
+      const listItems = results.length > 0 ? results : showRecent ? recent : [];
+
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedIndex(prev => Math.min(prev + 1, listItems.length - 1));
+          setSelectedIndex((prev) => Math.min(prev + 1, listItems.length - 1));
           break;
         case 'ArrowUp':
           e.preventDefault();
-          setSelectedIndex(prev => Math.max(prev - 1, 0));
+          setSelectedIndex((prev) => Math.max(prev - 1, 0));
           break;
         case 'Enter':
           e.preventDefault();
@@ -191,27 +293,33 @@ const SearchBar = ({ isOpen, onClose }) => {
 
   // ── Handlers ───────────────────────────────────────────────────────────
 
-  const handleSelect = useCallback((item) => {
-    addRecent(query || item.label);
-    onClose();
-    
-    setTimeout(() => {
-      navigate(item.path);
-    }, 150);
-  }, [query, addRecent, onClose, navigate]);
-
-  const handleSubmit = useCallback((e) => {
-    e.preventDefault();
-    
-    if (results[selectedIndex]) {
-      handleSelect(results[selectedIndex]);
-    } else if (query.trim()) {
-      // Navigate to a generic search page or fallback
-      addRecent(query);
+  const handleSelect = useCallback(
+    (item) => {
+      addRecent(query || item.label);
       onClose();
-      navigate(`/templates?q=${encodeURIComponent(query.trim())}`);
-    }
-  }, [results, selectedIndex, query, handleSelect, addRecent, onClose, navigate]);
+
+      setTimeout(() => {
+        navigate(item.path);
+      }, 150);
+    },
+    [query, addRecent, onClose, navigate]
+  );
+
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+
+      if (results[selectedIndex]) {
+        handleSelect(results[selectedIndex]);
+      } else if (query.trim()) {
+        // Navigate to a generic search page or fallback
+        addRecent(query);
+        onClose();
+        navigate(`/templates?q=${encodeURIComponent(query.trim())}`);
+      }
+    },
+    [results, selectedIndex, query, handleSelect, addRecent, onClose, navigate]
+  );
 
   const handleInputChange = useCallback((e) => {
     setQuery(e.target.value);
@@ -252,7 +360,7 @@ const SearchBar = ({ isOpen, onClose }) => {
               <form onSubmit={handleSubmit}>
                 <div className="relative">
                   <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  
+
                   <input
                     ref={inputRef}
                     type="text"
@@ -264,7 +372,7 @@ const SearchBar = ({ isOpen, onClose }) => {
                     spellCheck={false}
                     aria-label="Search input"
                   />
-                  
+
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {/* Voice Search Indicator */}
                     {isListening && (
@@ -272,7 +380,7 @@ const SearchBar = ({ isOpen, onClose }) => {
                         <FiMic className="w-4 h-4" />
                       </span>
                     )}
-                    
+
                     {/* Close Button */}
                     <button
                       onClick={onClose}
@@ -313,15 +421,21 @@ const SearchBar = ({ isOpen, onClose }) => {
                           aria-selected={isSelected}
                         >
                           <span className="flex items-center gap-3">
-                            <item.icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-gray-500'}`} />
+                            <item.icon
+                              className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-gray-500'}`}
+                            />
                             <span className="text-sm">{item.label}</span>
-                            <span className={`text-xs ${isSelected ? 'text-white/60' : 'text-gray-400'}`}>
+                            <span
+                              className={`text-xs ${isSelected ? 'text-white/60' : 'text-gray-400'}`}
+                            >
                               in {item.category}
                             </span>
                           </span>
                           <span className="flex items-center gap-2">
                             {item.isAction && (
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/20' : 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'}`}>
+                              <span
+                                className={`text-xs px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/20' : 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'}`}
+                              >
                                 Action
                               </span>
                             )}
@@ -381,17 +495,19 @@ const SearchBar = ({ isOpen, onClose }) => {
                     <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Quick Links
                     </div>
-                    {SEARCH_INDEX.filter(i => i.isAction).slice(0, 4).map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => handleSelect(item)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                        type="button"
-                      >
-                        <item.icon className="w-4 h-4 text-primary-500" />
-                        {item.label}
-                      </button>
-                    ))}
+                    {SEARCH_INDEX.filter((i) => i.isAction)
+                      .slice(0, 4)
+                      .map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => handleSelect(item)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                          type="button"
+                        >
+                          <item.icon className="w-4 h-4 text-primary-500" />
+                          {item.label}
+                        </button>
+                      ))}
                   </div>
                 )}
               </div>
@@ -400,7 +516,8 @@ const SearchBar = ({ isOpen, onClose }) => {
               <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">
-                    <FiArrowUp className="w-3 h-3" /><FiArrowDown className="w-3 h-3" /> Navigate
+                    <FiArrowUp className="w-3 h-3" />
+                    <FiArrowDown className="w-3 h-3" /> Navigate
                   </span>
                   <span className="flex items-center gap-1">
                     <FiCornerDownLeft className="w-3 h-3" /> Select

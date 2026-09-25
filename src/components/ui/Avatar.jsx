@@ -1,6 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { FiUser } from 'react-icons/fi';
 
+// ── Utility ───────────────────────────────────────────────────────────────
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
 // ── Constants ─────────────────────────────────────────────────────────────
 
 const SIZES = {
@@ -39,7 +43,7 @@ const getInitials = (name) => {
   return name
     .split(/\s+/)
     .filter(Boolean)
-    .map(word => word[0])
+    .map((word) => word[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
@@ -56,10 +60,10 @@ const getColorFromName = (name) => {
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-const Avatar = ({ 
-  src, 
-  alt = '', 
-  name = '', 
+const Avatar = ({
+  src,
+  alt = '',
+  name = '',
   size = 'md',
   status,
   badge,
@@ -75,100 +79,109 @@ const Avatar = ({
   const showImage = src && !imgError;
   const Comp = onClick ? 'button' : 'div';
 
-  // ── Handlers ─────────────────────────────────────────────────────────
-
   const handleImageError = useCallback(() => {
     setImgError(true);
   }, []);
 
-  const handleKeyDown = useCallback((e) => {
-    if (onClick && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault();
-      onClick(e);
-    }
-  }, [onClick]);
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        onClick(e);
+      }
+    },
+    [onClick]
+  );
 
   return (
     <div className="relative inline-flex flex-shrink-0">
       <Comp
-        className={`
-          ${sizeConfig.container} rounded-full overflow-hidden
-          bg-gradient-to-br ${gradient}
-          flex items-center justify-center text-white font-medium
-          ${onClick ? 'cursor-pointer hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all active:scale-95' : ''}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-          ${className}
-        `}
+        className={cn(
+          sizeConfig.container,
+          'rounded-full overflow-hidden',
+          'bg-gradient-to-br',
+          gradient,
+          'flex items-center justify-center text-white font-medium',
+          onClick &&
+            'cursor-pointer hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all active:scale-95',
+          disabled && 'opacity-50 cursor-not-allowed',
+          className
+        )}
         onClick={disabled ? undefined : onClick}
         onKeyDown={disabled ? undefined : handleKeyDown}
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
-        aria-label={onClick ? `${alt || name || 'Avatar'}` : undefined}
+        aria-label={onClick ? alt || name || 'Avatar' : undefined}
         title={alt || name || 'Avatar'}
         type={Comp === 'button' ? 'button' : undefined}
         {...props}
       >
         {showImage ? (
-          <img 
-            src={src} 
-            alt={alt || name || 'Avatar'} 
+          <img
+            src={src}
+            alt={alt || name || 'Avatar'}
             className="w-full h-full object-cover"
             onError={handleImageError}
             loading="lazy"
           />
         ) : initials ? (
-          <span className={`${sizeConfig.text} select-none`} aria-hidden="true">
+          <span className={cn(sizeConfig.text, 'select-none')} aria-hidden="true">
             {initials}
           </span>
         ) : (
-          <FiUser className={`${sizeConfig.text} opacity-70`} aria-hidden="true" />
+          <FiUser className={cn(sizeConfig.text, 'opacity-70')} aria-hidden="true" />
         )}
       </Comp>
 
-      {/* Status Indicator */}
       {status && STATUS_COLORS[status] && (
-        <span 
-          className={`absolute bottom-0 right-0 ${sizeConfig.badge} ${STATUS_COLORS[status]} rounded-full border-2 border-white dark:border-gray-900`}
+        <span
+          className={cn(
+            'absolute bottom-0 right-0',
+            sizeConfig.badge,
+            STATUS_COLORS[status],
+            'rounded-full border-2 border-white dark:border-gray-900'
+          )}
           aria-label={status}
           title={status.charAt(0).toUpperCase() + status.slice(1)}
         />
       )}
 
-      {/* Custom Badge */}
       {badge && !status && (
-        <span className="absolute -top-1 -right-1 flex items-center justify-center">
-          {badge}
-        </span>
+        <span className="absolute -top-1 -right-1 flex items-center justify-center">{badge}</span>
       )}
     </div>
   );
 };
 
+Avatar.displayName = 'Avatar';
+
 // ── Avatar Group ──────────────────────────────────────────────────────────
 
-export const AvatarGroup = ({ 
-  avatars = [], 
-  max = 5, 
-  size = 'md',
-  className = '',
-}) => {
+export const AvatarGroup = ({ avatars = [], max = 5, size = 'md', className = '' }) => {
   const visible = avatars.slice(0, max);
   const hidden = avatars.length - max;
 
   return (
-    <div className={`flex items-center -space-x-2 ${className}`}>
+    <div className={cn('flex items-center -space-x-2', className)}>
       {visible.map((avatar, index) => (
         <div key={index} className="relative ring-2 ring-white dark:ring-gray-900 rounded-full">
           <Avatar {...avatar} size={size} />
         </div>
       ))}
       {hidden > 0 && (
-        <div className={`${SIZES[size]?.container || 'w-10 h-10'} rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-500 ring-2 ring-white dark:ring-gray-900`}>
+        <div
+          className={cn(
+            SIZES[size]?.container || 'w-10 h-10',
+            'rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-500 ring-2 ring-white dark:ring-gray-900'
+          )}
+        >
           +{hidden}
         </div>
       )}
     </div>
   );
 };
+
+AvatarGroup.displayName = 'AvatarGroup';
 
 export default React.memo(Avatar);

@@ -1,10 +1,19 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import { loadStripe } from '@stripe/stripe-js';
 import {
-  FiCreditCard, FiCheckCircle, FiCalendar, FiDollarSign,
-  FiAward, FiRefreshCw, FiExternalLink, FiChevronRight,
-  FiAlertCircle, FiShield, FiStar,
+  FiCreditCard,
+  FiCheckCircle,
+  FiCalendar,
+  FiDollarSign,
+  FiAward,
+  FiRefreshCw,
+  FiExternalLink,
+  FiChevronRight,
+  FiAlertCircle,
+  FiShield,
+  FiStar,
 } from 'react-icons/fi';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';
@@ -15,6 +24,13 @@ import { useAuth } from '../hooks/useAuth';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import toast from 'react-hot-toast';
 
+// ── Stripe Initialization ────────────────────────────────────────────────
+
+const stripePromise =
+  typeof window !== 'undefined' && process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY
+    ? loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY)
+    : null;
+
 // ── Constants ─────────────────────────────────────────────────────────────
 
 const PLANS = [
@@ -23,7 +39,13 @@ const PLANS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    features: ['5 Resumes', 'Basic Templates', 'ATS Score Check', 'PDF Download', '10 AI Suggestions'],
+    features: [
+      '5 Resumes',
+      'Basic Templates',
+      'ATS Score Check',
+      'PDF Download',
+      '10 AI Suggestions',
+    ],
     color: 'from-gray-500 to-gray-600',
   },
   {
@@ -31,7 +53,15 @@ const PLANS = [
     name: 'Pro',
     price: '$19',
     period: 'per month',
-    features: ['Unlimited Resumes', 'All Premium Templates', 'Advanced ATS Scoring', 'Priority PDF Export', 'Unlimited AI Suggestions', 'Cover Letter Builder', 'Priority Support'],
+    features: [
+      'Unlimited Resumes',
+      'All Premium Templates',
+      'Advanced ATS Scoring',
+      'Priority PDF Export',
+      'Unlimited AI Suggestions',
+      'Cover Letter Builder',
+      'Priority Support',
+    ],
     color: 'from-purple-500 to-pink-500',
     popular: true,
   },
@@ -40,7 +70,14 @@ const PLANS = [
     name: 'Business',
     price: '$49',
     period: 'per month',
-    features: ['Everything in Pro', 'Team Management', 'Analytics Dashboard', 'API Access', 'Custom Branding', 'Dedicated Support'],
+    features: [
+      'Everything in Pro',
+      'Team Management',
+      'Analytics Dashboard',
+      'API Access',
+      'Custom Branding',
+      'Dedicated Support',
+    ],
     color: 'from-blue-500 to-cyan-500',
   },
 ];
@@ -61,31 +98,54 @@ const BillingSkeleton = () => (
 
 const Billing = () => {
   const navigate = useNavigate();
-  const { user, isPremium, subscription, refreshUserData } = useAuth();
+  const { user, isPremium, subscription, refreshUserData, getToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
   const mountedRef = useRef(true);
 
-  // Set page title
   usePageTitle({
     title: 'Billing & Subscription',
-    description: 'Manage your ResumeAI Pro plan, payment methods, and billing history.',
+    description: 'Manage your Resume Ai Pro plan, payment methods, and billing history.',
   });
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
-
-  // ── Derived data ────────────────────────────────────────────────────
 
   const currentPlan = useMemo(() => {
     return isPremium ? 'pro' : 'free';
   }, [isPremium]);
+
+  // ── Netlify Function Caller ─────────────────────────────────────────
+
+  const callBillingFunction = useCallback(
+    async (name, payload = {}) => {
+      const token = await getToken(true);
+      if (!token) throw new Error('Unable to authenticate');
+
+      const response = await fetch(`/.netlify/functions/${name}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Billing request failed');
+      }
+
+      return response.json();
+    },
+    [getToken]
+  );
 
   // ── Handlers ─────────────────────────────────────────────────────────
 
@@ -95,25 +155,25 @@ const Billing = () => {
       return;
     }
 
+    if (!stripePromise) {
+      toast.error('Stripe is not configured');
+      return;
+    }
+
     setLoading(true);
     try {
-      // FIXED: In production, redirect to Stripe Checkout
-      // const response = await createCheckoutSession(planId);
-      // window.location.href = response.url;
-      
-      toast.success('Redirecting to secure checkout...', { icon: '🔒' });
-      
-      // Simulate for demo
-      setTimeout(() => {
-        if (mountedRef.current) {
-          toast.success('Subscription activated! (Demo)');
-          refreshUserData?.();
-          setLoading(false);
-        }
-      }, 1500);
+      const { sessionId } = await callBillingFunction('create-checkout-session', { planId });
+      const stripe = await stripePromise;
+      const { error } = await stripe.redirectToCheckout({ sessionId });
+
+      if (error) {
+        toast.error(error.message || 'Failed to redirect to checkout');
+        setLoading(false);
+      }
     } catch (error) {
+      console.error('Checkout error:', error);
       if (mountedRef.current) {
-        toast.error('Failed to process subscription');
+        toast.error(error.message || 'Failed to process subscription');
         setLoading(false);
       }
     }
@@ -122,17 +182,15 @@ const Billing = () => {
   const handleCancelSubscription = async () => {
     setProcessingAction(true);
     try {
-      // FIXED: In production, call API
-      // await cancelSubscription();
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await callBillingFunction('cancel-subscription');
       if (mountedRef.current) {
         toast.success('Subscription will cancel at end of billing period');
         setShowCancelModal(false);
         refreshUserData?.();
       }
-    } catch {
-      if (mountedRef.current) toast.error('Failed to cancel subscription');
+    } catch (error) {
+      console.error('Cancel subscription error:', error);
+      if (mountedRef.current) toast.error(error.message || 'Failed to cancel subscription');
     } finally {
       if (mountedRef.current) setProcessingAction(false);
     }
@@ -141,39 +199,65 @@ const Billing = () => {
   const handleResumeSubscription = async () => {
     setProcessingAction(true);
     try {
-      // FIXED: In production, call API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await callBillingFunction('resume-subscription');
       if (mountedRef.current) {
         toast.success('Subscription resumed!');
         setShowResumeModal(false);
         refreshUserData?.();
       }
-    } catch {
-      if (mountedRef.current) toast.error('Failed to resume subscription');
+    } catch (error) {
+      console.error('Resume subscription error:', error);
+      if (mountedRef.current) toast.error(error.message || 'Failed to resume subscription');
     } finally {
       if (mountedRef.current) setProcessingAction(false);
     }
   };
 
-  const handleUpdatePayment = () => {
-    // FIXED: In production, redirect to Stripe Customer Portal
-    // window.location.href = customerPortalUrl;
-    toast.success('Redirecting to payment portal...', { icon: '💳' });
+  const handleUpdatePayment = async () => {
+    setProcessingAction(true);
+    try {
+      const { url } = await callBillingFunction('create-portal-session');
+      window.location.href = url;
+    } catch (error) {
+      console.error('Portal session error:', error);
+      if (mountedRef.current) {
+        toast.error(error.message || 'Failed to open payment portal');
+        setProcessingAction(false);
+      }
+    }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'long', day: 'numeric',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       });
     } catch {
       return 'N/A';
     }
   };
 
+  if (!user) {
+    return (
+      <DashboardLayout
+        title="Billing & Subscription"
+        description="Manage your plan and payment methods"
+        showWelcome={false}
+      >
+        <BillingSkeleton />
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout title="Billing & Subscription" description="Manage your plan and payment methods" showWelcome={false}>
+    <DashboardLayout
+      title="Billing & Subscription"
+      description="Manage your plan and payment methods"
+      showWelcome={false}
+    >
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Current Plan */}
         <div>
@@ -183,8 +267,11 @@ const Billing = () => {
               const isCurrent = plan.id === currentPlan;
 
               return (
-                <motion.div key={plan.id} whileHover={{ y: -4 }}
-                  className={`relative ${isCurrent ? 'ring-2 ring-primary-500 rounded-xl' : ''}`}>
+                <motion.div
+                  key={plan.id}
+                  whileHover={{ y: -4 }}
+                  className={`relative ${isCurrent ? 'ring-2 ring-primary-500 rounded-xl' : ''}`}
+                >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                       <Badge variant="warning">Most Popular</Badge>
@@ -198,19 +285,26 @@ const Billing = () => {
                     </div>
                     <ul className="space-y-2 mb-6">
                       {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <FiCheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />{feature}
+                        <li
+                          key={i}
+                          className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+                        >
+                          <FiCheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          {feature}
                         </li>
                       ))}
                     </ul>
                     {isCurrent ? (
                       <Badge variant="success" className="w-full justify-center py-2">
-                        <FiCheckCircle className="w-4 h-4 mr-1" />Current Plan
+                        <FiCheckCircle className="w-4 h-4 mr-1" />
+                        Current Plan
                       </Badge>
                     ) : (
-                      <Button onClick={() => handleSubscribe(plan.id)}
+                      <Button
+                        onClick={() => handleSubscribe(plan.id)}
                         variant={plan.id === 'pro' ? 'primary' : 'outline'}
-                        className="w-full" disabled={loading}
+                        className="w-full"
+                        disabled={loading}
                       >
                         {plan.id === 'free' ? 'Switch to Free' : `Upgrade to ${plan.name}`}
                       </Button>
@@ -226,13 +320,15 @@ const Billing = () => {
         {isPremium && subscription && (
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <FiCalendar className="w-5 h-5 text-primary-500" />Subscription Details
+              <FiCalendar className="w-5 h-5 text-primary-500" />
+              Subscription Details
             </h3>
             <div className="grid sm:grid-cols-3 gap-6">
               <div>
                 <p className="text-sm text-gray-500">Plan</p>
                 <p className="font-medium flex items-center gap-1">
-                  <FiAward className="w-4 h-4 text-yellow-500" />Pro Plan
+                  <FiAward className="w-4 h-4 text-yellow-500" />
+                  Pro Plan
                 </p>
               </div>
               <div>
@@ -248,11 +344,17 @@ const Billing = () => {
             </div>
             <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
               {subscription?.cancelAtPeriodEnd ? (
-                <Button onClick={() => setShowResumeModal(true)} icon={<FiRefreshCw />}>Resume Subscription</Button>
+                <Button onClick={() => setShowResumeModal(true)} icon={<FiRefreshCw />}>
+                  Resume Subscription
+                </Button>
               ) : (
-                <Button variant="outline" onClick={() => setShowCancelModal(true)}>Cancel Subscription</Button>
+                <Button variant="outline" onClick={() => setShowCancelModal(true)}>
+                  Cancel Subscription
+                </Button>
               )}
-              <Button variant="ghost" onClick={handleUpdatePayment}>Update Payment Method</Button>
+              <Button variant="ghost" onClick={handleUpdatePayment}>
+                Update Payment Method
+              </Button>
             </div>
           </Card>
         )}
@@ -267,7 +369,9 @@ const Billing = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg">Upgrade to Pro</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Unlock premium templates, unlimited resumes, and advanced features</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Unlock premium templates, unlimited resumes, and advanced features
+                  </p>
                 </div>
               </div>
               <Link to="/pricing">
@@ -280,7 +384,12 @@ const Billing = () => {
         )}
 
         {/* Cancel Modal */}
-        <Modal isOpen={showCancelModal} onClose={() => setShowCancelModal(false)} title="Cancel Subscription" size="sm">
+        <Modal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          title="Cancel Subscription"
+          size="sm"
+        >
           <div className="space-y-4">
             <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
               <div className="flex items-start gap-2">
@@ -291,19 +400,38 @@ const Billing = () => {
               </div>
             </div>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowCancelModal(false)}>Keep Subscription</Button>
-              <Button variant="danger" onClick={handleCancelSubscription} loading={processingAction}>Cancel</Button>
+              <Button variant="outline" onClick={() => setShowCancelModal(false)}>
+                Keep Subscription
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleCancelSubscription}
+                loading={processingAction}
+              >
+                Cancel
+              </Button>
             </div>
           </div>
         </Modal>
 
         {/* Resume Modal */}
-        <Modal isOpen={showResumeModal} onClose={() => setShowResumeModal(false)} title="Resume Subscription" size="sm">
+        <Modal
+          isOpen={showResumeModal}
+          onClose={() => setShowResumeModal(false)}
+          title="Resume Subscription"
+          size="sm"
+        >
           <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Resume your subscription to keep enjoying premium features.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Resume your subscription to keep enjoying premium features.
+            </p>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowResumeModal(false)}>Cancel</Button>
-              <Button onClick={handleResumeSubscription} loading={processingAction}>Resume</Button>
+              <Button variant="outline" onClick={() => setShowResumeModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleResumeSubscription} loading={processingAction}>
+                Resume
+              </Button>
             </div>
           </div>
         </Modal>

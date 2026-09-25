@@ -47,7 +47,7 @@ const safeRemoveItem = (key) => {
 
 /**
  * Persists state to localStorage with cross-tab sync.
- * 
+ *
  * @param {string} key - localStorage key
  * @param {*} initialValue - Default value if key doesn't exist
  * @param {Object} options - Configuration
@@ -57,11 +57,7 @@ const safeRemoveItem = (key) => {
  * @returns {[*, Function, Function]} [value, setValue, remove]
  */
 export const useLocalStorage = (key, initialValue, options = {}) => {
-  const {
-    sync = true,
-    serializer = JSON.stringify,
-    deserializer = JSON.parse,
-  } = options;
+  const { sync = true, serializer = JSON.stringify, deserializer = JSON.parse } = options;
 
   const keyRef = useRef(key);
 
@@ -71,12 +67,12 @@ export const useLocalStorage = (key, initialValue, options = {}) => {
     try {
       const storage = getStorage();
       if (!storage) return initialValue instanceof Function ? initialValue() : initialValue;
-      
+
       const item = storage.getItem(key);
       if (item === null) {
         return initialValue instanceof Function ? initialValue() : initialValue;
       }
-      
+
       return deserializer(item);
     } catch (error) {
       console.warn(`Error initializing localStorage key "${key}":`, error);
@@ -155,7 +151,7 @@ export const useLocalStorage = (key, initialValue, options = {}) => {
 
 /**
  * Simplified version that returns a state-like API.
- * 
+ *
  * @param {string} key - localStorage key
  * @param {*} initialValue - Default value
  * @returns {[*, Function]} [value, setValue]
@@ -169,7 +165,7 @@ export const useLocalStorageState = (key, initialValue) => {
 
 /**
  * Persists state to localStorage with automatic expiry.
- * 
+ *
  * @param {string} key - localStorage key
  * @param {*} initialValue - Default value
  * @param {number} ttl - Time to live in milliseconds
@@ -185,7 +181,7 @@ export const useLocalStorageWithExpiry = (key, initialValue, ttl = 24 * 60 * 60 
       if (!item) return initialValue instanceof Function ? initialValue() : initialValue;
 
       const parsed = JSON.parse(item);
-      
+
       // Check if expired
       if (parsed._expiry && Date.now() > parsed._expiry) {
         storage.removeItem(key);
@@ -200,25 +196,41 @@ export const useLocalStorageWithExpiry = (key, initialValue, ttl = 24 * 60 * 60 
 
   const [value, setValue] = useState(getWithExpiry);
 
-  const setWithExpiry = useCallback((newValue) => {
-    setValue((prev) => {
-      const val = newValue instanceof Function ? newValue(prev) : newValue;
+  const setWithExpiry = useCallback(
+    (newValue) => {
+      setValue((prev) => {
+        const val = newValue instanceof Function ? newValue(prev) : newValue;
 
-      try {
-        const storage = getStorage();
-        if (storage) {
-          storage.setItem(key, JSON.stringify({
-            _value: val,
-            _expiry: Date.now() + ttl,
-          }));
+        try {
+          const storage = getStorage();
+          if (storage) {
+            storage.setItem(
+              key,
+              JSON.stringify({
+                _value: val,
+                _expiry: Date.now() + ttl,
+              })
+            );
+          }
+        } catch {
+          // silently fail
         }
-      } catch {
-        // silently fail
-      }
 
-      return val;
-    });
-  }, [key, ttl]);
+        return val;
+      });
+    },
+    [key, ttl]
+  );
+
+  // FIXED: Define remove function for this hook
+  const remove = useCallback(() => {
+    try {
+      safeRemoveItem(key);
+      setValue(initialValue instanceof Function ? initialValue() : initialValue);
+    } catch (error) {
+      console.warn(`Error removing localStorage key "${key}":`, error);
+    }
+  }, [key, initialValue]);
 
   return [value, setWithExpiry, remove];
 };
@@ -227,11 +239,11 @@ export const useLocalStorageWithExpiry = (key, initialValue, ttl = 24 * 60 * 60 
 
 /**
  * Manages a record/object in localStorage with partial updates.
- * 
+ *
  * @param {string} key - localStorage key
  * @param {Object} initialValue - Default record
  * @returns {[Object, Function, Function, Function]} [record, setRecord, updateRecord, removeRecord]
- * 
+ *
  * @example
  * const [settings, setSettings, updateSettings] = useLocalStorageRecord('app-settings', { theme: 'light' });
  * updateSettings({ fontSize: 'large' }); // Partial update
@@ -239,12 +251,15 @@ export const useLocalStorageWithExpiry = (key, initialValue, ttl = 24 * 60 * 60 
 export const useLocalStorageRecord = (key, initialValue = {}) => {
   const [record, setRecord, removeRecord] = useLocalStorage(key, initialValue, { sync: true });
 
-  const updateRecord = useCallback((updates) => {
-    setRecord((prev) => {
-      const newRecord = updates instanceof Function ? updates(prev) : { ...prev, ...updates };
-      return newRecord;
-    });
-  }, [setRecord]);
+  const updateRecord = useCallback(
+    (updates) => {
+      setRecord((prev) => {
+        const newRecord = updates instanceof Function ? updates(prev) : { ...prev, ...updates };
+        return newRecord;
+      });
+    },
+    [setRecord]
+  );
 
   return [record, setRecord, updateRecord, removeRecord];
 };

@@ -1,36 +1,54 @@
-// ── src/data/constants.js ────────────────────────────────────────────────
+import {
+  FiLayout,
+  FiFileText,
+  FiStar,
+  FiCpu,
+  FiBook,
+  FiGrid,
+  FiBriefcase,
+  FiPenTool,
+  FiUser,
+  FiMinimize,
+} from 'react-icons/fi';
 
-// ==========================================================================
-// Application Constants
-// ==========================================================================
+// ── Application Constants ────────────────────────────────────────────────
 
-export const APP_NAME = 'ResumeAI Pro';
+export const APP_NAME = 'Resume Ai Pro';
 export const APP_VERSION = '2.5.0';
 export const APP_DESCRIPTION = 'AI-powered ATS resume builder';
-export const APP_URL = 'https://resumeaixpro.netlify.app';
-export const SUPPORT_EMAIL = 'support@resumeaipro.com';
-export const PRIVACY_EMAIL = 'privacy@resumeaipro.com';
-export const LEGAL_EMAIL = 'legal@resumeaipro.com';
+export const APP_URL = 'https://maniestaresumeai.netlify.app';
+export const SUPPORT_EMAIL = 'support@maniestaresumeai.com';
+export const PRIVACY_EMAIL = 'privacy@maniestaresumeai.com';
+export const LEGAL_EMAIL = 'legal@maniestaresumeai.com';
 
-// ==========================================================================
-// Feature Flags & Limits
-// ==========================================================================
+// ── Feature Flags & Limits ──────────────────────────────────────────────
 
 export const FREE_RESUME_LIMIT = 5;
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-export const MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+export const MAX_FILE_SIZE = 10 * 1024 * 1024;
+export const MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
 export const MAX_EVENTS_TO_FETCH = 200;
 export const MAX_NOTIFICATIONS_PER_PAGE = 50;
 export const RESUMES_PER_PAGE = 20;
 export const USERS_PER_PAGE = 20;
 export const BATCH_CHUNK_SIZE = 400;
-export const DEBOUNCE_AUTO_SAVE = 1500; // ms
-export const DEBOUNCE_SEARCH = 300; // ms
-export const ADMIN_SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
+export const DEBOUNCE_AUTO_SAVE = 1500;
+export const DEBOUNCE_SEARCH = 300;
+export const ADMIN_SESSION_TIMEOUT = 30 * 60 * 1000;
 
-// ==========================================================================
-// Resume Sections
-// ==========================================================================
+// ── Session Timeout ─────────────────────────────────────────────────────
+
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+export const SESSION_WARNING_MS = 1 * 60 * 1000;
+export const SESSION_ACTIVITY_EVENTS = [
+  'mousedown',
+  'keydown',
+  'scroll',
+  'touchstart',
+  'click',
+  'mousemove',
+];
+
+// ── Resume Sections ─────────────────────────────────────────────────────
 
 export const RESUME_SECTIONS = [
   'personal',
@@ -47,9 +65,7 @@ export const RESUME_STATUS = {
   ARCHIVED: 'archived',
 };
 
-// ==========================================================================
-// ATS Score Grades
-// ==========================================================================
+// ── ATS Score Grades ────────────────────────────────────────────────────
 
 export const SCORE_GRADES = [
   { min: 95, grade: 'A+', label: 'Outstanding', color: 'text-emerald-600' },
@@ -63,30 +79,60 @@ export const SCORE_GRADES = [
   { min: 0, grade: 'F', label: 'Critical', color: 'text-red-700' },
 ];
 
-// ==========================================================================
-// Resume Templates
-// ==========================================================================
+// ── Resume Templates (Canonical) ───────────────────────────────────────
 
 export const TEMPLATES = [
-  { id: 'modern', name: 'Modern', icon: '🎨', description: 'Clean and contemporary', color: 'from-blue-500 to-cyan-500' },
-  { id: 'classic', name: 'Classic', icon: '📄', description: 'Traditional format', color: 'from-gray-600 to-gray-800' },
-  { id: 'creative', name: 'Creative', icon: '✨', description: 'Stand out design', color: 'from-purple-500 to-pink-500' },
-  { id: 'minimal', name: 'Minimal', icon: '◻️', description: 'Simple and elegant', color: 'from-green-500 to-emerald-500' },
-  { id: 'executive', name: 'Executive', icon: '👔', description: 'Senior positions', color: 'from-slate-700 to-slate-900' },
-  { id: 'tech', name: 'Tech', icon: '💻', description: 'Tech industry focus', color: 'from-indigo-500 to-blue-600' },
+  {
+    id: 'modern',
+    name: 'Modern',
+    Icon: FiLayout,
+    description: 'Clean and contemporary',
+    color: 'from-blue-500 to-cyan-500',
+    category: 'professional',
+  },
+  {
+    id: 'classic',
+    name: 'Classic',
+    Icon: FiFileText,
+    description: 'Traditional format',
+    color: 'from-gray-600 to-gray-800',
+    category: 'executive',
+  },
+  {
+    id: 'creative',
+    name: 'Creative',
+    Icon: FiStar,
+    description: 'Stand out design',
+    color: 'from-purple-500 to-pink-500',
+    category: 'creative',
+  },
+  {
+    id: 'tech',
+    name: 'Tech',
+    Icon: FiCpu,
+    description: 'Tech industry focus',
+    color: 'from-indigo-500 to-blue-600',
+    category: 'tech',
+  },
+  {
+    id: 'elegant',
+    name: 'Elegant',
+    Icon: FiBook,
+    description: 'Sophisticated and academic',
+    color: 'from-amber-500 to-orange-600',
+    category: 'academic',
+  },
 ];
 
-// ==========================================================================
-// Template Categories (for TemplateSelector)
-// ==========================================================================
+// ── Template Categories (for TemplateSelector) ─────────────────────────
 
 export const TEMPLATE_CATEGORIES = [
-  { id: 'all', name: 'All Templates', icon: '📋' },
-  { id: 'professional', name: 'Professional', icon: '💼' },
-  { id: 'creative', name: 'Creative', icon: '🎨' },
-  { id: 'executive', name: 'Executive', icon: '👔' },
-  { id: 'tech', name: 'Tech', icon: '💻' },
-  { id: 'minimal', name: 'Minimal', icon: '✨' },
+  { id: 'all', name: 'All Templates', Icon: FiGrid },
+  { id: 'professional', name: 'Professional', Icon: FiBriefcase },
+  { id: 'creative', name: 'Creative', Icon: FiPenTool },
+  { id: 'executive', name: 'Executive', Icon: FiUser },
+  { id: 'tech', name: 'Tech', Icon: FiCpu },
+  { id: 'academic', name: 'Academic', Icon: FiBook },
 ];
 
 // ==========================================================================
@@ -238,7 +284,7 @@ export const LOCAL_STORAGE_KEYS = {
   COOKIE_CONSENT: 'cookieConsent',
   NOTIFICATION_SOUND: 'notification_sound',
   REMEMBERED_EMAIL: 'remembered_email',
-  SESSION_ID: 'resumeai-pro.current-session-id',
+  SESSION_ID: 'maniestaresumeai.current-session-id',
 };
 
 // ==========================================================================
@@ -365,8 +411,16 @@ export const ROUTES = {
 // ==========================================================================
 
 export const COMMON_PASSWORDS = [
-  'password', 'password1', 'password123', '12345678', 'qwerty123',
-  'admin123', 'letmein123', 'welcome123', 'abc123456', 'Password1',
+  'password',
+  'password1',
+  'password123',
+  '12345678',
+  'qwerty123',
+  'admin123',
+  'letmein123',
+  'welcome123',
+  'abc123456',
+  'Password1',
 ];
 
 // ==========================================================================
@@ -374,23 +428,77 @@ export const COMMON_PASSWORDS = [
 // ==========================================================================
 
 export const QUICK_TIPS = [
-  { icon: 'FiTarget', title: 'Use Keywords', description: 'Include industry-specific keywords from the job description', color: 'text-blue-500' },
-  { icon: 'FiStar', title: 'Quantify Results', description: 'Use numbers and percentages to demonstrate your impact', color: 'text-green-500' },
-  { icon: 'FiFileText', title: 'Keep it Simple', description: 'Avoid complex formatting, tables, or graphics', color: 'text-purple-500' },
+  {
+    icon: 'FiTarget',
+    title: 'Use Keywords',
+    description: 'Include industry-specific keywords from the job description',
+    color: 'text-blue-500',
+  },
+  {
+    icon: 'FiStar',
+    title: 'Quantify Results',
+    description: 'Use numbers and percentages to demonstrate your impact',
+    color: 'text-green-500',
+  },
+  {
+    icon: 'FiFileText',
+    title: 'Keep it Simple',
+    description: 'Avoid complex formatting, tables, or graphics',
+    color: 'text-purple-500',
+  },
 ];
 
 export default {
-  APP_NAME, APP_VERSION, APP_DESCRIPTION, APP_URL,
-  SUPPORT_EMAIL, PRIVACY_EMAIL, LEGAL_EMAIL,
-  FREE_RESUME_LIMIT, MAX_FILE_SIZE, MAX_PROFILE_IMAGE_SIZE,
-  MAX_EVENTS_TO_FETCH, MAX_NOTIFICATIONS_PER_PAGE, RESUMES_PER_PAGE, USERS_PER_PAGE,
-  BATCH_CHUNK_SIZE, DEBOUNCE_AUTO_SAVE, DEBOUNCE_SEARCH, ADMIN_SESSION_TIMEOUT,
-  RESUME_SECTIONS, RESUME_STATUS, SCORE_GRADES,
-  TEMPLATES, TEMPLATE_CATEGORIES, TEMPLATE_CATEGORY_SLUGS, SOCIAL_PROVIDERS,
-  THEME_PRESETS, THEME_MODES, FIRESTORE_COLLECTIONS,
-  NOTIFICATION_TYPES, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES,
-  DATE_FORMATS, DATE_TEMPLATE_STRINGS, TIME_FORMATS, LANGUAGES, RESTRICTED_PROFILE_FIELDS,
-  STORAGE_PATHS, LOCAL_STORAGE_KEYS, ROUTES, COMMON_PASSWORDS, QUICK_TIPS,
-  USER_ROLES, INDUSTRIES, JOB_LEVELS, FILE_SIZE_LIMITS, PAGINATION,
-  ANIMATION_DURATIONS, TOAST_DURATIONS, STANDARD_BREAKPOINTS,
+  APP_NAME,
+  APP_VERSION,
+  APP_DESCRIPTION,
+  APP_URL,
+  SUPPORT_EMAIL,
+  PRIVACY_EMAIL,
+  LEGAL_EMAIL,
+  FREE_RESUME_LIMIT,
+  MAX_FILE_SIZE,
+  MAX_PROFILE_IMAGE_SIZE,
+  MAX_EVENTS_TO_FETCH,
+  MAX_NOTIFICATIONS_PER_PAGE,
+  RESUMES_PER_PAGE,
+  USERS_PER_PAGE,
+  BATCH_CHUNK_SIZE,
+  DEBOUNCE_AUTO_SAVE,
+  DEBOUNCE_SEARCH,
+  ADMIN_SESSION_TIMEOUT,
+  SESSION_TIMEOUT_MS,
+  SESSION_WARNING_MS,
+  SESSION_ACTIVITY_EVENTS,
+  RESUME_SECTIONS,
+  RESUME_STATUS,
+  SCORE_GRADES,
+  TEMPLATES,
+  TEMPLATE_CATEGORIES,
+  TEMPLATE_CATEGORY_SLUGS,
+  SOCIAL_PROVIDERS,
+  THEME_PRESETS,
+  THEME_MODES,
+  FIRESTORE_COLLECTIONS,
+  NOTIFICATION_TYPES,
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_DOCUMENT_TYPES,
+  DATE_FORMATS,
+  DATE_TEMPLATE_STRINGS,
+  TIME_FORMATS,
+  LANGUAGES,
+  RESTRICTED_PROFILE_FIELDS,
+  STORAGE_PATHS,
+  LOCAL_STORAGE_KEYS,
+  ROUTES,
+  COMMON_PASSWORDS,
+  QUICK_TIPS,
+  USER_ROLES,
+  INDUSTRIES,
+  JOB_LEVELS,
+  FILE_SIZE_LIMITS,
+  PAGINATION,
+  ANIMATION_DURATIONS,
+  TOAST_DURATIONS,
+  STANDARD_BREAKPOINTS,
 };

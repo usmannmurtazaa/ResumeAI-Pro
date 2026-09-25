@@ -2,11 +2,29 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiGithub, FiTwitter, FiLinkedin, FiGlobe, FiHeart,
-  FiMail, FiSend, FiCheckCircle, FiAlertCircle,
-  FiFacebook, FiInstagram, FiYoutube, FiStar, FiAward,
-  FiShield, FiCoffee, FiZap, FiChevronUp, FiMessageCircle,
-  FiMapPin, FiPhone, FiClock, FiX, FiExternalLink,
+  FiGithub,
+  FiTwitter,
+  FiLinkedin,
+  FiGlobe,
+  FiHeart,
+  FiMail,
+  FiSend,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiFacebook,
+  FiInstagram,
+  FiYoutube,
+  FiStar,
+  FiAward,
+  FiShield,
+  FiCoffee,
+  FiChevronUp,
+  FiMessageCircle,
+  FiMapPin,
+  FiPhone,
+  FiClock,
+  FiX,
+  FiExternalLink,
 } from 'react-icons/fi';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -21,12 +39,12 @@ const SCROLL_THRESHOLD = 400;
 // ── Default Config (fallback if siteConfig is missing) ─────────────────────
 
 const DEFAULT_CONFIG = {
-  name: 'ResumeAI Pro',
+  name: 'Resume Ai Pro',
   links: {
-    github: 'https://github.com/resumeaipro',
-    twitter: 'https://twitter.com/resumeaipro',
-    facebook: 'https://facebook.com/resumeaipro',
-    instagram: 'https://instagram.com/resumeaipro',
+    github: 'https://github.com/maniestaresumeai',
+    twitter: 'https://twitter.com/maniestaresumeai',
+    facebook: 'https://facebook.com/maniestaresumeai',
+    instagram: 'https://instagram.com/maniestaresumeai',
     youtube: null,
     discord: null,
   },
@@ -35,7 +53,7 @@ const DEFAULT_CONFIG = {
     portfolio: 'https://usmanmurtaza.netlify.app',
   },
   contact: {
-    email: 'support@resumeaipro.com',
+    email: 'support@maniestaresumeai.com',
     phone: '+1 (555) 123-4567',
     address: { city: 'San Francisco, CA' },
   },
@@ -43,10 +61,6 @@ const DEFAULT_CONFIG = {
 
 // ── Custom Hook: Online Status ────────────────────────────────────────────
 
-/**
- * Monitors online/offline status.
- * Include this in your hooks file if not already present.
- */
 const useOnlineStatus = () => {
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -68,64 +82,14 @@ const useOnlineStatus = () => {
   return isOnline;
 };
 
-// ── Newsletter API Service ────────────────────────────────────────────────
-
-/**
- * Replace with your actual API endpoint.
- */
-const subscribeToNewsletter = async (email) => {
-  // In production, replace with actual API call:
-  // const response = await fetch('/api/newsletter/subscribe', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email }),
-  // });
-  // if (!response.ok) throw new Error('Subscription failed');
-  // return response.json();
-  
-  // Simulated API call
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return { success: true };
-};
-
-/**
- * Replace with your actual API endpoint.
- */
-const submitFeedback = async (data) => {
-  // In production, replace with actual API call:
-  // const response = await fetch('/api/feedback', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify(data),
-  // });
-  // if (!response.ok) throw new Error('Feedback submission failed');
-  // return response.json();
-  
-  // Simulated API call
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return { success: true };
-};
-
 // ── Component ──────────────────────────────────────────────────────────────
 
 const Footer = () => {
-  // Safely merge config with defaults
-  const config = useMemo(() => {
-    try {
-      // Dynamic import approach - replace with your actual config
-      // const { siteConfig } = require('../../config/siteConfig');
-      // return { ...DEFAULT_CONFIG, ...siteConfig };
-      
-      // For now, use defaults
-      return DEFAULT_CONFIG;
-    } catch {
-      return DEFAULT_CONFIG;
-    }
-  }, []);
+  const config = useMemo(() => DEFAULT_CONFIG, []);
 
   const isOnline = useOnlineStatus();
-  
-  const [email, setEmail] = useState('');
+
+  const [newsletterEmail, setNewsletterEmail] = useState('');
   const [subscribing, setSubscribing] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -133,8 +97,6 @@ const Footer = () => {
   const [feedback, setFeedback] = useState('');
   const [feedbackType, setFeedbackType] = useState('suggestion');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
-
-  // ── Check Existing Subscription ─────────────────────────────────────────
 
   useEffect(() => {
     try {
@@ -146,8 +108,6 @@ const Footer = () => {
       // Ignore localStorage errors
     }
   }, []);
-
-  // ── Scroll to Top Handler ───────────────────────────────────────────────
 
   useEffect(() => {
     let ticking = false;
@@ -170,17 +130,15 @@ const Footer = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // ── Newsletter Handlers ─────────────────────────────────────────────────
-
   const handleSubscribe = async (e) => {
     e.preventDefault();
 
-    if (!email.trim()) {
+    if (!newsletterEmail.trim()) {
       toast.error('Please enter your email address');
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newsletterEmail)) {
       toast.error('Please enter a valid email address');
       return;
     }
@@ -188,17 +146,18 @@ const Footer = () => {
     setSubscribing(true);
 
     try {
-      await subscribeToNewsletter(email);
-      
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       setSubscribed(true);
-      setEmail('');
-      
+      setNewsletterEmail('');
+
       try {
         localStorage.setItem('newsletter_subscribed', 'true');
       } catch {
         // Ignore storage errors
       }
-      
+
       toast.success('Successfully subscribed! Check your inbox.', {
         icon: '📧',
         duration: 4000,
@@ -211,8 +170,6 @@ const Footer = () => {
     }
   };
 
-  // ── Feedback Handlers ───────────────────────────────────────────────────
-
   const handleFeedbackSubmit = async (e) => {
     e.preventDefault();
 
@@ -224,18 +181,14 @@ const Footer = () => {
     setSubmittingFeedback(true);
 
     try {
-      await submitFeedback({
-        type: feedbackType,
-        message: feedback,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
-      });
-      
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       toast.success('Thank you for your feedback! We appreciate it.', {
         icon: '💡',
         duration: 3000,
       });
-      
+
       setFeedback('');
       setShowFeedback(false);
     } catch (error) {
@@ -246,79 +199,86 @@ const Footer = () => {
     }
   };
 
-  // ── Footer Link Definitions ────────────────────────────────────────────
+  const footerLinks = useMemo(
+    () => ({
+      product: [
+        { to: '/templates', label: 'Resume Templates', badge: 'Popular' },
+        { to: '/builder', label: 'Resume Builder' },
+        { to: '/ats-scanner', label: 'ATS Scanner', badge: 'New' },
+        { to: '/cover-letter', label: 'Cover Letter' },
+        { to: '/pricing', label: 'Pricing' },
+        { to: '/features', label: 'Features' },
+      ],
+      resources: [
+        { to: '/blog', label: 'Blog' },
+        { to: '/blog/resume-tips', label: 'Resume Tips' },
+        { to: '/blog/career-advice', label: 'Career Advice' },
+        { to: '/faq', label: 'FAQ' },
+        { to: '/help', label: 'Help Center' },
+      ],
+      company: [
+        { to: '/about', label: 'About Us' },
+        { to: '/careers', label: 'Careers', badge: "We're Hiring!" },
+        { to: '/contact', label: 'Contact' },
+        { to: '/partners', label: 'Partners', disabled: true },
+      ],
+      legal: [
+        { to: '/privacy', label: 'Privacy Policy' },
+        { to: '/terms', label: 'Terms of Service' },
+        { to: '/cookies', label: 'Cookie Policy' },
+        { to: '/accessibility', label: 'Accessibility' },
+      ],
+      social: [
+        { href: config.links?.github, icon: FiGithub, label: 'GitHub' },
+        { href: config.links?.twitter, icon: FiTwitter, label: 'Twitter' },
+        { href: config.authorLinks?.linkedin, icon: FiLinkedin, label: 'LinkedIn' },
+        { href: config.links?.facebook, icon: FiFacebook, label: 'Facebook' },
+        { href: config.links?.instagram, icon: FiInstagram, label: 'Instagram' },
+        { href: config.links?.youtube, icon: FiYoutube, label: 'YouTube' },
+        { href: config.links?.discord, icon: FiMessageCircle, label: 'Discord' },
+      ].filter((link) => link.href),
+    }),
+    [config]
+  );
 
-  const footerLinks = useMemo(() => ({
-    product: [
-      { to: '/templates', label: 'Resume Templates', badge: 'Popular' },
-      { to: '/builder', label: 'Resume Builder' },
-      { to: '/ats-scanner', label: 'ATS Scanner', badge: 'New' },
-      { to: '/cover-letter', label: 'Cover Letter' },
-      { to: '/pricing', label: 'Pricing' },
-      { to: '/features', label: 'Features' },
+  const contactInfo = useMemo(
+    () => [
+      {
+        icon: FiMail,
+        label: 'Email',
+        value: config.contact?.email || 'support@maniestaresumeai.com',
+        href: `mailto:${config.contact?.email || 'support@maniestaresumeai.com'}`,
+      },
+      {
+        icon: FiPhone,
+        label: 'Phone',
+        value: config.contact?.phone || '+1 (555) 123-4567',
+        href: `tel:${(config.contact?.phone || '+15551234567').replace(/\D/g, '')}`,
+      },
+      {
+        icon: FiMapPin,
+        label: 'Location',
+        value: config.contact?.address?.city || 'San Francisco, CA',
+      },
+      {
+        icon: FiClock,
+        label: 'Support Hours',
+        value: '24/7 Support',
+      },
     ],
-    resources: [
-      { to: '/blog', label: 'Blog' },
-      { to: '/blog/resume-tips', label: 'Resume Tips' },
-      { to: '/blog/career-advice', label: 'Career Advice' },
-      { to: '/faq', label: 'FAQ' },
-      { to: '/help', label: 'Help Center' },
-    ],
-    company: [
-      { to: '/about', label: 'About Us' },
-      { to: '/careers', label: 'Careers', badge: "We're Hiring!" },
-      { to: '/contact', label: 'Contact' },
-      { to: '/partners', label: 'Partners', disabled: true },
-    ],
-    legal: [
-      { to: '/privacy', label: 'Privacy Policy' },
-      { to: '/terms', label: 'Terms of Service' },
-      { to: '/cookies', label: 'Cookie Policy' },
-      { to: '/accessibility', label: 'Accessibility' },
-    ],
-    social: [
-      { href: config.links?.github, icon: FiGithub, label: 'GitHub' },
-      { href: config.links?.twitter, icon: FiTwitter, label: 'Twitter' },
-      { href: config.authorLinks?.linkedin, icon: FiLinkedin, label: 'LinkedIn' },
-      { href: config.links?.facebook, icon: FiFacebook, label: 'Facebook' },
-      { href: config.links?.instagram, icon: FiInstagram, label: 'Instagram' },
-      { href: config.links?.youtube, icon: FiYoutube, label: 'YouTube' },
-      { href: config.links?.discord, icon: FiMessageCircle, label: 'Discord' },
-    ].filter(link => link.href),
-  }), [config]);
-
-  const contactInfo = useMemo(() => [
-    { 
-      icon: FiMail, 
-      label: 'Email',
-      value: config.contact?.email || 'support@resumeaipro.com', 
-      href: `mailto:${config.contact?.email || 'support@resumeaipro.com'}`,
-    },
-    { 
-      icon: FiPhone, 
-      label: 'Phone',
-      value: config.contact?.phone || '+1 (555) 123-4567', 
-      href: `tel:${(config.contact?.phone || '+15551234567').replace(/\D/g, '')}`,
-    },
-    { 
-      icon: FiMapPin, 
-      label: 'Location',
-      value: config.contact?.address?.city || 'San Francisco, CA',
-    },
-    { 
-      icon: FiClock, 
-      label: 'Support Hours',
-      value: '24/7 Support',
-    },
-  ], [config]);
+    [config]
+  );
 
   return (
-    <footer className="relative bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800" role="contentinfo">
+    <footer
+      className="relative bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800"
+      role="contentinfo"
+    >
       {/* Newsletter Section */}
       <div className="border-b border-gray-200 dark:border-gray-800">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
-            <motion.div 
+            <motion.div
               className="glass-card p-8 bg-gradient-to-br from-primary-50/50 to-accent-50/50 dark:from-primary-900/20 dark:to-accent-900/20"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -327,9 +287,7 @@ const Footer = () => {
             >
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="text-center md:text-left">
-                  <h3 className="text-2xl font-bold gradient-text mb-2">
-                    Stay Updated
-                  </h3>
+                  <h3 className="text-2xl font-bold gradient-text mb-2">Stay Updated</h3>
                   <p className="text-gray-600 dark:text-gray-400">
                     Get the latest resume tips, career advice, and product updates.
                   </p>
@@ -345,8 +303,8 @@ const Footer = () => {
                     <span className="text-sm font-medium">Subscribed!</span>
                   </motion.div>
                 ) : (
-                  <form 
-                    onSubmit={handleSubscribe} 
+                  <form
+                    onSubmit={handleSubscribe}
                     className="flex gap-2 w-full md:w-auto"
                     aria-label="Newsletter subscription"
                   >
@@ -354,8 +312,8 @@ const Footer = () => {
                       <Input
                         type="email"
                         placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
                         icon={<FiMail className="w-4 h-4" />}
                         disabled={subscribing}
                         aria-label="Email address for newsletter"
@@ -373,16 +331,22 @@ const Footer = () => {
                   </form>
                 )}
               </div>
-              
+
               {/* Quick Contact Info */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-200/50 dark:border-gray-700/50">
                 {contactInfo.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <item.icon className="w-4 h-4 text-primary-500 flex-shrink-0" aria-hidden="true" />
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+                  >
+                    <item.icon
+                      className="w-4 h-4 text-primary-500 flex-shrink-0"
+                      aria-hidden="true"
+                    />
                     <span className="sr-only">{item.label}:</span>
                     {item.href ? (
-                      <a 
-                        href={item.href} 
+                      <a
+                        href={item.href}
                         className="hover:text-primary-500 transition-colors truncate"
                         aria-label={`${item.label}: ${item.value}`}
                       >
@@ -404,13 +368,20 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4" aria-label="ResumeAI Pro Home">
-              <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-accent-500 rounded-lg shadow-md" aria-hidden="true" />
-              <span className="text-xl font-bold gradient-text">ResumeAI Pro</span>
+            <Link
+              to="/"
+              className="flex items-center gap-2 mb-4"
+              aria-label="Resume Ai Pro Home"
+            >
+              <div
+                className="w-8 h-8 bg-gradient-to-r from-primary-500 to-accent-500 rounded-lg shadow-md"
+                aria-hidden="true"
+              />
+              <span className="text-xl font-bold gradient-text">Resume Ai Pro</span>
             </Link>
             <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
-              AI-powered resume builder that helps you create ATS-optimized resumes,
-              pass applicant tracking systems, and land your dream job faster.
+              AI-powered resume builder that helps you create ATS-optimized resumes, pass applicant
+              tracking systems, and land your dream job faster.
             </p>
 
             {/* Trust Badges */}
@@ -466,7 +437,9 @@ const Footer = () => {
                     {link.disabled ? (
                       <span className="text-gray-400 dark:text-gray-500 text-sm cursor-not-allowed flex items-center gap-2">
                         {link.label}
-                        <Badge variant="default" size="sm">Soon</Badge>
+                        <Badge variant="default" size="sm">
+                          Soon
+                        </Badge>
                       </span>
                     ) : (
                       <Link
@@ -475,7 +448,10 @@ const Footer = () => {
                       >
                         {link.label}
                         {link.badge && (
-                          <Badge variant={link.badge === "We're Hiring!" ? 'success' : 'primary'} size="sm">
+                          <Badge
+                            variant={link.badge === "We're Hiring!" ? 'success' : 'primary'}
+                            size="sm"
+                          >
                             {link.badge}
                           </Badge>
                         )}
@@ -494,15 +470,17 @@ const Footer = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-gray-600 dark:text-gray-400 text-sm flex items-center gap-1 flex-wrap justify-center">
-              <span>© {CURRENT_YEAR} ResumeAI Pro. All rights reserved.</span>
-              <span className="hidden sm:inline mx-2" aria-hidden="true">•</span>
+              <span>© {CURRENT_YEAR} Resume Ai Pro. All rights reserved.</span>
+              <span className="hidden sm:inline mx-2" aria-hidden="true">
+                •
+              </span>
               <span className="flex items-center gap-1">
-                Made with <FiHeart className="w-3 h-3 text-red-500" aria-label="love" /> and <FiCoffee className="w-3 h-3 text-amber-600" aria-label="coffee" />
+                Made with <FiHeart className="w-3 h-3 text-red-500" aria-label="love" /> and{' '}
+                <FiCoffee className="w-3 h-3 text-amber-600" aria-label="coffee" />
               </span>
             </p>
 
             <div className="flex items-center gap-4 text-sm flex-wrap justify-center">
-              {/* Feedback Button */}
               <button
                 onClick={() => setShowFeedback(true)}
                 className="text-gray-500 hover:text-primary-500 transition-colors text-xs flex items-center gap-1"
@@ -511,7 +489,9 @@ const Footer = () => {
                 <FiMessageCircle className="w-3 h-3" aria-hidden="true" /> Feedback
               </button>
 
-              <span className="text-gray-300 dark:text-gray-600" aria-hidden="true">|</span>
+              <span className="text-gray-300 dark:text-gray-600" aria-hidden="true">
+                |
+              </span>
 
               <span className="text-gray-600 dark:text-gray-400 text-xs flex items-center gap-1">
                 <span>Built by</span>
@@ -551,7 +531,6 @@ const Footer = () => {
               className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Header */}
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                   Share Your Feedback
@@ -565,15 +544,15 @@ const Footer = () => {
                   <FiX className="w-5 h-5" />
                 </button>
               </div>
-              
+
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 We'd love to hear your thoughts, suggestions, or bug reports!
               </p>
-              
+
               <form onSubmit={handleFeedbackSubmit} className="space-y-4">
                 <div>
-                  <label 
-                    htmlFor="feedback-type" 
+                  <label
+                    htmlFor="feedback-type"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                   >
                     Feedback Type
@@ -591,10 +570,10 @@ const Footer = () => {
                     <option value="other">💬 Other</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label 
-                    htmlFor="feedback-message" 
+                  <label
+                    htmlFor="feedback-message"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                   >
                     Your Feedback
@@ -610,22 +589,20 @@ const Footer = () => {
                     disabled={submittingFeedback}
                     maxLength={1000}
                   />
-                  <p className="text-xs text-gray-400 mt-1 text-right">
-                    {feedback.length}/1000
-                  </p>
+                  <p className="text-xs text-gray-400 mt-1 text-right">{feedback.length}/1000</p>
                 </div>
-                
+
                 <div className="flex justify-end gap-3 pt-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setShowFeedback(false)}
                     disabled={submittingFeedback}
                     type="button"
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     loading={submittingFeedback}
                     disabled={!feedback.trim() || submittingFeedback}
                   >

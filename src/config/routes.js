@@ -75,12 +75,21 @@ export const routeDefinitions = [
   { path: '/verify-email', meta: META({ title: 'Verify Email' }) },
   { path: '/dashboard', meta: META({ title: 'Dashboard', roles: ['user', 'premium', 'admin'] }) },
   { path: '/builder', meta: META({ title: 'Create Resume', roles: ['user', 'premium', 'admin'] }) },
-  { path: '/builder/:id', meta: META({ title: 'Edit Resume', roles: ['user', 'premium', 'admin'] }) },
-  { path: '/preview/:id', meta: META({ title: 'Preview Resume', roles: ['user', 'premium', 'admin'] }) },
+  {
+    path: '/builder/:id',
+    meta: META({ title: 'Edit Resume', roles: ['user', 'premium', 'admin'] }),
+  },
+  {
+    path: '/preview/:id',
+    meta: META({ title: 'Preview Resume', roles: ['user', 'premium', 'admin'] }),
+  },
   { path: '/profile', meta: META({ title: 'My Profile', roles: ['user', 'premium', 'admin'] }) },
   { path: '/settings', meta: META({ title: 'Settings', roles: ['user', 'premium', 'admin'] }) },
   { path: '/my-resumes', meta: META({ title: 'My Resumes', roles: ['user', 'premium', 'admin'] }) },
-  { path: '/ats-scanner', meta: META({ title: 'ATS Scanner', roles: ['user', 'premium', 'admin'] }) },
+  {
+    path: '/ats-scanner',
+    meta: META({ title: 'ATS Scanner', roles: ['user', 'premium', 'admin'] }),
+  },
   { path: '/billing', meta: META({ title: 'Billing', roles: ['user', 'premium', 'admin'] }) },
   { path: '/analytics', meta: META({ title: 'Analytics', roles: ['premium', 'admin'] }) },
   { path: '/cover-letter', meta: META({ title: 'Cover Letter', roles: ['premium', 'admin'] }) },
@@ -109,7 +118,7 @@ export const getRouteByPath = (pathname) => {
 
 export const getRouteMeta = (pathname) =>
   getRouteByPath(pathname)?.meta ?? {
-    title: 'ResumeAI Pro',
+    title: 'Resume Ai Pro',
     description: 'Create professional ATS-optimized resumes',
   };
 
@@ -143,8 +152,7 @@ export const isProtectedRoute = (pathname) => {
 export const isAdminAreaPath = (pathname) =>
   pathname.split('?')[0] === '/admin' || pathname.split('?')[0].startsWith('/admin/');
 
-export const getDefaultRedirect = (userRole) =>
-  userRole === 'admin' ? '/admin' : '/dashboard';
+export const getDefaultRedirect = (userRole) => (userRole === 'admin' ? '/admin' : '/dashboard');
 
 export const prefetchRouteHints = ['/dashboard', '/builder', '/templates'];
 

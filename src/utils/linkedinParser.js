@@ -1,9 +1,9 @@
 /**
  * LinkedIn Profile Parser
- * 
+ *
  * IMPORTANT: LinkedIn's Terms of Service prohibit scraping their website.
  * The HTML parsing functionality is provided as a reference only.
- * 
+ *
  * In production, use the official LinkedIn API or encourage users to
  * download their data archive from LinkedIn (Settings → Data Privacy → Get a copy of your data).
  */
@@ -44,7 +44,7 @@ const validateProfile = (profile) => {
 export const linkedinParser = {
   /**
    * Parse LinkedIn profile from HTML content.
-   * 
+   *
    * ⚠️ WARNING: LinkedIn ToS prohibits scraping. This is for educational use only.
    * In production, encourage users to use the official LinkedIn data export.
    */
@@ -71,9 +71,7 @@ export const linkedinParser = {
       };
 
       // Parse name
-      profile.personal.fullName = safeText(
-        doc.querySelector('.text-heading-xlarge, h1.inline')
-      );
+      profile.personal.fullName = safeText(doc.querySelector('.text-heading-xlarge, h1.inline'));
 
       // Parse headline/title
       profile.personal.title = safeText(
@@ -92,23 +90,29 @@ export const linkedinParser = {
 
       // Parse experience
       const expItems = doc.querySelectorAll('.pv-entity__position-group, .experience-item');
-      expItems.forEach(item => {
+      expItems.forEach((item) => {
         const title = safeText(item.querySelector('h3, .profile-section-card__title'));
-        const company = safeText(item.querySelector('.pv-entity__secondary-title, .experience-item__subtitle'));
+        const company = safeText(
+          item.querySelector('.pv-entity__secondary-title, .experience-item__subtitle')
+        );
         if (title) {
           profile.experience.push({
             title,
             company,
             dateRange: safeText(item.querySelector('.pv-entity__date-range span, .date-range')),
-            description: safeText(item.querySelector('.pv-entity__description, .show-more-less-text')),
+            description: safeText(
+              item.querySelector('.pv-entity__description, .show-more-less-text')
+            ),
           });
         }
       });
 
       // Parse education
       const eduItems = doc.querySelectorAll('.pv-education-entity, .education-item');
-      eduItems.forEach(item => {
-        const school = safeText(item.querySelector('.pv-entity__school-name, .profile-section-card__title'));
+      eduItems.forEach((item) => {
+        const school = safeText(
+          item.querySelector('.pv-entity__school-name, .profile-section-card__title')
+        );
         if (school) {
           profile.education.push({
             institution: school,
@@ -120,7 +124,7 @@ export const linkedinParser = {
 
       // Parse skills
       const skillItems = doc.querySelectorAll('.pv-skill-category-entity__name-text, .skill-name');
-      skillItems.forEach(item => {
+      skillItems.forEach((item) => {
         const skill = safeText(item);
         if (skill) profile.skills.push(skill);
       });
@@ -134,10 +138,10 @@ export const linkedinParser = {
 
   /**
    * Import from LinkedIn JSON export.
-   * 
+   *
    * LinkedIn allows users to download their data archive from:
    * Settings & Privacy → Data Privacy → Get a copy of your data
-   * 
+   *
    * @param {Object|string} jsonData - LinkedIn JSON export or parsed object
    * @returns {Object} Standardized resume profile
    */
@@ -159,7 +163,7 @@ export const linkedinParser = {
           phone: data.phoneNumbers?.[0]?.number || '',
           linkedin: data.publicProfileUrl || data.profileUrl || '',
         },
-        experience: (data.positions || data.experience || []).map(pos => ({
+        experience: (data.positions || data.experience || []).map((pos) => ({
           title: pos.title || '',
           company: typeof pos.company === 'string' ? pos.company : pos.company?.name || '',
           location: pos.location || pos.company?.location || '',
@@ -168,7 +172,7 @@ export const linkedinParser = {
           current: pos.endDate === null || pos.endDate === undefined,
           description: (pos.description || '').replace(/<\/?[^>]+(>|$)/g, ''), // Strip HTML tags
         })),
-        education: (data.education || []).map(edu => ({
+        education: (data.education || []).map((edu) => ({
           institution: edu.schoolName || edu.school?.name || '',
           degree: edu.degree || edu.degreeName || '',
           field: edu.fieldOfStudy || edu.fieldsOfStudy?.[0] || '',
@@ -176,16 +180,16 @@ export const linkedinParser = {
           endDate: String(edu.endDate?.year || ''),
           gpa: edu.gpa || '',
         })),
-        skills: (data.skills || []).map(skill => 
-          typeof skill === 'string' ? skill : (skill.name || skill.skill || '')
-        ).filter(Boolean),
-        certifications: (data.certifications || []).map(cert => ({
+        skills: (data.skills || [])
+          .map((skill) => (typeof skill === 'string' ? skill : skill.name || skill.skill || ''))
+          .filter(Boolean),
+        certifications: (data.certifications || []).map((cert) => ({
           name: cert.name || '',
           issuer: cert.authority || cert.organization || '',
           date: formatDate(cert.startDate?.year, cert.startDate?.month),
           url: cert.url || cert.certificationUrl || '',
         })),
-        languages: (data.languages || []).map(lang => ({
+        languages: (data.languages || []).map((lang) => ({
           language: lang.name || '',
           proficiency: lang.proficiency || '',
         })),

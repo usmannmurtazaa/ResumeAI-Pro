@@ -28,7 +28,13 @@ export const formatters = {
         case 'time':
           return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
         case 'datetime':
-          return d.toLocaleString(locale, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          return d.toLocaleString(locale, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
         case 'relative': {
           const now = Date.now();
           const diff = now - d.getTime();
@@ -146,7 +152,7 @@ export const formatters = {
     return name
       .split(/\s+/)
       .filter(Boolean)
-      .map(word => word[0])
+      .map((word) => word[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
@@ -189,9 +195,9 @@ export const formatters = {
 
     // Insert space before capital letters, but not for consecutive capitals (acronyms)
     const spaced = text
-      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')  // Handle acronyms: ATSCompatible → ATS Compatible
-      .replace(/([a-z\d])([A-Z])/g, '$1 $2')       // Handle camelCase: myName → my Name
-      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');   // Handle remaining: XMLParser → XML Parser
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // Handle acronyms: ATSCompatible → ATS Compatible
+      .replace(/([a-z\d])([A-Z])/g, '$1 $2') // Handle camelCase: myName → my Name
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2'); // Handle remaining: XMLParser → XML Parser
 
     return spaced.charAt(0).toUpperCase() + spaced.slice(1);
   },

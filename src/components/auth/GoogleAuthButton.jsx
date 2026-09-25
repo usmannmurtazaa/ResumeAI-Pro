@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  GoogleAuthProvider, 
-  signInWithPopup, 
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   linkWithCredential,
@@ -25,8 +25,8 @@ const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-const GoogleAuthButton = ({ 
-  onSuccess, 
+const GoogleAuthButton = ({
+  onSuccess,
   onError,
   mode = 'signin',
   variant = 'outline',
@@ -40,7 +40,7 @@ const GoogleAuthButton = ({
   scopes = ['profile', 'email'],
 }) => {
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [pendingCredential, setPendingCredential] = useState(null);
@@ -51,7 +51,7 @@ const GoogleAuthButton = ({
   const [linkError, setLinkError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [redirectProcessed, setRedirectProcessed] = useState(false);
-  
+
   const mountedRef = useRef(false);
   const redirectTimeoutRef = useRef(null);
 
@@ -59,19 +59,19 @@ const GoogleAuthButton = ({
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     const checkMobile = () => {
       const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       setIsMobile(isMobileDevice);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+
     return () => {
       mountedRef.current = false;
       window.removeEventListener('resize', checkMobile);
-      
+
       // Clear redirect timeout
       if (redirectTimeoutRef.current) {
         clearTimeout(redirectTimeoutRef.current);
@@ -84,19 +84,19 @@ const GoogleAuthButton = ({
   useEffect(() => {
     // FIXED: Only process redirect once
     if (redirectProcessed) return;
-    
+
     const handleRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
-        
+
         if (!mountedRef.current) return;
-        
+
         if (result) {
           setRedirectProcessed(true);
-          
+
           const user = result.user;
           await handleSuccessfulAuth(user, true);
-          
+
           // Handle pending credential if exists
           if (pendingCredential && mode === 'link') {
             try {
@@ -109,27 +109,27 @@ const GoogleAuthButton = ({
         }
       } catch (error) {
         if (!mountedRef.current) return;
-        
+
         console.error('Redirect result error:', error);
-        
+
         // Only show error if it's not a "no result" case
         if (error.code !== 'auth/no-auth-event') {
           handleAuthError(error);
         }
-        
+
         setRedirectProcessed(true);
       }
     };
-    
+
     // Set timeout for redirect result (in case it never comes)
     redirectTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current && !redirectProcessed) {
         setRedirectProcessed(true);
       }
     }, 30000); // 30 second timeout
-    
+
     handleRedirectResult();
-    
+
     return () => {
       if (redirectTimeoutRef.current) {
         clearTimeout(redirectTimeoutRef.current);
@@ -143,7 +143,7 @@ const GoogleAuthButton = ({
     try {
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
-      
+
       if (!userDoc.exists()) {
         // Create new user document
         const userData = {
@@ -166,9 +166,9 @@ const GoogleAuthButton = ({
             platform: navigator.platform,
           },
         };
-        
+
         await setDoc(userDocRef, userData);
-        
+
         toast.success('Account created successfully! Welcome!', {
           icon: '🎉',
           duration: 3000,
@@ -179,17 +179,18 @@ const GoogleAuthButton = ({
         const updateData = {
           lastLogin: serverTimestamp(),
           photoURL: user.photoURL || userDoc.data().photoURL,
-          emailVerified: user.emailVerified !== undefined ? user.emailVerified : userDoc.data().emailVerified,
+          emailVerified:
+            user.emailVerified !== undefined ? user.emailVerified : userDoc.data().emailVerified,
           updatedAt: serverTimestamp(),
         };
-        
+
         // Only update email if it changed
         if (user.email && user.email !== userDoc.data().email) {
           updateData.email = user.email;
         }
-        
+
         await updateDoc(userDocRef, updateData);
-        
+
         // Only show welcome back for signin mode
         if (mode === 'signin' && !isNewUser) {
           toast.success('Welcome back! Signed in with Google', {
@@ -199,120 +200,126 @@ const GoogleAuthButton = ({
           });
         }
       }
-      
+
       onSuccess?.(user);
     } catch (error) {
       console.error('Firestore update failed:', error);
-      
+
       // Auth succeeded, Firestore failed - still call success
       toast.success('Signed in successfully!', {
         icon: '✅',
         duration: 2000,
         id: 'google-auth-success',
       });
-      
+
       onSuccess?.(user);
     }
   };
 
   // ── Error Handler ───────────────────────────────────────────────────────
 
-  const handleAuthError = useCallback((error) => {
-    console.error('Google auth error:', error);
-    
-    let errorMessage = 'Failed to authenticate with Google.';
-    let showLinkOption = false;
-    
-    switch (error.code) {
-      case 'auth/popup-closed-by-user':
-        errorMessage = 'Sign-in was cancelled. Please try again.';
-        break;
-        
-      case 'auth/popup-blocked':
-        errorMessage = 'Pop-up was blocked by your browser. Please allow pop-ups for this site.';
-        break;
-        
-      case 'auth/cancelled-popup-request':
-        errorMessage = 'Another sign-in request is in progress. Please wait.';
-        break;
-        
-      case 'auth/account-exists-with-different-credential':
-        errorMessage = 'An account already exists with this email. Sign in with your password to link Google.';
-        showLinkOption = true;
-        
-        // Store the credential and email for linking
-        if (error.customData?.email) {
-          setPendingEmail(error.customData.email);
-        }
-        setPendingCredential(GoogleAuthProvider.credentialFromError(error));
-        setShowLinkModal(true);
-        break;
-        
-      case 'auth/credential-already-in-use':
-        errorMessage = 'This Google account is already linked to another user.';
-        break;
-        
-      case 'auth/network-request-failed':
-        errorMessage = 'Network error. Please check your internet connection.';
-        break;
-        
-      case 'auth/user-disabled':
-        errorMessage = 'This account has been disabled. Please contact support.';
-        break;
-        
-      case 'auth/operation-not-allowed':
-        errorMessage = 'Google sign-in is not enabled. Please contact support.';
-        break;
-        
-      case 'auth/internal-error':
-        errorMessage = 'A temporary error occurred. Please try again.';
-        break;
-        
-      case 'auth/unauthorized-domain':
-        errorMessage = 'This domain is not authorized for Google sign-in.';
-        break;
-        
-      case 'auth/web-storage-unsupported':
-        errorMessage = 'Browser storage is not available. Please enable cookies.';
-        break;
-        
-      default:
-        errorMessage = error.message || 'Failed to authenticate with Google.';
-    }
-    
-    if (error.code !== 'auth/popup-closed-by-user' && 
-        error.code !== 'auth/cancelled-popup-request') {
-      toast.error(errorMessage, {
-        id: 'google-auth-error',
-        duration: 5000,
-      });
-    }
-    
-    onError?.(error);
-    
-    return { errorMessage, showLinkOption };
-  }, [onError]);
+  const handleAuthError = useCallback(
+    (error) => {
+      console.error('Google auth error:', error);
+
+      let errorMessage = 'Failed to authenticate with Google.';
+      let showLinkOption = false;
+
+      switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = 'Sign-in was cancelled. Please try again.';
+          break;
+
+        case 'auth/popup-blocked':
+          errorMessage = 'Pop-up was blocked by your browser. Please allow pop-ups for this site.';
+          break;
+
+        case 'auth/cancelled-popup-request':
+          errorMessage = 'Another sign-in request is in progress. Please wait.';
+          break;
+
+        case 'auth/account-exists-with-different-credential':
+          errorMessage =
+            'An account already exists with this email. Sign in with your password to link Google.';
+          showLinkOption = true;
+
+          // Store the credential and email for linking
+          if (error.customData?.email) {
+            setPendingEmail(error.customData.email);
+          }
+          setPendingCredential(GoogleAuthProvider.credentialFromError(error));
+          setShowLinkModal(true);
+          break;
+
+        case 'auth/credential-already-in-use':
+          errorMessage = 'This Google account is already linked to another user.';
+          break;
+
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your internet connection.';
+          break;
+
+        case 'auth/user-disabled':
+          errorMessage = 'This account has been disabled. Please contact support.';
+          break;
+
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Google sign-in is not enabled. Please contact support.';
+          break;
+
+        case 'auth/internal-error':
+          errorMessage = 'A temporary error occurred. Please try again.';
+          break;
+
+        case 'auth/unauthorized-domain':
+          errorMessage = 'This domain is not authorized for Google sign-in.';
+          break;
+
+        case 'auth/web-storage-unsupported':
+          errorMessage = 'Browser storage is not available. Please enable cookies.';
+          break;
+
+        default:
+          errorMessage = error.message || 'Failed to authenticate with Google.';
+      }
+
+      if (
+        error.code !== 'auth/popup-closed-by-user' &&
+        error.code !== 'auth/cancelled-popup-request'
+      ) {
+        toast.error(errorMessage, {
+          id: 'google-auth-error',
+          duration: 5000,
+        });
+      }
+
+      onError?.(error);
+
+      return { errorMessage, showLinkOption };
+    },
+    [onError]
+  );
 
   // ── Google Authentication Handler ───────────────────────────────────────
 
   const handleGoogleAuth = useCallback(async () => {
     if (loading) return;
-    
+
     setLoading(true);
-    
+
     try {
       const provider = new GoogleAuthProvider();
-      
+
       // Add requested scopes
-      scopes.forEach(scope => provider.addScope(scope));
-      
+      scopes.forEach((scope) => provider.addScope(scope));
+
       // Set custom parameters
       provider.setCustomParameters({
         prompt: 'select_account',
         // Include login_hint if we have a pending email
         ...(pendingEmail && { login_hint: pendingEmail }),
       });
-      
+
       // FIXED: Use redirect on mobile if specified
       if (redirectOnMobile && isMobile) {
         try {
@@ -324,13 +331,12 @@ const GoogleAuthButton = ({
           console.warn('Redirect failed, falling back to popup:', redirectError);
         }
       }
-      
+
       const result = await signInWithPopup(auth, provider);
-      
+
       if (!mountedRef.current) return;
-      
+
       await handleSuccessfulAuth(result.user);
-      
     } catch (error) {
       if (!mountedRef.current) return;
       handleAuthError(error);
@@ -351,31 +357,31 @@ const GoogleAuthButton = ({
 
     setLinkLoading(true);
     setLinkError(null);
-    
+
     try {
       // FIXED: First sign in with email/password to get the user
       const emailCredential = EmailAuthProvider.credential(linkEmail, linkPassword);
       const userCredential = await signInWithCredential(auth, emailCredential);
-      
+
       // FIXED: Then link the Google credential to the signed-in user
       if (pendingCredential) {
         await linkWithCredential(userCredential.user, pendingCredential);
-        
+
         await handleSuccessfulAuth(userCredential.user);
-        
+
         setShowLinkModal(false);
         setPendingCredential(null);
         setPendingEmail(null);
-        
+
         toast.success('Google account linked successfully!', {
           id: 'link-success',
         });
       }
     } catch (error) {
       console.error('Link account error:', error);
-      
+
       let errorMessage = 'Failed to link accounts.';
-      
+
       switch (error.code) {
         case 'auth/wrong-password':
           errorMessage = 'Incorrect password. Please try again.';
@@ -398,7 +404,7 @@ const GoogleAuthButton = ({
         default:
           errorMessage = error.message || 'Failed to link accounts.';
       }
-      
+
       setLinkError(errorMessage);
       toast.error(errorMessage, { id: 'link-error' });
     } finally {
@@ -410,7 +416,10 @@ const GoogleAuthButton = ({
 
   const getDisplayNameFromEmail = (email) => {
     if (!email) return 'User';
-    return email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return email
+      .split('@')[0]
+      .replace(/[._]/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
   const buttonLabel = label || (mode === 'signin' ? 'Continue with Google' : 'Sign up with Google');
@@ -462,7 +471,7 @@ const GoogleAuthButton = ({
                 Account Already Exists
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-400">
-                {pendingEmail 
+                {pendingEmail
                   ? `An account with ${pendingEmail} already exists. Sign in with your password to link Google.`
                   : 'An account with this email already exists. Sign in with your password to link Google.'}
               </p>
@@ -545,8 +554,8 @@ const GoogleAuthButton = ({
             <button
               onClick={() => {
                 setShowLinkModal(false);
-                navigate('/forgot-password', { 
-                  state: { email: linkEmail || pendingEmail }
+                navigate('/forgot-password', {
+                  state: { email: linkEmail || pendingEmail },
                 });
               }}
               className="text-xs text-primary-500 hover:text-primary-600 transition-colors"
@@ -555,7 +564,7 @@ const GoogleAuthButton = ({
               Forgot your password?
             </button>
           </div>
-          
+
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
             Or{' '}
             <button
@@ -600,7 +609,7 @@ export const GoogleOneTap = ({ onSuccess, onError, context = 'signin' }) => {
 
   useEffect(() => {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-    
+
     if (!clientId) {
       if (IS_DEVELOPMENT) {
         console.warn('Google One Tap: No client ID provided');
@@ -610,7 +619,7 @@ export const GoogleOneTap = ({ onSuccess, onError, context = 'signin' }) => {
 
     const initializeOneTap = () => {
       if (initializedRef.current) return;
-      
+
       try {
         if (window.google?.accounts?.id) {
           window.google.accounts.id.initialize({
@@ -643,7 +652,7 @@ export const GoogleOneTap = ({ onSuccess, onError, context = 'signin' }) => {
               }
             }
           });
-          
+
           initializedRef.current = true;
         }
       } catch (error) {
@@ -655,7 +664,7 @@ export const GoogleOneTap = ({ onSuccess, onError, context = 'signin' }) => {
     // Load Google script if not already loaded
     if (!window.google?.accounts?.id && !scriptLoadedRef.current) {
       scriptLoadedRef.current = true;
-      
+
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
@@ -665,7 +674,7 @@ export const GoogleOneTap = ({ onSuccess, onError, context = 'signin' }) => {
         console.error('Failed to load Google Identity Services script');
         onError?.({ reason: 'script_load_failed' });
       };
-      
+
       document.head.appendChild(script);
     } else {
       initializeOneTap();
@@ -673,7 +682,7 @@ export const GoogleOneTap = ({ onSuccess, onError, context = 'signin' }) => {
 
     return () => {
       initializedRef.current = false;
-      
+
       // Cancel One Tap prompt on unmount
       if (window.google?.accounts?.id) {
         try {

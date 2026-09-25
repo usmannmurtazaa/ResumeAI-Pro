@@ -9,16 +9,15 @@ import Card from '../../components/ui/Card';
  */
 const AdminSectionPlaceholder = () => {
   const { pathname } = useLocation();
-  const segment =
-    pathname.replace(/^\/admin\/?/, '').replace(/\//g, ' › ') || 'admin home';
+  const segment = pathname.replace(/^\/admin\/?/, '').replace(/\//g, ' › ') || 'admin home';
 
   return (
     <AdminLayout title="Admin area" description="Section overview">
       <Card className="p-8 text-center space-y-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">“{segment}”</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
-          This administrative view is reserved for upcoming tooling. Resume and account
-          operations are available from User Management and Resume Management.
+          This administrative view is reserved for upcoming tooling. Resume and account operations
+          are available from User Management and Resume Management.
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Link
