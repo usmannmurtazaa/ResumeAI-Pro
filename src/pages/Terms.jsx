@@ -264,10 +264,10 @@ const Terms = () => {
               <Card className="p-6 md:p-8">
                 <div className="prose dark:prose-invert max-w-none mb-8">
                   <p className="lead text-gray-600 dark:text-gray-400">
-                    Welcome to Resume Ai Pro. These Terms of Service ("Terms") govern your
-                    access to and use of our resume building platform, including any associated
-                    websites, applications, and services (collectively, the "Service"). Please read
-                    these Terms carefully before using the Service.
+                    Welcome to Resume Ai Pro. These Terms of Service ("Terms") govern your access to
+                    and use of our resume building platform, including any associated websites,
+                    applications, and services (collectively, the "Service"). Please read these
+                    Terms carefully before using the Service.
                   </p>
                 </div>
 

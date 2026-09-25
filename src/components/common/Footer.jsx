@@ -368,11 +368,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-2">
-            <Link
-              to="/"
-              className="flex items-center gap-2 mb-4"
-              aria-label="Resume Ai Pro Home"
-            >
+            <Link to="/" className="flex items-center gap-2 mb-4" aria-label="Resume Ai Pro Home">
               <div
                 className="w-8 h-8 bg-gradient-to-r from-primary-500 to-accent-500 rounded-lg shadow-md"
                 aria-hidden="true"

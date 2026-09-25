@@ -262,9 +262,9 @@ const About = () => {
                 </h2>
                 <div className="space-y-4 text-gray-700 dark:text-gray-300 leading-relaxed">
                   <p>
-                    Founded in 2024 by <strong>Usman Murtaza</strong>, Resume Ai Pro was born
-                    from a frustrating observation: countless qualified candidates were being
-                    filtered out by Applicant Tracking Systems before a human ever saw their resume.
+                    Founded in 2024 by <strong>Usman Murtaza</strong>, Resume Ai Pro was born from a
+                    frustrating observation: countless qualified candidates were being filtered out
+                    by Applicant Tracking Systems before a human ever saw their resume.
                   </p>
                   <p>
                     As a software engineer who had experienced this firsthand, Usman set out to

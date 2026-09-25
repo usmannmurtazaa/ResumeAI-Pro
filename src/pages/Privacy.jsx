@@ -257,9 +257,9 @@ const Privacy = () => {
               <Card className="p-6 md:p-8">
                 <div className="prose dark:prose-invert max-w-none mb-8">
                   <p className="lead text-gray-600 dark:text-gray-400">
-                    At Resume Ai Pro, we take your privacy seriously. This Privacy Policy
-                    explains how we collect, use, disclose, and safeguard your information when you
-                    use our resume builder platform. Please read this policy carefully.
+                    At Resume Ai Pro, we take your privacy seriously. This Privacy Policy explains
+                    how we collect, use, disclose, and safeguard your information when you use our
+                    resume builder platform. Please read this policy carefully.
                   </p>
                 </div>
 

@@ -69,8 +69,7 @@ const Login = () => {
 
   usePageTitle({
     title: 'Sign In',
-    description:
-      'Sign in to Resume Ai Pro to access your resumes, ATS scores, and saved progress.',
+    description: 'Sign in to Resume Ai Pro to access your resumes, ATS scores, and saved progress.',
   });
 
   const [stats, setStats] = useState({ users: 0, resumes: 0, successRate: 0 });
