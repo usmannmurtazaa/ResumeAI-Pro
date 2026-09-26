@@ -114,7 +114,7 @@ const Pricing = () => {
     (planName) => {
       if (planName === 'Enterprise') {
         window.location.href =
-          'mailto:sales@maniestaresumeai.com?subject=Enterprise%20Plan%20Inquiry';
+          'mailto:sales@resumeaixpro.com?subject=Enterprise%20Plan%20Inquiry';
       } else if (planName === 'Free') {
         navigate(user ? '/dashboard' : '/signup');
       } else {
@@ -295,7 +295,7 @@ const Pricing = () => {
                 support.
               </p>
               <Button
-                onClick={() => (window.location.href = 'mailto:sales@maniestaresumeai.com')}
+                onClick={() => (window.location.href = 'mailto:sales@resumeaixpro.com')}
                 variant="outline"
               >
                 Contact Sales

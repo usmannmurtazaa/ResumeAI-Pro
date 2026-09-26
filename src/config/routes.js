@@ -1,11 +1,11 @@
 /**
  * Single source of truth for application paths and lightweight route metadata.
  *
- * IMPORTANT: Lazy-loaded React components stay in App.jsx — webpack applies
+ * IMPORTANT: Lazy-loaded React components stay in App.jsx - webpack applies
  * `webpackPrefetch` predictably only with static import() paths there.
  */
 
-/** Public marketing/content — no authentication */
+/** Public marketing/content - no authentication */
 export const PUBLIC_PATHS = [
   '/',
   '/features',
@@ -22,10 +22,10 @@ export const PUBLIC_PATHS = [
   '/terms',
 ];
 
-/** Auth flows — not wrapped in PrivateRoute */
+/** Auth flows - not wrapped in PrivateRoute */
 export const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/verify-email'];
 
-/** Protected app — gated by PrivateRoute in App.jsx (see isProtectedRoute) */
+/** Protected app - gated by PrivateRoute in App.jsx (see isProtectedRoute) */
 export const PROTECTED_PATHS = [
   '/dashboard',
   '/builder',
@@ -40,7 +40,7 @@ export const PROTECTED_PATHS = [
   '/cover-letter',
 ];
 
-/** Nested under /admin/* — wired in pages/Admin.jsx */
+/** Nested under /admin/* - wired in pages/Admin.jsx */
 export const ADMIN_CHILD_PATHS = {
   HOME: '',
   USERS: 'users',
@@ -54,7 +54,7 @@ const META = ({ title, description, showInNav, roles }) => ({
   ...(roles?.length ? { roles } : {}),
 });
 
-/** Meta only — mirrors live routes in App.jsx + admin children */
+/** Meta only - mirrors live routes in App.jsx + admin children */
 export const routeDefinitions = [
   { path: '/', meta: META({ title: 'Home', showInNav: true }) },
   { path: '/features', meta: META({ title: 'Features', showInNav: true }) },
@@ -98,7 +98,7 @@ export const routeDefinitions = [
   { path: '/admin/resumes', meta: META({ title: 'Resume Management', roles: ['admin'] }) },
 ];
 
-/** Segment-wise match — supports `:param` Dynamic segments */
+/** Segment-wise match - supports `:param` Dynamic segments */
 function matchesPattern(pattern, pathname) {
   const norm = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
   if (pattern === '/') return norm === '/' || norm === '';

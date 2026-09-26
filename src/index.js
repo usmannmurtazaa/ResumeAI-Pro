@@ -44,7 +44,7 @@ const captureStartupError = (error, label) => {
         tags: { phase: 'startup', label },
       });
     } catch {
-      // Sentry itself failed — nothing we can do
+      // Sentry itself failed - nothing we can do
     }
   }
 };
@@ -78,7 +78,7 @@ const initializeSentry = () => {
     Sentry.init({
       dsn: SENTRY_DSN,
       environment: APP_ENVIRONMENT,
-      release: `maniestaresumeai@${APP_VERSION}`,
+      release: `resumeaixpro@${APP_VERSION}`,
       tracesSampleRate: parseNumberEnv(
         process.env.REACT_APP_SENTRY_TRACES_SAMPLE_RATE,
         IS_PRODUCTION ? 0.1 : 1

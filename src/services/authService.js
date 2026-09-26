@@ -63,7 +63,7 @@ const COLLECTIONS = {
   sessions: 'sessions',
 };
 
-const SESSION_STORAGE_KEY = 'maniestaresumeai.current-session-id';
+const SESSION_STORAGE_KEY = 'resumeaixpro.current-session-id';
 const BATCH_CHUNK_SIZE = 400;
 const MAX_SESSIONS_DISPLAY = 25;
 

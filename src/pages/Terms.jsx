@@ -249,11 +249,11 @@ const Terms = () => {
                     Contact our legal team for questions about these terms.
                   </p>
                   <a
-                    href="mailto:legal@maniestaresumeai.com"
+                    href="mailto:legal@resumeaixpro.com"
                     className="flex items-center gap-2 text-sm text-primary-500 hover:text-primary-600"
                   >
                     <FiMail className="w-4 h-4" />
-                    legal@maniestaresumeai.com
+                    legal@resumeaixpro.com
                   </a>
                 </Card>
               </div>
@@ -308,10 +308,10 @@ const Terms = () => {
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     📧 Email:{' '}
                     <a
-                      href="mailto:legal@maniestaresumeai.com"
+                      href="mailto:legal@resumeaixpro.com"
                       className="text-primary-500 hover:text-primary-600"
                     >
-                      legal@maniestaresumeai.com
+                      legal@resumeaixpro.com
                     </a>
                   </p>
                 </div>

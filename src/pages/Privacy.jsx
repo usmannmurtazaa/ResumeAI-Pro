@@ -111,7 +111,7 @@ const SECTIONS = [
       • Objection: Object to certain processing activities.
       • Withdraw Consent: Withdraw previously given consent at any time.
       
-      For GDPR (EU/UK) or CCPA (California) requests, contact privacy@maniestaresumeai.com.
+      For GDPR (EU/UK) or CCPA (California) requests, contact privacy@resumeaixpro.com.
     `,
   },
   {
@@ -242,11 +242,11 @@ const Privacy = () => {
                   <h4 className="font-semibold text-sm mb-2">Questions?</h4>
                   <p className="text-xs text-gray-500 mb-3">Contact our Data Protection Officer</p>
                   <a
-                    href="mailto:privacy@maniestaresumeai.com"
+                    href="mailto:privacy@resumeaixpro.com"
                     className="flex items-center gap-2 text-sm text-primary-500 hover:text-primary-600"
                   >
                     <FiMail className="w-4 h-4" />
-                    privacy@maniestaresumeai.com
+                    privacy@resumeaixpro.com
                   </a>
                 </Card>
               </div>
@@ -302,10 +302,10 @@ const Privacy = () => {
                     <p>
                       📧 Email:{' '}
                       <a
-                        href="mailto:privacy@maniestaresumeai.com"
+                        href="mailto:privacy@resumeaixpro.com"
                         className="text-primary-500 hover:text-primary-600"
                       >
-                        privacy@maniestaresumeai.com
+                        privacy@resumeaixpro.com
                       </a>
                     </p>
                     <p>📬 Mail: Resume Ai Pro, 123 Market Street, San Francisco, CA 94105</p>

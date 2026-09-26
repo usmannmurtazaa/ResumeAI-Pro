@@ -341,7 +341,7 @@ export const ResumeProvider = ({ children }) => {
         const oldScore = currentResume?.atsScore || 0;
         const newScore = data.atsScore || calculateATSScoreSafe(data.data);
         if (newScore >= 80 && oldScore < 80) {
-          toast.success(`ATS Score ${newScore}% — Great job!`);
+          toast.success(`ATS Score ${newScore}% - Great job!`);
         }
 
         return true;

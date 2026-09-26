@@ -28,7 +28,7 @@ const AdminHome = () => (
 );
 
 /**
- * Nested admin SPA — guarded by AdminRoute in App.jsx.
+ * Nested admin SPA - guarded by AdminRoute in App.jsx.
  * Mirrors sidebar paths under /admin/* so deep links resolve.
  */
 const Admin = () => {

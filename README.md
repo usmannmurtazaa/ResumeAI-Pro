@@ -6,7 +6,7 @@
 
 > An AI-powered resume builder that generates ATS-optimised resumes with customisable templates, AI-driven content suggestions, and one-click export.
 
-**Built by [Usman Murtaza](https://usmanmurtaza.netlify.app)** — Full Stack Developer
+**Built by [Usman Murtaza](https://usmanmurtaza.netlify.app)** - Full Stack Developer
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-resumeaixpro.netlify.app-8b5cf6?style=for-the-badge)](https://resumeaixpro.netlify.app)
 [![Portfolio](https://img.shields.io/badge/Portfolio-usmanmurtaza.netlify.app-6366f1?style=for-the-badge)](https://usmanmurtaza.netlify.app)
@@ -190,7 +190,7 @@ For larger changes, please open an issue first to discuss the proposal.
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 Copyright © 2026 Usman Murtaza
 

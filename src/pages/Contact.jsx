@@ -32,8 +32,8 @@ const CONTACT_INFO = [
   {
     icon: FiMail,
     label: 'Email',
-    value: 'support@maniestaresumeai.com',
-    link: 'mailto:support@maniestaresumeai.com',
+    value: 'support@resumeaixpro.com',
+    link: 'mailto:support@resumeaixpro.com',
     color: 'text-blue-500',
   },
   {
@@ -55,31 +55,31 @@ const CONTACT_INFO = [
 const SOCIAL_LINKS = [
   {
     icon: FiTwitter,
-    href: 'https://twitter.com/maniestaresumeai',
+    href: 'https://twitter.com/resumeaixpro',
     label: 'Twitter',
     color: 'hover:text-blue-400',
   },
   {
     icon: FiLinkedin,
-    href: 'https://linkedin.com/company/maniestaresumeai',
+    href: 'https://linkedin.com/company/resumeaixpro',
     label: 'LinkedIn',
     color: 'hover:text-blue-600',
   },
   {
     icon: FiGithub,
-    href: 'https://github.com/maniestaresumeai',
+    href: 'https://github.com/resumeaixpro',
     label: 'GitHub',
     color: 'hover:text-gray-900 dark:hover:text-white',
   },
   {
     icon: FiFacebook,
-    href: 'https://facebook.com/maniestaresumeai',
+    href: 'https://facebook.com/resumeaixpro',
     label: 'Facebook',
     color: 'hover:text-blue-600',
   },
   {
     icon: FiInstagram,
-    href: 'https://instagram.com/maniestaresumeai',
+    href: 'https://instagram.com/resumeaixpro',
     label: 'Instagram',
     color: 'hover:text-pink-500',
   },

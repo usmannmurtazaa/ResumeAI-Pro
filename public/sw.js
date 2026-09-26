@@ -320,7 +320,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Critical: do not intercept webpack/React chunks — prevents SW from returning
+  // Critical: do not intercept webpack/React chunks - prevents SW from returning
   // synthetic 503 Responses that show as "Failed to load resource: 503" for lazy routes.
   if (
     url.pathname.startsWith('/static/') ||

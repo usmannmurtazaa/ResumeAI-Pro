@@ -523,7 +523,7 @@ const AdminRoute = ({
                       }}
                       className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                     >
-                      Redirecting in {countdown}s — Click to go now
+                      Redirecting in {countdown}s - Click to go now
                     </button>
                   </motion.div>
                 )}

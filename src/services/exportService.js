@@ -257,7 +257,7 @@ const exportAsDOCX = (data, filename = 'resume.docx') => {
     if (Array.isArray(data?.experience) && data.experience.length > 0) {
       lines.push('<h2>Experience</h2>');
       data.experience.forEach((exp) => {
-        lines.push(`<h3>${exp.title} — ${exp.company}</h3>`);
+        lines.push(`<h3>${exp.title} - ${exp.company}</h3>`);
         lines.push(
           `<p class="dates">${exp.startDate || ''} - ${exp.endDate || 'Present'}${exp.location ? ` | ${exp.location}` : ''}</p>`
         );
@@ -276,7 +276,7 @@ const exportAsDOCX = (data, filename = 'resume.docx') => {
       lines.push('<h2>Education</h2>');
       data.education.forEach((edu) => {
         lines.push(`<h3>${edu.degree}${edu.field ? ` in ${edu.field}` : ''}</h3>`);
-        lines.push(`<p>${edu.institution}${edu.gpa ? ` — GPA: ${edu.gpa}` : ''}</p>`);
+        lines.push(`<p>${edu.institution}${edu.gpa ? ` - GPA: ${edu.gpa}` : ''}</p>`);
         if (edu.startDate)
           lines.push(`<p class="dates">${edu.startDate} - ${edu.endDate || 'Present'}</p>`);
       });

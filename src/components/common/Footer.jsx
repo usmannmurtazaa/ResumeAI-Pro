@@ -41,10 +41,10 @@ const SCROLL_THRESHOLD = 400;
 const DEFAULT_CONFIG = {
   name: 'Resume Ai Pro',
   links: {
-    github: 'https://github.com/maniestaresumeai',
-    twitter: 'https://twitter.com/maniestaresumeai',
-    facebook: 'https://facebook.com/maniestaresumeai',
-    instagram: 'https://instagram.com/maniestaresumeai',
+    github: 'https://github.com/resumeaixpro',
+    twitter: 'https://twitter.com/resumeaixpro',
+    facebook: 'https://facebook.com/resumeaixpro',
+    instagram: 'https://instagram.com/resumeaixpro',
     youtube: null,
     discord: null,
   },
@@ -53,7 +53,7 @@ const DEFAULT_CONFIG = {
     portfolio: 'https://usmanmurtaza.netlify.app',
   },
   contact: {
-    email: 'support@maniestaresumeai.com',
+    email: 'support@resumeaixpro.com',
     phone: '+1 (555) 123-4567',
     address: { city: 'San Francisco, CA' },
   },
@@ -246,8 +246,8 @@ const Footer = () => {
       {
         icon: FiMail,
         label: 'Email',
-        value: config.contact?.email || 'support@maniestaresumeai.com',
-        href: `mailto:${config.contact?.email || 'support@maniestaresumeai.com'}`,
+        value: config.contact?.email || 'support@resumeaixpro.com',
+        href: `mailto:${config.contact?.email || 'support@resumeaixpro.com'}`,
       },
       {
         icon: FiPhone,

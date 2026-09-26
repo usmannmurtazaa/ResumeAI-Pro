@@ -64,7 +64,7 @@ const waitForFonts = async () => {
   try {
     await document.fonts.ready;
   } catch {
-    // Font loading failed — continue with fallback fonts
+    // Font loading failed - continue with fallback fonts
   }
 };
 
@@ -286,7 +286,7 @@ export const downloadResumeAsPDF = async (
 };
 
 /**
- * Unified PDF generation — accepts either a DOM element or resume data.
+ * Unified PDF generation - accepts either a DOM element or resume data.
  */
 export const generatePDF = async (source, templateOrOptions, options = {}) => {
   if (isDomElement(source)) {

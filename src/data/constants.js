@@ -16,10 +16,10 @@ import {
 export const APP_NAME = 'Resume Ai Pro';
 export const APP_VERSION = '2.5.0';
 export const APP_DESCRIPTION = 'AI-powered ATS resume builder';
-export const APP_URL = 'https://maniestaresumeai.netlify.app';
-export const SUPPORT_EMAIL = 'support@maniestaresumeai.com';
-export const PRIVACY_EMAIL = 'privacy@maniestaresumeai.com';
-export const LEGAL_EMAIL = 'legal@maniestaresumeai.com';
+export const APP_URL = 'https://resumeaixpro.netlify.app';
+export const SUPPORT_EMAIL = 'support@resumeaixpro.com';
+export const PRIVACY_EMAIL = 'privacy@resumeaixpro.com';
+export const LEGAL_EMAIL = 'legal@resumeaixpro.com';
 
 // ── Feature Flags & Limits ──────────────────────────────────────────────
 
@@ -284,11 +284,11 @@ export const LOCAL_STORAGE_KEYS = {
   COOKIE_CONSENT: 'cookieConsent',
   NOTIFICATION_SOUND: 'notification_sound',
   REMEMBERED_EMAIL: 'remembered_email',
-  SESSION_ID: 'maniestaresumeai.current-session-id',
+  SESSION_ID: 'resumeaixpro.current-session-id',
 };
 
 // ==========================================================================
-// Roles & domain enums (formerly src/utils/constants.js — single source here)
+// Roles & domain enums (formerly src/utils/constants.js - single source here)
 // ==========================================================================
 
 export const USER_ROLES = {
@@ -297,7 +297,7 @@ export const USER_ROLES = {
   ADMIN: 'admin',
 };
 
-/** Slug map for filters — distinct from `TEMPLATE_CATEGORIES` (UI array for selector). */
+/** Slug map for filters - distinct from `TEMPLATE_CATEGORIES` (UI array for selector). */
 export const TEMPLATE_CATEGORY_SLUGS = {
   PROFESSIONAL: 'professional',
   CREATIVE: 'creative',

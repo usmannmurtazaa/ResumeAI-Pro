@@ -425,7 +425,7 @@ const About = () => {
                     "My goal is simple: to help every job seeker put their best foot forward and
                     land the career they deserve."
                   </p>
-                  <p className="text-center text-sm text-gray-500 mt-2">— Usman Murtaza, Founder</p>
+                  <p className="text-center text-sm text-gray-500 mt-2">- Usman Murtaza, Founder</p>
                 </div>
               </Card>
             </motion.div>

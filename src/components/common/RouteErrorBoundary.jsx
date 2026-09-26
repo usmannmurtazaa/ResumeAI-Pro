@@ -154,7 +154,7 @@ const RouteErrorFallback = ({
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-6">
             If this keeps happening, please{' '}
             <a
-              href="mailto:support@maniestaresumeai.com"
+              href="mailto:support@resumeaixpro.com"
               className="text-primary-500 hover:text-primary-600 underline"
             >
               contact support

@@ -63,7 +63,7 @@ export const validators = {
     if (!/[A-Z]/.test(value)) return 'Must contain an uppercase letter';
     if (!/[a-z]/.test(value)) return 'Must contain a lowercase letter';
     if (!/[0-9]/.test(value)) return 'Must contain a number';
-    if (isCommonPassword(value)) return 'This password is too common — please choose another';
+    if (isCommonPassword(value)) return 'This password is too common - please choose another';
     return true;
   },
 

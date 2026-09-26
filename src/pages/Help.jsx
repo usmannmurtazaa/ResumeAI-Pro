@@ -250,7 +250,7 @@ const Help = () => {
   );
 
   const copyEmail = useCallback(() => {
-    navigator.clipboard?.writeText('support@maniestaresumeai.com');
+    navigator.clipboard?.writeText('support@resumeaixpro.com');
     toast.success('Email copied!');
   }, []);
 
@@ -499,7 +499,7 @@ const Help = () => {
                           onClick={copyEmail}
                           className="text-xs text-blue-600 hover:underline"
                         >
-                          support@maniestaresumeai.com <FiCopy className="w-3 h-3 inline" />
+                          support@resumeaixpro.com <FiCopy className="w-3 h-3 inline" />
                         </button>
                       </div>
                     </div>

@@ -19,7 +19,7 @@ export const siteConfig = {
     'job search',
   ],
 
-  url: process.env.REACT_APP_SITE_URL || 'https://maniestaresumeai.netlify.app',
+  url: process.env.REACT_APP_SITE_URL || 'https://resumeaixpro.netlify.app',
   apiUrl: process.env.REACT_APP_API_URL || 'https://api.resumeai.pro',
 
   author: 'Usman Murtaza',
@@ -32,12 +32,12 @@ export const siteConfig = {
   },
 
   links: {
-    twitter: 'https://twitter.com/maniestaresumeai',
-    github: 'https://github.com/maniestaresumeai',
-    linkedin: 'https://linkedin.com/company/maniestaresumeai',
-    facebook: 'https://facebook.com/maniestaresumeai',
-    instagram: 'https://instagram.com/maniestaresumeai',
-    discord: 'https://discord.gg/maniestaresumeai',
+    twitter: 'https://twitter.com/resumeaixpro',
+    github: 'https://github.com/resumeaixpro',
+    linkedin: 'https://linkedin.com/company/resumeaixpro',
+    facebook: 'https://facebook.com/resumeaixpro',
+    instagram: 'https://instagram.com/resumeaixpro',
+    discord: 'https://discord.gg/resumeaixpro',
   },
 
   contact: {
@@ -64,7 +64,7 @@ export const siteConfig = {
 
   twitter: {
     card: 'summary_large_image',
-    site: '@maniestaresumeai',
+    site: '@resumeaixpro',
     creator: '@usmannmurtazaa',
   },
 

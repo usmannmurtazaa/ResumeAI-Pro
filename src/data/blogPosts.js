@@ -181,7 +181,7 @@ export const BLOG_POSTS = [
     excerpt:
       'Learn how to craft a compelling cover letter that works in harmony with your resume to land more interviews.',
     content: `
-      <p class="lead">A great cover letter doesn't just repeat your resume—it tells the story behind your achievements.</p>
+      <p class="lead">A great cover letter doesn't just repeat your resume-it tells the story behind your achievements.</p>
       
       <h2>Cover Letter Structure</h2>
       <h3>1. Opening Paragraph</h3><p>State the position and include a hook that grabs attention.</p>
@@ -210,7 +210,7 @@ export const BLOG_POSTS = [
     excerpt:
       'Modern networking techniques to build meaningful professional relationships and uncover hidden job opportunities.',
     content: `
-      <p class="lead">Networking isn't about collecting business cards or LinkedIn connections—it's about building genuine relationships.</p>
+      <p class="lead">Networking isn't about collecting business cards or LinkedIn connections-it's about building genuine relationships.</p>
       
       <h2>Digital Networking Strategies</h2>
       <h3>1. LinkedIn Optimization</h3><p>Your LinkedIn profile is your digital business card.</p>
