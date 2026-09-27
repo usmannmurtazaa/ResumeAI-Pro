@@ -14,6 +14,7 @@ import PrivateRoute from './components/auth/PrivateRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import Loader from './components/common/Loader';
 import RouteErrorBoundary from './components/common/RouteErrorBoundary';
+import SeoManager from './components/common/SeoManager';
 import SessionTimeoutWarning from './components/common/SessionTimeoutWarning';
 import { logAnalyticsEvent } from './services/firebase';
 import './styles/globals.css';
@@ -416,6 +417,7 @@ const AppShell = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 transition-colors duration-300 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <AnalyticsTracker />
         <ScrollToTop />
+        <SeoManager />
 
         <Suspense fallback={<PageLoader />}>
           <AnimatedRoutes />

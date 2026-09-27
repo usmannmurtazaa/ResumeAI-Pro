@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import styled from 'styled-components';
 import {
   FiCalendar,
   FiUser,
@@ -44,32 +45,86 @@ const formatDate = (dateString) => {
 };
 
 const formatViews = (views) => {
+  if (typeof views !== 'number' || views <= 0) return null;
   if (views >= 1000) return `${(views / 1000).toFixed(1)}k`;
   return views.toString();
 };
 
+// ── Author Avatar ──────────────────────────────────────────────────────
+// Renders a real image if author.avatar is a URL path, otherwise falls
+// back to the initials-based Avatar component.
+
+const AVATAR_SIZES = {
+  sm: 32,
+  md: 40,
+  lg: 56,
+  xl: 80,
+};
+
+const AuthorImage = styled.img`
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(139, 92, 246, 0.2);
+  flex-shrink: 0;
+  background-color: rgba(255, 255, 255, 0.05);
+`;
+
+const AuthorAvatar = ({ author, size = 'md' }) => {
+  const dimension = AVATAR_SIZES[size] || AVATAR_SIZES.md;
+  const isImage =
+    typeof author?.avatar === 'string' &&
+    (author.avatar.startsWith('/') || author.avatar.startsWith('http'));
+
+  if (isImage) {
+    return (
+      <AuthorImage
+        src={author.avatar}
+        alt={author.name || 'Author'}
+        style={{ width: dimension, height: dimension }}
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  }
+
+  return <Avatar name={author?.avatar || '?'} size={size} />;
+};
+
+AuthorAvatar.propTypes = {
+  author: PropTypes.shape({
+    avatar: PropTypes.string,
+    name: PropTypes.string,
+  }),
+  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl']),
+};
+
 // ── Related Posts Component ──────────────────────────────────────────────
 
-const RelatedPostCard = React.memo(({ post }) => (
-  <Link to={`/blog/${post.slug}`} className="block h-full group">
-    <Card className="h-full hover:shadow-xl transition-all">
-      <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 h-40 flex items-center justify-center rounded-t-xl">
-        <span className="text-5xl group-hover:scale-110 transition-transform">
-          {post.coverImage}
-        </span>
-      </div>
-      <div className="p-4">
-        <h3 className="font-semibold mb-2 group-hover:text-primary-500 transition-colors line-clamp-2">
-          {post.title}
-        </h3>
-        <p className="text-sm text-gray-500">
-          <FiClock className="w-3 h-3 inline mr-1" />
-          {post.readTime}
-        </p>
-      </div>
-    </Card>
-  </Link>
-));
+const RelatedPostCard = React.memo(({ post }) => {
+  const CoverIcon = post.coverIcon;
+  return (
+    <Link to={`/blog/${post.slug}`} className="block h-full group">
+      <Card className="h-full hover:shadow-xl transition-all">
+        <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 h-40 flex items-center justify-center rounded-t-xl">
+          {CoverIcon ? (
+            <CoverIcon className="w-12 h-12 text-primary-500 group-hover:scale-110 transition-transform" />
+          ) : (
+            <FiFileText className="w-12 h-12 text-gray-400" />
+          )}
+        </div>
+        <div className="p-4">
+          <h3 className="font-semibold mb-2 group-hover:text-primary-500 transition-colors line-clamp-2">
+            {post.title}
+          </h3>
+          <p className="text-sm text-gray-500">
+            <FiClock className="w-3 h-3 inline mr-1" />
+            {post.readTime}
+          </p>
+        </div>
+      </Card>
+    </Link>
+  );
+});
 
 RelatedPostCard.displayName = 'RelatedPostCard';
 
@@ -86,24 +141,7 @@ const BlogPost = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [comment, setComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [comments, setComments] = useState([
-    {
-      id: 1,
-      author: 'John Smith',
-      avatar: 'JS',
-      content: 'This is incredibly helpful!',
-      date: '2 days ago',
-      likes: 12,
-    },
-    {
-      id: 2,
-      author: 'Maria Garcia',
-      avatar: 'MG',
-      content: 'The STAR method section was exactly what I needed.',
-      date: '1 day ago',
-      likes: 8,
-    },
-  ]);
+  const [comments, setComments] = useState([]);
 
   // Set page title
   usePageTitle({
@@ -243,6 +281,8 @@ const BlogPost = () => {
     );
   }
 
+  const viewsLabel = formatViews(post.views);
+
   return (
     <MainLayout>
       <article className="min-h-screen pt-24 pb-12">
@@ -271,7 +311,7 @@ const BlogPost = () => {
 
               <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-4">
-                  <Avatar name={post.author.avatar} size="lg" />
+                  <AuthorAvatar author={post.author} size="lg" />
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">{post.author.name}</p>
                     <p className="text-sm text-gray-500">{post.author.role}</p>
@@ -286,10 +326,12 @@ const BlogPost = () => {
                     <FiClock className="w-4 h-4 inline mr-1" />
                     {post.readTime}
                   </span>
-                  <span>
-                    <FiEye className="w-4 h-4 inline mr-1" />
-                    {formatViews(post.views)}
-                  </span>
+                  {viewsLabel && (
+                    <span>
+                      <FiEye className="w-4 h-4 inline mr-1" />
+                      {viewsLabel}
+                    </span>
+                  )}
                 </div>
               </div>
             </motion.header>
@@ -306,18 +348,20 @@ const BlogPost = () => {
             </motion.div>
 
             {/* Tags */}
-            <div className="mb-8">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">
-                Tags
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {post.tags?.map((tag) => (
-                  <Badge key={tag} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
+            {post.tags?.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                  Tags
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {post.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Action Bar */}
             <div className="flex items-center justify-between py-6 border-t border-b border-gray-200 dark:border-gray-700 mb-8">
@@ -331,7 +375,7 @@ const BlogPost = () => {
                   }`}
                 >
                   <FiHeart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
-                  <span>{liked ? post.likes + 1 : post.likes}</span>
+                  <span>Like</span>
                 </button>
                 <button
                   onClick={handleBookmark}
@@ -401,7 +445,7 @@ const BlogPost = () => {
             {/* Author Bio */}
             <Card className="p-6 mb-12">
               <div className="flex flex-col sm:flex-row items-start gap-6">
-                <Avatar name={post.author.avatar} size="xl" />
+                <AuthorAvatar author={post.author} size="xl" />
                 <div>
                   <h3 className="text-xl font-bold mb-1">{post.author.name}</h3>
                   <p className="text-primary-600 dark:text-primary-400 mb-3">{post.author.role}</p>
@@ -439,31 +483,40 @@ const BlogPost = () => {
                 </div>
               </form>
 
-              <div className="space-y-4">
-                {comments.map((c) => (
-                  <motion.div
-                    key={c.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex gap-3"
-                  >
-                    <Avatar name={c.avatar} size="md" />
-                    <div className="flex-1">
-                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-sm">{c.author}</span>
-                          <span className="text-xs text-gray-500">{c.date}</span>
+              {comments.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                  <FiMessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">
+                    No comments yet. Be the first to share your thoughts.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {comments.map((c) => (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex gap-3"
+                    >
+                      <Avatar name={c.avatar} size="md" />
+                      <div className="flex-1">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-sm">{c.author}</span>
+                            <span className="text-xs text-gray-500">{c.date}</span>
+                          </div>
+                          <p className="text-gray-700 dark:text-gray-300 text-sm">{c.content}</p>
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300 text-sm">{c.content}</p>
+                        <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary-500 mt-1 ml-1">
+                          <FiThumbsUp className="w-3 h-3" />
+                          {c.likes}
+                        </button>
                       </div>
-                      <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary-500 mt-1 ml-1">
-                        <FiThumbsUp className="w-3 h-3" />
-                        {c.likes}
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Related Posts */}
@@ -471,8 +524,8 @@ const BlogPost = () => {
               <div>
                 <h2 className="text-2xl font-bold mb-6">Related Articles</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {relatedPosts.map((post) => (
-                    <RelatedPostCard key={post.id} post={post} />
+                  {relatedPosts.map((relatedPost) => (
+                    <RelatedPostCard key={relatedPost.id} post={relatedPost} />
                   ))}
                 </div>
               </div>

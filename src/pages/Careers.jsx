@@ -51,7 +51,7 @@ const DEPARTMENTS = [
 const LOCATIONS = [
   { id: 'all', name: 'All Locations' },
   { id: 'remote', name: 'Remote' },
-  { id: 'san-francisco', name: 'San Francisco, CA' },
+  { id: 'karachi', name: 'Karachi, Sindh | PK' },
   { id: 'new-york', name: 'New York, NY' },
   { id: 'london', name: 'London, UK' },
   { id: 'berlin', name: 'Berlin, Germany' },

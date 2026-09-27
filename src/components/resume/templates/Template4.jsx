@@ -27,6 +27,7 @@ import {
   FiDownload,
   FiShare2,
   FiMoreHorizontal,
+  FiFileText,
 } from 'react-icons/fi';
 
 const Template4 = ({ data, className = '' }) => {
@@ -567,10 +568,10 @@ const Template4 = ({ data, className = '' }) => {
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center print:mt-4 print:pt-2 print:border-gray-300">
           <p className="text-xs text-gray-400 flex items-center justify-center gap-2 print:text-[10px] print:text-gray-500">
-            <span>📄</span>
+            <FiFileText className="w-3.5 h-3.5 print:w-3 print:h-3" aria-hidden="true" />
             Professional Resume
             <span>•</span>
-            <span>✨</span>
+            <FiStar className="w-3.5 h-3.5 print:w-3 print:h-3" aria-hidden="true" />
             Available for opportunities
           </p>
         </div>

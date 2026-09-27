@@ -1,6 +1,19 @@
 // src/data/blogPosts.js
 // Shared blog post data used by both Blog.jsx and BlogPost.jsx
 
+import { FiFileText, FiCpu, FiTarget, FiZap, FiEdit3, FiUsers } from 'react-icons/fi';
+
+// Shared author object — the founder of Resume Ai Pro.
+// Using a single real author is stronger for SEO (E-E-A-T) than
+// inventing fake personas. When other contributors join, replace
+// this with an array and reference by key.
+const AUTHOR = {
+  name: 'Usman Murtaza',
+  avatar: '/author-usman.png',
+  role: 'Founder, Resume Ai Pro',
+  bio: 'Usman is a Full Stack Developer based in Karachi and the founder of Resume Ai Pro.',
+};
+
 export const BLOG_POSTS = [
   {
     id: 1,
@@ -42,33 +55,27 @@ export const BLOG_POSTS = [
       <p>Avoiding these common mistakes will significantly improve your chances of getting past ATS filters and landing interviews. Ready to create an optimized resume? <a href="/builder">Start building with Resume Ai Pro today</a>.</p>
     `,
     category: 'resume-tips',
-    author: {
-      name: 'Sarah Chen',
-      avatar: 'SC',
-      role: 'Career Coach',
-      bio: 'Sarah is a certified career coach with over 10 years of experience helping professionals land their dream jobs at Fortune 500 companies.',
-    },
-    coverImage: '📄',
+    author: AUTHOR,
+    coverIcon: FiFileText,
     readTime: '6 min read',
-    publishedAt: '2024-01-15',
+    publishedAt: '2026-09-15',
+    updatedAt: '2026-09-15',
     tags: ['Resume', 'Job Search', 'Career', 'ATS'],
     featured: true,
-    views: 12453,
-    likes: 342,
   },
   {
     id: 2,
     slug: 'optimize-resume-for-ats-systems-2025',
-    title: 'How to Optimize Your Resume for ATS Systems in 2025',
+    title: 'How to Optimize Your Resume for ATS Systems',
     excerpt:
       'Learn the latest strategies to ensure your resume passes through Applicant Tracking Systems and reaches human recruiters.',
     content: `
-      <p class="lead">With over 75% of resumes never reaching human eyes, understanding how to optimize for Applicant Tracking Systems (ATS) is crucial for job search success in 2025.</p>
+      <p class="lead">With over 75% of resumes never reaching human eyes, understanding how to optimize for Applicant Tracking Systems (ATS) is crucial for job search success.</p>
       
       <h2>What is an ATS?</h2>
       <p>An Applicant Tracking System is software used by employers to collect, sort, and filter job applications. It scans resumes for relevant keywords, skills, and qualifications before a recruiter ever sees them.</p>
       
-      <h2>Key ATS Optimization Strategies for 2025</h2>
+      <h2>Key ATS Optimization Strategies</h2>
       
       <h3>1. Use Standard Section Headings</h3>
       <p>Stick to conventional headings like "Work Experience," "Education," and "Skills." Avoid creative alternatives like "Where I've Been" or "What I Know."</p>
@@ -92,19 +99,13 @@ export const BLOG_POSTS = [
       <p>Use Resume Ai Pro's free ATS Scanner to analyze your resume and get a detailed compatibility score with actionable improvement suggestions.</p>
     `,
     category: 'ats-guide',
-    author: {
-      name: 'Usman Murtaza',
-      avatar: 'UM',
-      role: 'Founder & CEO',
-      bio: 'Usman is the founder of Resume Ai Pro and a full-stack developer passionate about helping job seekers leverage technology to advance their careers.',
-    },
-    coverImage: '🤖',
+    author: AUTHOR,
+    coverIcon: FiCpu,
     readTime: '8 min read',
-    publishedAt: '2024-01-10',
+    publishedAt: '2026-09-10',
+    updatedAt: '2026-09-10',
     tags: ['ATS', 'Resume Optimization', 'Job Search', 'Technology'],
     featured: true,
-    views: 18934,
-    likes: 567,
   },
   {
     id: 3,
@@ -130,19 +131,13 @@ export const BLOG_POSTS = [
       <p style="color: #16a34a;">Grew Instagram following from 500 to 15,000 in 6 months, increasing engagement by 200% and driving $50K in attributable revenue.</p>
     `,
     category: 'resume-tips',
-    author: {
-      name: 'Michael Rodriguez',
-      avatar: 'MR',
-      role: 'Senior Recruiter',
-      bio: 'Michael has reviewed over 50,000 resumes during his 12-year career in talent acquisition at Fortune 500 companies.',
-    },
-    coverImage: '🎯',
+    author: AUTHOR,
+    coverIcon: FiTarget,
     readTime: '7 min read',
-    publishedAt: '2024-01-05',
+    publishedAt: '2026-09-05',
+    updatedAt: '2026-09-05',
     tags: ['Resume Writing', 'Achievements', 'Career', 'STAR Method'],
     featured: false,
-    views: 8765,
-    likes: 234,
   },
   {
     id: 4,
@@ -160,19 +155,13 @@ export const BLOG_POSTS = [
       <ol start="5"><li><strong>Achieved</strong> - Clear indicator of success</li><li><strong>Exceeded</strong> - Shows going above expectations</li><li><strong>Generated</strong> - Perfect for revenue roles</li><li><strong>Delivered</strong> - Demonstrates reliability</li></ol>
     `,
     category: 'resume-tips',
-    author: {
-      name: 'Emily Watson',
-      avatar: 'EW',
-      role: 'Content Strategist',
-      bio: 'Emily specializes in creating compelling career content that helps professionals tell their unique stories effectively.',
-    },
-    coverImage: '⚡',
+    author: AUTHOR,
+    coverIcon: FiZap,
     readTime: '5 min read',
-    publishedAt: '2024-01-01',
+    publishedAt: '2026-08-28',
+    updatedAt: '2026-08-28',
     tags: ['Resume Tips', 'Writing', 'Keywords', 'Action Verbs'],
     featured: false,
-    views: 6543,
-    likes: 189,
   },
   {
     id: 5,
@@ -189,24 +178,18 @@ export const BLOG_POSTS = [
       <h3>3. Closing Paragraph</h3><p>Reiterate your interest and include a call to action.</p>
     `,
     category: 'career-advice',
-    author: {
-      name: 'David Kim',
-      avatar: 'DK',
-      role: 'HR Director',
-      bio: 'David has 15+ years of HR leadership experience and has hired hundreds of professionals across various industries.',
-    },
-    coverImage: '📝',
+    author: AUTHOR,
+    coverIcon: FiEdit3,
     readTime: '6 min read',
-    publishedAt: '2023-12-28',
+    publishedAt: '2026-08-20',
+    updatedAt: '2026-08-20',
     tags: ['Cover Letter', 'Job Application', 'Career', 'Writing'],
     featured: false,
-    views: 5432,
-    likes: 156,
   },
   {
     id: 6,
     slug: 'networking-strategies-2025',
-    title: 'Networking Strategies That Actually Work in 2025',
+    title: 'Networking Strategies That Actually Work',
     excerpt:
       'Modern networking techniques to build meaningful professional relationships and uncover hidden job opportunities.',
     content: `
@@ -218,18 +201,12 @@ export const BLOG_POSTS = [
       <h3>3. Virtual Coffee Chats</h3><p>Request 15-20 minute informational interviews with professionals in your target industry.</p>
     `,
     category: 'job-search',
-    author: {
-      name: 'Jessica Lee',
-      avatar: 'JL',
-      role: 'Career Strategist',
-      bio: 'Jessica helps professionals navigate career transitions and has been featured in Forbes, Business Insider, and The Muse.',
-    },
-    coverImage: '🤝',
+    author: AUTHOR,
+    coverIcon: FiUsers,
     readTime: '7 min read',
-    publishedAt: '2023-12-20',
+    publishedAt: '2026-08-15',
+    updatedAt: '2026-08-15',
     tags: ['Networking', 'Job Search', 'Career Growth', 'LinkedIn'],
     featured: false,
-    views: 4321,
-    likes: 123,
   },
 ];

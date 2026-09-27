@@ -79,7 +79,7 @@ const FORM_FIELDS = [
     name: 'location',
     label: 'Location',
     icon: FiMapPin,
-    placeholder: 'San Francisco, CA',
+    placeholder: 'Karachi, Sindh | PK',
     validation: {},
   },
   {

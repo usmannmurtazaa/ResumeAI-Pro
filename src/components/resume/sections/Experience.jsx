@@ -23,6 +23,8 @@ import {
   FiTrendingUp,
   FiAward,
   FiMove,
+  FiFileText,
+  FiHeart,
 } from 'react-icons/fi';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
@@ -100,12 +102,18 @@ const ACTION_VERBS = {
 };
 
 const EMPLOYMENT_ICONS = {
-  'full-time': '💼',
-  'part-time': '🕐',
-  contract: '📋',
-  freelance: '🚀',
-  internship: '🎓',
-  volunteer: '🤝',
+  'full-time': FiBriefcase,
+  'part-time': FiClock,
+  contract: FiFileText,
+  freelance: FiZap,
+  internship: FiAward,
+  volunteer: FiHeart,
+};
+
+// Renders the SVG icon for a given employment type.
+const renderEmploymentIcon = (employmentType, className = 'w-6 h-6') => {
+  const Icon = EMPLOYMENT_ICONS[employmentType] || FiBriefcase;
+  return <Icon className={className} aria-hidden="true" />;
 };
 
 const ATS_TIPS = [
@@ -510,8 +518,11 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
                                 >
                                   <FiMove className="w-5 h-5" />
                                 </div>
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30 flex items-center justify-center text-2xl flex-shrink-0">
-                                  {EMPLOYMENT_ICONS[exp.employmentType] || '💼'}
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30 flex items-center justify-center flex-shrink-0">
+                                  {renderEmploymentIcon(
+                                    exp.employmentType,
+                                    'w-6 h-6 text-primary-600 dark:text-primary-400'
+                                  )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between gap-2">

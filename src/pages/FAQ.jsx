@@ -14,6 +14,7 @@ import {
   FiUser,
   FiFileText,
   FiCreditCard,
+  FiX,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
@@ -308,7 +309,7 @@ const FAQ = () => {
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   aria-label="Clear search"
                 >
-                  ✕
+                  <FiX className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
             </div>

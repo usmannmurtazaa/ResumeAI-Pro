@@ -154,7 +154,7 @@ const SECTIONS = [
     content: `
       These Terms shall be governed by the laws of the State of California, USA.
       
-      • Any disputes shall be resolved through binding arbitration in San Francisco, CA.
+      • Any disputes shall be resolved through binding arbitration in Karachi, Sindh | PK.
       • You waive any right to participate in class action lawsuits.
       • Claims must be filed within one year of the incident.
       • For EU/UK users, local consumer protection laws may apply.
@@ -305,8 +305,12 @@ const Terms = () => {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     If you have any questions about these Terms of Service, please contact us:
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    📧 Email:{' '}
+                  <p className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+                    <FiMail
+                      className="w-3.5 h-3.5 text-primary-500 flex-shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span>Email:</span>{' '}
                     <a
                       href="mailto:legal@resumeaixpro.com"
                       className="text-primary-500 hover:text-primary-600"
@@ -321,10 +325,6 @@ const Terms = () => {
               <div className="mt-8 flex flex-wrap gap-4 justify-center text-sm">
                 <Link to="/privacy" className="text-primary-500 hover:text-primary-600">
                   Privacy Policy
-                </Link>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
-                <Link to="/cookies" className="text-primary-500 hover:text-primary-600">
-                  Cookie Policy
                 </Link>
                 <span className="text-gray-300 dark:text-gray-600">•</span>
                 <Link to="/contact" className="text-primary-500 hover:text-primary-600">

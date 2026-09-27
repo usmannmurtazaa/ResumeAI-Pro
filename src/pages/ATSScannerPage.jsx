@@ -4,7 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import ATSScanner from '../components/resume/ATSScanner';
 import Card from '../components/ui/Card';
-import { FiArrowLeft, FiInfo, FiAlertCircle } from 'react-icons/fi';
+import {
+  FiArrowLeft,
+  FiInfo,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiFileText,
+  FiKey,
+  FiBarChart2,
+  FiTarget,
+} from 'react-icons/fi';
 import Button from '../components/ui/Button';
 import { useDocumentTitle, usePageTitle } from '../hooks/useDocumentTitle';
 import Loader from '../components/common/Loader';
@@ -36,7 +45,7 @@ const ATSScannerPage = () => {
       }
 
       toast.success('Data extracted! Redirecting to resume builder...', {
-        icon: '🎉',
+        icon: <FiCheckCircle className="w-5 h-5 text-green-500" />,
         duration: 2000,
       });
 
@@ -148,25 +157,37 @@ const ATSScannerPage = () => {
             <h3 className="font-semibold text-lg mb-4">Tips for Better ATS Scores</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <h4 className="font-medium text-sm mb-1">📄 Use Standard Formats</h4>
+                <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
+                  <FiFileText className="w-4 h-4 text-primary-500" aria-hidden="true" />
+                  Use Standard Formats
+                </h4>
                 <p className="text-xs text-gray-500">
                   Stick to standard section headings like "Experience", "Education", and "Skills".
                 </p>
               </div>
               <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <h4 className="font-medium text-sm mb-1">🔑 Include Keywords</h4>
+                <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
+                  <FiKey className="w-4 h-4 text-primary-500" aria-hidden="true" />
+                  Include Keywords
+                </h4>
                 <p className="text-xs text-gray-500">
                   Match keywords from job descriptions to improve ATS compatibility.
                 </p>
               </div>
               <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <h4 className="font-medium text-sm mb-1">📊 Quantify Achievements</h4>
+                <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
+                  <FiBarChart2 className="w-4 h-4 text-primary-500" aria-hidden="true" />
+                  Quantify Achievements
+                </h4>
                 <p className="text-xs text-gray-500">
                   Use numbers and percentages to demonstrate your impact.
                 </p>
               </div>
               <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <h4 className="font-medium text-sm mb-1">🎯 Use Action Verbs</h4>
+                <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
+                  <FiTarget className="w-4 h-4 text-primary-500" aria-hidden="true" />
+                  Use Action Verbs
+                </h4>
                 <p className="text-xs text-gray-500">
                   Start bullet points with strong action verbs like "Led", "Developed", "Achieved".
                 </p>

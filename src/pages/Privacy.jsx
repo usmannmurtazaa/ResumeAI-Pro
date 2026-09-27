@@ -11,6 +11,7 @@ import {
   FiFileText,
   FiUserCheck,
   FiMail,
+  FiMapPin,
   FiChevronRight,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
@@ -111,7 +112,7 @@ const SECTIONS = [
       • Objection: Object to certain processing activities.
       • Withdraw Consent: Withdraw previously given consent at any time.
       
-      For GDPR (EU/UK) or CCPA (California) requests, contact privacy@resumeaixpro.com.
+      For GDPR (EU/UK) or CCPA (California) requests, contact usmanmurtazaportfolio@gmail.com.
     `,
   },
   {
@@ -242,11 +243,11 @@ const Privacy = () => {
                   <h4 className="font-semibold text-sm mb-2">Questions?</h4>
                   <p className="text-xs text-gray-500 mb-3">Contact our Data Protection Officer</p>
                   <a
-                    href="mailto:privacy@resumeaixpro.com"
+                    href="mailto:usmanmurtazaportfolio@gmail.com"
                     className="flex items-center gap-2 text-sm text-primary-500 hover:text-primary-600"
                   >
                     <FiMail className="w-4 h-4" />
-                    privacy@resumeaixpro.com
+                    usmanmurtazaportfolio@gmail.com
                   </a>
                 </Card>
               </div>
@@ -299,16 +300,26 @@ const Privacy = () => {
                     data rights, please contact us:
                   </p>
                   <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                    <p>
-                      📧 Email:{' '}
+                    <p className="flex items-center gap-1.5">
+                      <FiMail
+                        className="w-3.5 h-3.5 text-primary-500 flex-shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span>Email:</span>{' '}
                       <a
-                        href="mailto:privacy@resumeaixpro.com"
+                        href="mailto:usmanmurtazaportfolio@gmail.com"
                         className="text-primary-500 hover:text-primary-600"
                       >
-                        privacy@resumeaixpro.com
+                        usmanmurtazaportfolio@gmail.com
                       </a>
                     </p>
-                    <p>📬 Mail: Resume Ai Pro, 123 Market Street, San Francisco, CA 94105</p>
+                    <p className="flex items-start gap-1.5">
+                      <FiMapPin
+                        className="w-3.5 h-3.5 text-primary-500 flex-shrink-0 mt-0.5"
+                        aria-hidden="true"
+                      />
+                      <span>Mail: Resume Ai Pro, 123 Market Street, Karachi, Sindh | PK 94105</span>
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -317,10 +328,6 @@ const Privacy = () => {
               <div className="mt-8 flex flex-wrap gap-4 justify-center text-sm">
                 <Link to="/terms" className="text-primary-500 hover:text-primary-600">
                   Terms of Service
-                </Link>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
-                <Link to="/cookies" className="text-primary-500 hover:text-primary-600">
-                  Cookie Policy
                 </Link>
                 <span className="text-gray-300 dark:text-gray-600">•</span>
                 <Link to="/contact" className="text-primary-500 hover:text-primary-600">

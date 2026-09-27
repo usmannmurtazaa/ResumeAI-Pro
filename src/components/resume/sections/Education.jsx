@@ -17,6 +17,10 @@ import {
   FiTrendingUp,
   FiMoreHorizontal,
   FiMove,
+  FiAward,
+  FiBookOpen,
+  FiFileText,
+  FiHome,
 } from 'react-icons/fi';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
@@ -32,11 +36,16 @@ import { useDebouncedCallback } from '../../../hooks/useDebounce';
 
 const getEducationLevelIcon = (degree) => {
   const lower = degree?.toLowerCase() || '';
-  if (lower.includes('phd') || lower.includes('doctor')) return '🎓';
-  if (lower.includes('master')) return '📚';
-  if (lower.includes('bachelor')) return '📖';
-  if (lower.includes('associate')) return '📝';
-  return '🏫';
+  if (lower.includes('phd') || lower.includes('doctor')) return FiAward;
+  if (lower.includes('master')) return FiBook;
+  if (lower.includes('bachelor')) return FiBookOpen;
+  if (lower.includes('associate')) return FiFileText;
+  return FiHome;
+};
+
+const renderEducationIcon = (degree, className = 'w-6 h-6') => {
+  const Icon = getEducationLevelIcon(degree);
+  return <Icon className={className} aria-hidden="true" />;
 };
 
 const getGPAFeedback = (gpa) => {
@@ -380,8 +389,8 @@ const Education = ({ data = [], onChange, onValidationChange }) => {
                                   >
                                     <FiMove className="w-5 h-5" />
                                   </div>
-                                  <span className="text-2xl flex-shrink-0">
-                                    {getEducationLevelIcon(edu.degree)}
+                                  <span className="flex-shrink-0 text-primary-500">
+                                    {renderEducationIcon(edu.degree)}
                                   </span>
                                   <div className="min-w-0">
                                     <h4 className="font-semibold truncate">

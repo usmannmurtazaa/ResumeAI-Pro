@@ -1,3 +1,21 @@
+// Firebase services for Resume Ai Pro.
+//
+// ── Important: Spark (free) plan limitations ─────────────────────────────
+//
+// This project runs on the Firebase Spark (free) plan, which does NOT
+// include Cloud Storage or Cloud Functions. Both are Blaze-only services.
+//
+// Because of that:
+//   • Firebase Storage SDK is NOT imported here — file uploads must go
+//     through another provider (e.g. Cloudinary, Supabase Storage) or
+//     stay client-side only.
+//   • Firebase Cloud Functions SDK is NOT imported here — server-side
+//     logic lives in Netlify Functions (see `netlify/functions/`).
+//
+// If you later upgrade to Blaze, you can re-add `firebase/storage` and
+// `firebase/functions` imports and re-export them the same way as the
+// other services below.
+
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import {
@@ -9,7 +27,6 @@ import {
 } from 'firebase/analytics';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import {
-  CACHE_SIZE_UNLIMITED,
   connectFirestoreEmulator,
   disableNetwork,
   enableNetwork,
@@ -20,7 +37,6 @@ import {
   persistentMultipleTabManager,
   waitForPendingWrites,
 } from 'firebase/firestore';
-import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
 import { getPerformance, trace } from 'firebase/performance';
 import { fetchAndActivate, getRemoteConfig } from 'firebase/remote-config';
 import {
@@ -30,20 +46,11 @@ import {
   isSupported as isMessagingSupported,
   onMessage,
 } from 'firebase/messaging';
-import {
-  connectStorageEmulator,
-  deleteObject,
-  getDownloadURL,
-  getStorage,
-  ref,
-  uploadBytesResumable,
-} from 'firebase/storage';
 
 // ── Environment Detection ─────────────────────────────────────────────────
 const isBrowser = typeof window !== 'undefined';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
-const functionsRegion = process.env.REACT_APP_FIREBASE_FUNCTIONS_REGION || 'us-central1';
 const analyticsEnabledByEnv = process.env.REACT_APP_ENABLE_ANALYTICS !== 'false';
 
 // ── Required Environment Variables ───────────────────────────────────────
@@ -126,6 +133,10 @@ export const app = initializeFirebase();
 export const auth = getAuth(app);
 
 // ── Firestore ────────────────────────────────────────────────────────────
+// Persistent cache is capped at 50 MB to avoid unbounded IndexedDB growth
+// on long-lived devices. Firestore automatically evicts the oldest entries
+// when the cap is reached, so this does not affect correctness.
+const FIRESTORE_CACHE_BYTES = 50 * 1024 * 1024; // 50 MB
 let firestoreCacheMode = 'memory';
 
 /**
@@ -140,7 +151,7 @@ const createFirestore = () => {
   try {
     const browserCache = persistentLocalCache({
       tabManager: persistentMultipleTabManager(),
-      cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+      cacheSizeBytes: FIRESTORE_CACHE_BYTES,
     });
     firestoreCacheMode = 'persistent';
     return initializeFirestore(app, { localCache: browserCache });
@@ -158,8 +169,6 @@ const createFirestore = () => {
 };
 
 export const db = createFirestore();
-export const storage = getStorage(app);
-export const functions = getFunctions(app, functionsRegion);
 
 // ── App Check (Production Only) ──────────────────────────────────────────
 export let appCheck = null;
@@ -287,6 +296,7 @@ if (isBrowser) {
 }
 
 // ── Emulator Support ─────────────────────────────────────────────────────
+// Only Auth and Firestore emulators are supported on Spark plan.
 const useEmulators = isDevelopment && process.env.REACT_APP_USE_EMULATORS === 'true';
 if (useEmulators) {
   const host = (svc) => process.env[`REACT_APP_FIREBASE_${svc}_EMULATOR_HOST`] || '127.0.0.1';
@@ -301,17 +311,7 @@ if (useEmulators) {
       host('FIRESTORE'),
       Number(process.env.REACT_APP_FIREBASE_FIRESTORE_EMULATOR_PORT || 8080)
     );
-    connectStorageEmulator(
-      storage,
-      host('STORAGE'),
-      Number(process.env.REACT_APP_FIREBASE_STORAGE_EMULATOR_PORT || 9199)
-    );
-    connectFunctionsEmulator(
-      functions,
-      host('FUNCTIONS'),
-      Number(process.env.REACT_APP_FIREBASE_FUNCTIONS_EMULATOR_PORT || 5001)
-    );
-    console.log('🔧 Firebase Emulators Connected');
+    console.log('🔧 Firebase Emulators Connected (Auth + Firestore only)');
   } catch (error) {
     errorDev('Emulator connection failed.', error);
   }
@@ -457,22 +457,6 @@ export const stopTrace = async (t) => {
   }
 };
 
-/**
- * Calls a Firebase Cloud Function.
- * @param {string} name - The function name.
- * @param {Object} [data={}] - The data to send to the function.
- * @returns {Promise<any>} The function's response data.
- */
-export const callFunction = async (name, data = {}) => {
-  try {
-    const result = await httpsCallable(functions, name)(data);
-    return result.data;
-  } catch (e) {
-    console.error(`callFunction "${name}" failed:`, e);
-    throw e;
-  }
-};
-
 export const isFirebaseInitialized = () => getApps().length > 0;
 
 /**
@@ -482,61 +466,12 @@ export const checkFirebaseHealth = async () => ({
   app: Boolean(app),
   auth: Boolean(auth),
   firestore: Boolean(db),
-  storage: Boolean(storage),
-  functions: Boolean(functions),
   analytics: Boolean(analytics),
   performance: Boolean(performance),
   remoteConfig: Boolean(remoteConfig),
   messaging: Boolean(messaging),
   appCheck: Boolean(appCheck),
 });
-
-/**
- * Uploads a file to Firebase Storage with progress tracking.
- * @param {string} path - The storage path.
- * @param {File|Blob} file - The file to upload.
- * @param {Function} [onProgress] - Callback receiving percentage (0-100).
- * @returns {Promise<{downloadURL: string, metadata: Object}>}
- */
-export const uploadFile = (path, file, onProgress) => {
-  const storageRef = ref(storage, path);
-  const uploadTask = uploadBytesResumable(storageRef, file, {
-    contentType: file?.type,
-  });
-
-  return new Promise((resolve, reject) => {
-    uploadTask.on(
-      'state_changed',
-      (snap) => {
-        if (onProgress && snap.totalBytes > 0) {
-          onProgress((snap.bytesTransferred / snap.totalBytes) * 100);
-        }
-      },
-      reject,
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve({
-            downloadURL,
-            metadata: uploadTask.snapshot.metadata,
-          });
-        } catch (e) {
-          reject(e);
-        }
-      }
-    );
-  });
-};
-
-export const deleteFile = async (path) => {
-  try {
-    await deleteObject(ref(storage, path));
-    return true;
-  } catch (e) {
-    console.error('deleteFile failed:', e);
-    return false;
-  }
-};
 
 // ── Unified Export ───────────────────────────────────────────────────────
 const firebaseServices = {
@@ -548,12 +483,6 @@ const firebaseServices = {
   },
   get db() {
     return db;
-  },
-  get storage() {
-    return storage;
-  },
-  get functions() {
-    return functions;
   },
   get analytics() {
     return analytics;

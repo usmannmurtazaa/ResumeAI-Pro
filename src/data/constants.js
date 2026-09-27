@@ -17,9 +17,9 @@ export const APP_NAME = 'Resume Ai Pro';
 export const APP_VERSION = '2.5.0';
 export const APP_DESCRIPTION = 'AI-powered ATS resume builder';
 export const APP_URL = 'https://resumeaixpro.netlify.app';
-export const SUPPORT_EMAIL = 'support@resumeaixpro.com';
-export const PRIVACY_EMAIL = 'privacy@resumeaixpro.com';
-export const LEGAL_EMAIL = 'legal@resumeaixpro.com';
+export const SUPPORT_EMAIL = 'usmanmurtazaportfolio@gmail.com';
+export const PRIVACY_EMAIL = 'usmanmurtazaportfolio@gmail.com';
+export const LEGAL_EMAIL = 'usmanmurtazaportfolio@gmail.com';
 
 // ── Feature Flags & Limits ──────────────────────────────────────────────
 

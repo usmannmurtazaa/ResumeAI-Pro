@@ -13,34 +13,28 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "/favicon-16x16.png",
-      "sizes": "16x16",
+      "src": "/favicon-96x96.png",
+      "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/favicon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
     },
     {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
@@ -51,7 +45,7 @@
       "url": "/builder",
       "icons": [
         {
-          "src": "/favicon-192x192.png",
+          "src": "/web-app-manifest-192x192.png",
           "sizes": "192x192"
         }
       ]
@@ -60,33 +54,16 @@
       "name": "My Resumes",
       "short_name": "Resumes",
       "description": "View and edit your saved resumes",
-      "url": "/dashboard",
+      "url": "/my-resumes",
       "icons": [
         {
-          "src": "/favicon-192x192.png",
+          "src": "/web-app-manifest-192x192.png",
           "sizes": "192x192"
         }
       ]
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Resume Ai Pro Dashboard"
-    },
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Resume Ai Pro Mobile View"
-    }
-  ],
   "related_applications": [],
   "prefer_related_applications": false,
-  "iarc_rating_id": "",
   "display_override": ["standalone", "minimal-ui"]
 }

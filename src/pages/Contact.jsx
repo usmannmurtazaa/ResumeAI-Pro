@@ -32,18 +32,12 @@ const CONTACT_INFO = [
   {
     icon: FiMail,
     label: 'Email',
-    value: 'support@resumeaixpro.com',
-    link: 'mailto:support@resumeaixpro.com',
+    value: 'usmanmurtazaportfolio@gmail.com',
+    link: 'mailto:usmanmurtazaportfolio@gmail.com',
     color: 'text-blue-500',
   },
-  {
-    icon: FiPhone,
-    label: 'Phone',
-    value: '+1 (555) 123-4567',
-    link: 'tel:+15551234567',
-    color: 'text-green-500',
-  },
-  { icon: FiMapPin, label: 'Office', value: 'San Francisco, CA', color: 'text-purple-500' },
+
+  { icon: FiMapPin, label: 'Office', value: 'Karachi, Sindh | PK', color: 'text-purple-500' },
   {
     icon: FiClock,
     label: 'Support Hours',

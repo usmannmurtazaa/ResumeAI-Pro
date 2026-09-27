@@ -16,6 +16,7 @@ import {
   FiMail,
   FiMessageCircle,
   FiSend,
+  FiShield,
   FiThumbsDown,
   FiThumbsUp,
   FiUser,
@@ -610,8 +611,11 @@ const MainLayout = ({
             >
               <div className="glass-card rounded-2xl border border-gray-200 p-4 shadow-xl dark:border-gray-700 sm:p-5">
                 <div className="flex items-start gap-3">
-                  <span className="hidden text-2xl sm:block" aria-hidden="true">
-                    🍪
+                  <span
+                    className="hidden flex-shrink-0 text-primary-500 sm:block"
+                    aria-hidden="true"
+                  >
+                    <FiShield className="h-6 w-6" />
                   </span>
                   <div className="flex-1 min-w-0">
                     <h4 className="mb-1 font-semibold text-sm">Cookie Preferences</h4>

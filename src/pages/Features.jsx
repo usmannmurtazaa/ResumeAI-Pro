@@ -3,32 +3,23 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   FiTarget,
-  FiZap,
   FiLayout,
   FiDownload,
-  FiCode,
   FiUsers,
   FiShield,
   FiTrendingUp,
   FiFileText,
-  FiBriefcase,
-  FiAward,
   FiStar,
   FiCheckCircle,
   FiArrowRight,
-  FiSmartphone,
-  FiGlobe,
-  FiLock,
   FiCpu,
   FiMessageCircle,
-  FiEye,
   FiEdit3,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { usePageTitle } from '../hooks/useDocumentTitle';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -40,7 +31,7 @@ const FEATURES = [
     icon: FiTarget,
     title: 'ATS Optimization',
     description:
-      'AI-powered keyword analysis and real-time ATS scoring to ensure your resume passes automated screening systems.',
+      'AI-powered keyword analysis and real-time ATS scoring to help your resume pass automated screening systems.',
     color: 'from-blue-500 to-cyan-500',
     badge: 'Core',
     details: [
@@ -56,7 +47,7 @@ const FEATURES = [
     icon: FiCpu,
     title: 'AI-Powered Suggestions',
     description:
-      "Smart content suggestions that improve your resume's impact using natural language processing and machine learning.",
+      'Smart content suggestions that improve the impact of your resume using AI-driven analysis.',
     color: 'from-purple-500 to-pink-500',
     badge: 'AI',
     details: [
@@ -72,15 +63,15 @@ const FEATURES = [
     icon: FiLayout,
     title: 'Professional Templates',
     description:
-      '25+ beautiful, ATS-friendly templates designed by professional resume writers and reviewed by recruiters.',
+      'ATS-friendly templates designed for clarity, readability, and recruiter-friendly formatting.',
     color: 'from-green-500 to-emerald-500',
     badge: 'Popular',
     details: [
       'Modern, Classic, Creative, Executive styles',
-      'Fully customizable colors and fonts',
+      'Customisable colours and fonts',
       'Section visibility controls',
       'Drag-and-drop reordering',
-      'Mobile-responsive preview',
+      'Live responsive preview',
     ],
   },
   {
@@ -95,8 +86,8 @@ const FEATURES = [
       'Real-time live preview',
       'Auto-save as you type',
       'Guided section completion',
-      'Keyboard shortcuts',
-      'Undo/redo support',
+      'Drag-and-drop section editing',
+      'Preview at multiple screen sizes',
     ],
   },
   {
@@ -104,15 +95,15 @@ const FEATURES = [
     icon: FiDownload,
     title: 'Export & Share',
     description:
-      'Download your resume in multiple formats or generate a shareable link that updates automatically.',
+      'Download your resume as a print-ready PDF with formatting preserved for both digital submission and printing.',
     color: 'from-indigo-500 to-blue-600',
     badge: 'Essential',
     details: [
       'PDF export (print-optimized)',
-      'DOCX (Microsoft Word) export',
-      'TXT (plain text) export',
-      'Shareable online link',
-      'Password-protected PDFs (Pro)',
+      'Consistent formatting preserved',
+      'ATS-parseable output',
+      'Preview before download',
+      'High-resolution output',
     ],
   },
   {
@@ -120,54 +111,59 @@ const FEATURES = [
     icon: FiTrendingUp,
     title: 'Resume Analytics',
     description:
-      'Track views, downloads, and ATS score improvements over time with detailed performance analytics.',
+      'Track your ATS score over time and see how each change affects your resume\u2019s compatibility.',
     color: 'from-pink-500 to-rose-500',
     badge: 'Pro',
     details: [
-      'View and download tracking',
       'ATS score history',
       'Improvement suggestions',
-      'Industry benchmarking',
-      'Export analytics reports',
+      'Section-by-section breakdown',
+      'Keyword coverage tracking',
+      'Progress overview',
     ],
   },
   {
     id: 'security',
     icon: FiShield,
-    title: 'Enterprise Security',
+    title: 'Privacy Focused',
     description:
-      'Bank-level encryption, GDPR compliance, and granular privacy controls to keep your data safe.',
+      'Your resume data is encrypted in transit and never shared with third parties for advertising.',
     color: 'from-gray-600 to-gray-800',
     details: [
-      '256-bit SSL encryption',
-      'GDPR and CCPA compliant',
-      'Two-factor authentication',
-      'Data export and deletion',
-      'Granular privacy settings',
+      'Encrypted in transit (HTTPS)',
+      'Resume data kept private to your account',
+      'Export your data anytime',
+      'No third-party advertising trackers',
+      'Granular account controls',
     ],
   },
   {
     id: 'support',
     icon: FiMessageCircle,
-    title: '24/7 Support',
+    title: 'Support',
     description:
-      'Access to comprehensive help center, live chat support, and a dedicated community of professionals.',
+      'Access to a comprehensive help center, video tutorials, and email support to help you get the most out of Resume Ai Pro.',
     color: 'from-teal-500 to-cyan-500',
     details: [
-      '24/7 live chat support',
-      'Comprehensive help center',
-      'Video tutorials and guides',
-      'Community forum',
+      'Help center with guides',
+      'Video tutorials',
       'Email support',
+      'FAQ with common questions',
+      'Direct contact form',
     ],
   },
 ];
 
-const STATS = [
-  { icon: FiUsers, value: '50K+', label: 'Active Users' },
-  { icon: FiFileText, value: '100K+', label: 'Resumes Created' },
-  { icon: FiTarget, value: '95%', label: 'ATS Pass Rate' },
-  { icon: FiStar, value: '4.9/5', label: 'User Rating' },
+const COMPARISON_ROWS = [
+  { feature: 'Resumes', free: '5', pro: 'Unlimited', business: 'Unlimited' },
+  { feature: 'Templates', free: 'Basic', pro: 'All', business: 'All' },
+  { feature: 'ATS Scoring', free: 'Basic', pro: 'Advanced', business: 'Advanced' },
+  { feature: 'AI Suggestions', free: 'Limited', pro: 'Unlimited', business: 'Unlimited' },
+  { feature: 'Export Formats', free: 'PDF', pro: 'PDF', business: 'PDF' },
+  { feature: 'Analytics', free: 'Basic', pro: 'Advanced', business: 'Advanced' },
+  { feature: 'Support', free: 'Email', pro: 'Priority Email', business: 'Dedicated Support' },
+  { feature: 'Team Management', free: '-', pro: '-', business: 'Included' },
+  { feature: 'Price', free: 'Free', pro: '$19.99/mo', business: '$49.99/mo' },
 ];
 
 // ── Sub-Components ────────────────────────────────────────────────────────
@@ -222,12 +218,6 @@ FeatureCard.displayName = 'FeatureCard';
 // ── Main Component ────────────────────────────────────────────────────────
 
 const Features = () => {
-  usePageTitle({
-    title: 'Features - Everything You Need',
-    description:
-      "Explore Resume Ai Pro's powerful features: ATS optimization, AI suggestions, 25+ templates, analytics, and enterprise security.",
-  });
-
   return (
     <MainLayout>
       <div className="min-h-screen pt-24 pb-12">
@@ -251,9 +241,14 @@ const Features = () => {
             </p>
           </motion.div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto mb-20">
-            {STATS.map((stat, index) => (
+          {/* Feature highlights - replaces the fabricated stats block */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto mb-20">
+            {[
+              { icon: FiTarget, label: 'ATS-Optimized', color: 'text-blue-500' },
+              { icon: FiCpu, label: 'AI-Powered', color: 'text-purple-500' },
+              { icon: FiDownload, label: 'Instant Export', color: 'text-green-500' },
+              { icon: FiShield, label: 'Privacy Focused', color: 'text-teal-500' },
+            ].map((item, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
@@ -262,9 +257,10 @@ const Features = () => {
                 transition={{ delay: index * 0.1 }}
                 className="text-center"
               >
-                <stat.icon className="w-8 h-8 text-primary-500 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">{stat.value}</div>
-                <div className="text-sm text-gray-500">{stat.label}</div>
+                <item.icon className={`w-8 h-8 mx-auto mb-2 ${item.color}`} />
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {item.label}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -301,7 +297,7 @@ const Features = () => {
                     <th className="text-center py-4 px-6 font-semibold">
                       <span className="gradient-text">Pro</span>
                       <Badge variant="warning" size="sm" className="ml-2">
-                        Popular
+                        Recommended
                       </Badge>
                     </th>
                     <th className="text-center py-4 px-6 font-semibold">
@@ -310,46 +306,7 @@ const Features = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { feature: 'Resumes', free: '5', pro: 'Unlimited', business: 'Unlimited' },
-                    {
-                      feature: 'Templates',
-                      free: 'Basic (5)',
-                      pro: 'All (25+)',
-                      business: 'All + Custom',
-                    },
-                    {
-                      feature: 'ATS Scoring',
-                      free: 'Basic',
-                      pro: 'Advanced',
-                      business: 'Advanced + API',
-                    },
-                    {
-                      feature: 'AI Suggestions',
-                      free: '10/mo',
-                      pro: 'Unlimited',
-                      business: 'Unlimited + Custom',
-                    },
-                    {
-                      feature: 'Export Formats',
-                      free: 'PDF',
-                      pro: 'PDF, DOCX, TXT',
-                      business: 'All + API',
-                    },
-                    {
-                      feature: 'Analytics',
-                      free: 'Basic',
-                      pro: 'Advanced',
-                      business: 'Advanced + Reports',
-                    },
-                    {
-                      feature: 'Support',
-                      free: 'Email',
-                      pro: 'Priority Chat',
-                      business: 'Dedicated Manager',
-                    },
-                    { feature: 'Price', free: 'Free', pro: '$19/mo', business: '$49/mo' },
-                  ].map((row, index) => (
+                  {COMPARISON_ROWS.map((row, index) => (
                     <tr key={index} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="py-4 px-6 text-sm font-medium">{row.feature}</td>
                       <td className="py-4 px-6 text-sm text-center text-gray-600 dark:text-gray-400">
@@ -378,7 +335,8 @@ const Features = () => {
             <Card className="p-10 bg-gradient-to-br from-primary-50/50 to-accent-50/50 dark:from-primary-900/20 dark:to-accent-900/20">
               <h2 className="text-2xl md:text-3xl font-bold mb-4">Ready to Build Your Resume?</h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Join 50,000+ professionals who've accelerated their careers with Resume Ai Pro.
+                Start building your ATS-optimised resume today. Free to try, no credit card
+                required.
               </p>
               <div className="flex flex-wrap gap-4 justify-center">
                 <Link to="/signup">

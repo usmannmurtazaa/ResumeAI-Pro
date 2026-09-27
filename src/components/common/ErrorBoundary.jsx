@@ -269,7 +269,7 @@ class ErrorBoundary extends Component {
       ].join('\n')
     );
 
-    window.location.href = `mailto:support@resumeaixpro.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:usmanmurtazaportfolio@gmail.com?subject=${subject}&body=${body}`;
   };
 
   toggleDetails = () => {
@@ -451,10 +451,10 @@ class ErrorBoundary extends Component {
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-6">
               If the problem persists, please contact{' '}
               <a
-                href="mailto:support@resumeaixpro.com"
+                href="mailto:usmanmurtazaportfolio@gmail.com"
                 className="text-primary-500 hover:text-primary-600 dark:text-primary-400 hover:underline"
               >
-                support@resumeaixpro.com
+                usmanmurtazaportfolio@gmail.com
               </a>
               {errorId && IS_PRODUCTION && (
                 <>

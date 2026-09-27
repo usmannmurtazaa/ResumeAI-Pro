@@ -18,6 +18,10 @@ import {
   FiTag,
   FiChevronRight,
   FiClock,
+  FiLayout,
+  FiFileText,
+  FiSquare,
+  FiMonitor,
 } from 'react-icons/fi';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
@@ -28,12 +32,18 @@ import { format, formatDistanceToNow } from 'date-fns';
 // ── Constants & Utilities ──────────────────────────────────────────────────
 
 const TEMPLATE_ICONS = {
-  modern: '🎨',
-  classic: '📄',
-  creative: '✨',
-  minimal: '◻️',
-  executive: '👔',
-  tech: '💻',
+  modern: FiLayout,
+  classic: FiFileText,
+  creative: FiStar,
+  minimal: FiSquare,
+  executive: FiUser,
+  tech: FiMonitor,
+};
+
+// Renders the correct SVG icon for a template name.
+const renderTemplateIcon = (template, className = 'w-5 h-5') => {
+  const Icon = TEMPLATE_ICONS[template?.toLowerCase()] || FiFileText;
+  return <Icon className={className} aria-hidden="true" />;
 };
 
 const RESUME_SECTIONS = ['personal', 'education', 'experience', 'skills'];
@@ -147,9 +157,9 @@ const CompactResumeCard = ({ resume, selected, onSelect, onEdit, onDownload, onP
                 : score >= 60
                   ? 'from-yellow-500 to-orange-500'
                   : 'from-red-500 to-pink-500'
-            } flex items-center justify-center text-white text-xl`}
+            } flex items-center justify-center text-white`}
           >
-            {TEMPLATE_ICONS[resume?.template?.toLowerCase()] || '📄'}
+            {renderTemplateIcon(resume?.template, 'w-5 h-5')}
           </div>
 
           <div className="flex-1 min-w-0">

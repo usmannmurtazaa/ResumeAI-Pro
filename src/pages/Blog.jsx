@@ -3,15 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiCalendar,
-  FiUser,
-  FiTag,
   FiClock,
-  FiTrendingUp,
   FiSearch,
-  FiChevronRight,
   FiBookOpen,
-  FiStar,
-  FiHeart,
   FiArrowRight,
   FiCheckCircle,
   FiZap,
@@ -19,7 +13,6 @@ import {
   FiBriefcase,
   FiMessageCircle,
   FiFileText,
-  FiAlertCircle,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';
@@ -69,12 +62,30 @@ const formatDate = (dateString) => {
   }
 };
 
-const formatViews = (views) => {
-  if (views >= 1000) return `${(views / 1000).toFixed(1)}k`;
-  return views.toString();
-};
-
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+// ── Author Avatar ────────────────────────────────────────────────────────
+// Renders an image when the avatar value is a path (starts with "/").
+// Falls back to the initials-based Avatar component otherwise.
+
+const AuthorAvatar = ({ author, size = 'sm' }) => {
+  const avatarValue = author?.avatar;
+  const isImagePath = typeof avatarValue === 'string' && avatarValue.startsWith('/');
+
+  if (isImagePath) {
+    const sizeClasses = {
+      xs: 'w-6 h-6',
+      sm: 'w-8 h-8',
+      md: 'w-10 h-10',
+      lg: 'w-12 h-12',
+    };
+    const className = `${sizeClasses[size] || sizeClasses.sm} rounded-full object-cover flex-shrink-0`;
+
+    return <img src={avatarValue} alt={author.name || 'Author'} className={className} />;
+  }
+
+  return <Avatar name={avatarValue} size={size} />;
+};
 
 // ── Blog Card Component ──────────────────────────────────────────────────
 
@@ -103,21 +114,9 @@ const BlogCard = React.memo(({ post }) => (
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
             {post.excerpt}
           </p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar name={post.author.avatar} size="sm" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">{post.author.name}</span>
-            </div>
-            <div className="flex items-center gap-3 text-gray-400">
-              <span className="flex items-center gap-1 text-xs">
-                <FiStar className="w-3 h-3" />
-                {formatViews(post.views)}
-              </span>
-              <span className="flex items-center gap-1 text-xs">
-                <FiHeart className="w-3 h-3" />
-                {post.likes}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <AuthorAvatar author={post.author} size="sm" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">{post.author.name}</span>
           </div>
         </div>
       </Card>
@@ -144,7 +143,6 @@ const Blog = () => {
 
   // ── Filtered Posts ──────────────────────────────────────────────────
 
-  // FIXED: Clearer filter logic
   const { featuredPost, gridPosts } = useMemo(() => {
     const featured = BLOG_POSTS.find((post) => post.featured);
 
@@ -272,7 +270,7 @@ const Blog = () => {
                       </p>
                       <div className="flex items-center gap-4 mb-4">
                         <div className="flex items-center gap-2">
-                          <Avatar name={featuredPost.author.avatar} size="sm" />
+                          <AuthorAvatar author={featuredPost.author} size="sm" />
                           <span className="text-sm font-medium">{featuredPost.author.name}</span>
                         </div>
                         <span className="text-sm text-gray-500">

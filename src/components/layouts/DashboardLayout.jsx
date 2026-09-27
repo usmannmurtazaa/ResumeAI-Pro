@@ -514,7 +514,7 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
       if (userMenuRef.current && !userMenuRef.current.contains(target)) setShowUserMenu(false);
     };
     document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler);
+    document.addEventListener('touchstart', handler, { passive: true });
     return () => {
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('touchstart', handler);
@@ -527,6 +527,7 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
       const typing = isTypingTarget(event.target);
 
       if (event.key === 'Escape') {
+        event.stopPropagation();
         closeFloatingPanels();
         setSidebarOpen(false);
         setShowCreateModal(false);
@@ -567,7 +568,7 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
       }
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        setActiveCommandIndex((prev) => (prev <= 0 ? filteredCommands.length - 1 : prev + 1));
+        setActiveCommandIndex((prev) => (prev <= 0 ? filteredCommands.length - 1 : prev - 1));
       }
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -607,7 +608,7 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                 animate={{ x: 0 }}
                 exit={{ x: -320 }}
                 transition={{ type: 'spring', damping: 24, stiffness: 240 }}
-                className="relative flex h-72 w-full flex-col bg-white shadow-xl dark:bg-gray-800"
+                className="relative flex h-screen w-full flex-col overflow-y-auto bg-white shadow-xl dark:bg-gray-800"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">

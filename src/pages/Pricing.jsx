@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiCheck, FiArrowRight } from 'react-icons/fi';
+import { Helmet } from 'react-helmet-async';
+import { FiCheck, FiArrowRight, FiLock, FiMail } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
-import { usePageTitle } from '../hooks/useDocumentTitle';
 import { useAuth } from '../hooks/useAuth';
+import { siteConfig } from '../config/siteConfig';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -19,49 +20,39 @@ const PLANS = [
     monthlyPrice: 0,
     yearlyPrice: 0,
     description: 'Perfect for getting started',
-    features: [
-      '5 Resumes',
-      'Basic Templates (5)',
-      'PDF Download',
-      'Basic ATS Scoring',
-      'Email Support',
-    ],
+    features: ['5 Resumes', 'Basic Templates', 'ATS Score Check', 'PDF Download', 'Email Support'],
     cta: 'Get Started Free',
     popular: false,
   },
   {
     name: 'Professional',
-    monthlyPrice: 12,
-    yearlyPrice: 8,
+    monthlyPrice: 19.99,
+    yearlyPrice: 13.99,
     description: 'For serious job seekers',
     features: [
       'Unlimited Resumes',
-      'All Premium Templates (25+)',
-      'Advanced ATS Optimization',
+      'Premium Templates',
       'AI-Powered Suggestions',
+      'Advanced ATS Optimization',
       'Cover Letter Builder',
+      'LinkedIn Import',
       'Priority Support',
-      'Resume Analytics',
-      'Multiple Export Formats',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Get Professional',
     popular: true,
   },
   {
-    name: 'Enterprise',
-    monthlyPrice: 39,
-    yearlyPrice: 29,
+    name: 'Business',
+    monthlyPrice: 49.99,
+    yearlyPrice: 34.99,
     description: 'For teams and agencies',
     features: [
       'Everything in Professional',
       'Team Management',
-      'Custom Templates',
+      'Analytics Dashboard',
       'API Access',
-      'Dedicated Account Manager',
-      'Phone Support',
       'Custom Branding',
-      'Bulk Operations',
-      'Advanced Analytics',
+      'Dedicated Support',
     ],
     cta: 'Contact Sales',
     popular: false,
@@ -71,29 +62,86 @@ const PLANS = [
 const FAQS = [
   {
     q: 'Can I cancel anytime?',
-    a: 'Yes, cancel anytime. Your access continues until the end of your billing period.',
+    a: 'Yes. You can cancel anytime from your account settings. Your access continues until the end of your current billing period.',
   },
   {
-    q: 'Is there a free trial?',
-    a: 'Yes! All paid plans come with a 14-day free trial. No credit card required.',
+    q: 'Do you have a free plan?',
+    a: 'Yes. The Free plan is free forever and includes 5 resumes, basic templates, ATS score check, and PDF download. No credit card required.',
   },
   {
-    q: 'Are templates ATS-friendly?',
-    a: 'Absolutely! All templates are optimized for Applicant Tracking Systems.',
+    q: 'Are the templates ATS-friendly?',
+    a: 'Yes. Every template is designed and tested to pass applicant tracking systems used by major employers.',
   },
   {
-    q: 'Can I switch plans?',
-    a: 'Yes, upgrade or downgrade anytime. Upgrades take effect immediately.',
+    q: 'Can I switch plans later?',
+    a: 'Yes. Upgrade or downgrade anytime. Upgrades take effect immediately; downgrades apply at your next billing cycle.',
   },
   {
-    q: 'What payment methods?',
-    a: 'We accept Visa, Mastercard, and American Express through Stripe.',
+    q: 'What payment methods do you accept?',
+    a: 'We accept Visa, Mastercard, and American Express through Stripe. All transactions are encrypted in transit.',
   },
   {
-    q: 'Is my data secure?',
-    a: 'Yes, 256-bit SSL encryption. Data never shared with third parties.',
+    q: 'Can I try before paying?',
+    a: 'Yes. Start with the Free plan - no credit card needed. Upgrade to a paid plan only when you are ready.',
   },
 ];
+
+// ── Structured Data ───────────────────────────────────────────────────────
+
+const PRODUCT_SCHEMA = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'Resume Ai Pro',
+  description:
+    'AI-powered ATS resume builder with professional templates and real-time optimisation.',
+  brand: {
+    '@type': 'Brand',
+    name: 'Resume Ai Pro',
+  },
+  offers: {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'USD',
+    lowPrice: '0',
+    highPrice: '49.99',
+    offerCount: '3',
+    offers: [
+      {
+        '@type': 'Offer',
+        name: 'Free',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+      {
+        '@type': 'Offer',
+        name: 'Professional',
+        price: '19.99',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+      {
+        '@type': 'Offer',
+        name: 'Business',
+        price: '49.99',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+    ],
+  },
+};
+
+const FAQ_SCHEMA = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQS.map((faq) => ({
+    '@type': 'Question',
+    name: faq.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.a,
+    },
+  })),
+};
 
 // ── Component ─────────────────────────────────────────────────────────────
 
@@ -102,19 +150,12 @@ const Pricing = () => {
   const { user } = useAuth();
   const [isYearly, setIsYearly] = useState(false);
 
-  usePageTitle({
-    title: 'Pricing - Simple, Transparent Plans',
-    description:
-      'Choose the perfect Resume Ai Pro plan. Free and premium options with ATS optimization, templates, and AI features.',
-  });
-
   // ── Handlers ─────────────────────────────────────────────────────────
 
   const handleCTA = useCallback(
     (planName) => {
-      if (planName === 'Enterprise') {
-        window.location.href =
-          'mailto:sales@resumeaixpro.com?subject=Enterprise%20Plan%20Inquiry';
+      if (planName === 'Business') {
+        window.location.href = `mailto:${siteConfig.contact.email}?subject=Business%20Plan%20Inquiry`;
       } else if (planName === 'Free') {
         navigate(user ? '/dashboard' : '/signup');
       } else {
@@ -126,6 +167,11 @@ const Pricing = () => {
 
   return (
     <MainLayout>
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(PRODUCT_SCHEMA)}</script>
+        <script type="application/ld+json">{JSON.stringify(FAQ_SCHEMA)}</script>
+      </Helmet>
+
       <div className="min-h-screen pt-24 pb-12">
         <div className="container mx-auto px-4">
           {/* Header */}
@@ -173,7 +219,7 @@ const Pricing = () => {
               )}
             >
               Yearly
-              <span className="ml-1 text-green-500 text-xs font-semibold">Save 33%</span>
+              <span className="ml-1 text-green-500 text-xs font-semibold">Save 30%</span>
             </span>
           </div>
 
@@ -182,6 +228,7 @@ const Pricing = () => {
             {PLANS.map((plan, index) => {
               const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
               const isFree = price === 0;
+              const isBusiness = plan.name === 'Business';
 
               return (
                 <motion.div
@@ -199,7 +246,7 @@ const Pricing = () => {
                     {plan.popular && (
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                         <Badge variant="warning" className="shadow-md">
-                          Most Popular
+                          Recommended
                         </Badge>
                       </div>
                     )}
@@ -228,7 +275,7 @@ const Pricing = () => {
                       </div>
                       {isYearly && !isFree && (
                         <p className="text-xs text-green-500 mt-1">
-                          Billed ${plan.yearlyPrice * 12}/year
+                          Billed ${(plan.yearlyPrice * 12).toFixed(2)}/year
                         </p>
                       )}
                     </div>
@@ -252,7 +299,7 @@ const Pricing = () => {
                       )}
                       size="lg"
                       onClick={() => handleCTA(plan.name)}
-                      icon={plan.name !== 'Enterprise' ? <FiArrowRight /> : undefined}
+                      icon={isBusiness ? <FiMail /> : <FiArrowRight />}
                     >
                       {plan.cta}
                     </Button>
@@ -262,12 +309,15 @@ const Pricing = () => {
             })}
           </div>
 
-          {/* Money Back Guarantee */}
+          {/* Trust Bar */}
           <div className="text-center mb-20">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
-              🔒 All plans include a <strong>14-day free trial</strong>. No credit card required.
-              <span className="mx-2">•</span>
-              30-day money-back guarantee.
+            <p className="text-gray-500 dark:text-gray-400 text-sm flex items-center justify-center gap-2 flex-wrap">
+              <FiLock className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              <span>
+                Secure checkout via Stripe.
+                <span className="mx-2">•</span>
+                No hidden fees. Cancel anytime.
+              </span>
             </p>
           </div>
 
@@ -286,17 +336,19 @@ const Pricing = () => {
             </div>
           </div>
 
-          {/* Enterprise CTA */}
+          {/* Business CTA */}
           <div className="mt-16 text-center">
             <Card className="p-8 bg-gradient-to-br from-primary-50/50 to-accent-50/50 dark:from-primary-900/20 dark:to-accent-900/20 inline-block mx-auto max-w-2xl">
               <h3 className="text-xl font-semibold mb-2">Need a custom plan?</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Contact our sales team for volume pricing, custom integrations, and dedicated
-                support.
+                Contact us for volume pricing, custom integrations, and dedicated support.
               </p>
               <Button
-                onClick={() => (window.location.href = 'mailto:sales@resumeaixpro.com')}
+                onClick={() =>
+                  (window.location.href = `mailto:${siteConfig.contact.email}?subject=Custom%20Plan%20Inquiry`)
+                }
                 variant="outline"
+                icon={<FiMail />}
               >
                 Contact Sales
               </Button>

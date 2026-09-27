@@ -16,6 +16,7 @@ import {
   FiUser,
   FiStar,
   FiLayout,
+  FiPalette,
   FiChevronRight,
   FiX,
   FiLoader,
@@ -38,10 +39,15 @@ import toast from 'react-hot-toast';
 // ── Constants ─────────────────────────────────────────────────────────────
 
 const TEMPLATES = [
-  { id: 'professional', name: 'Professional', icon: '📄', color: 'from-blue-500 to-cyan-500' },
-  { id: 'modern', name: 'Modern', icon: '🎨', color: 'from-purple-500 to-pink-500' },
-  { id: 'executive', name: 'Executive', icon: '👔', color: 'from-slate-700 to-slate-900' },
-  { id: 'creative', name: 'Creative', icon: '✨', color: 'from-orange-500 to-red-500' },
+  {
+    id: 'professional',
+    name: 'Professional',
+    icon: FiFileText,
+    color: 'from-blue-500 to-cyan-500',
+  },
+  { id: 'modern', name: 'Modern', icon: FiPalette, color: 'from-purple-500 to-pink-500' },
+  { id: 'executive', name: 'Executive', icon: FiBriefcase, color: 'from-slate-700 to-slate-900' },
+  { id: 'creative', name: 'Creative', icon: FiStar, color: 'from-orange-500 to-red-500' },
 ];
 
 const INITIAL_FORM_DATA = {
@@ -677,7 +683,7 @@ const CoverLetter = () => {
                       : 'border-gray-200 dark:border-gray-700'
                   }`}
                 >
-                  <span className="text-2xl">{t.icon}</span>
+                  <t.icon className="w-6 h-6 mx-auto" aria-hidden="true" />
                   <p className="text-xs font-medium mt-1">{t.name}</p>
                 </button>
               ))}
@@ -710,7 +716,7 @@ const CoverLetter = () => {
               onClick={() => applyTemplate(t.id)}
               className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 transition-all text-left"
             >
-              <span className="text-2xl">{t.icon}</span>
+              <t.icon className="w-6 h-6" aria-hidden="true" />
               <p className="font-medium text-sm mt-2">{t.name}</p>
               <p className="text-xs text-gray-500">Professional format</p>
             </button>

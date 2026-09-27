@@ -3,16 +3,12 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import {
   FiArrowLeft,
-  FiAward,
-  FiCheckCircle,
   FiFacebook,
   FiFileText,
   FiGithub,
   FiShield,
-  FiStar,
   FiTarget,
   FiTrendingUp,
-  FiUsers,
   FiZap,
 } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
@@ -26,18 +22,12 @@ import toast from 'react-hot-toast';
 
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
-const TARGET_STATS = {
-  users: 50000,
-  resumes: 100000,
-  successRate: 94,
-};
-
 const FEATURES = [
   { id: 'ats', icon: FiZap, text: 'AI-powered ATS optimization', iconClassName: 'text-yellow-300' },
   {
     id: 'templates',
     icon: FiFileText,
-    text: '25+ professional templates',
+    text: 'Professional resume templates',
     iconClassName: 'text-blue-300',
   },
   {
@@ -60,42 +50,9 @@ const FEATURES = [
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    id: 'sarah',
-    text: 'Resume Ai Pro helped me land my dream job at Google. The ATS optimization is incredible.',
-    author: 'Sarah Chen',
-    role: 'Software Engineer at Google',
-    avatar: 'SC',
-  },
-  {
-    id: 'michael',
-    text: 'I increased my interview calls by 300% after using this resume builder.',
-    author: 'Michael Rodriguez',
-    role: 'Product Manager at Microsoft',
-    avatar: 'MR',
-  },
-  {
-    id: 'emily',
-    text: 'The AI suggestions are spot-on. My resume went from average to outstanding.',
-    author: 'Emily Watson',
-    role: 'Marketing Director at Amazon',
-    avatar: 'EW',
-  },
-  {
-    id: 'david',
-    text: 'Finally, a resume builder that actually understands ATS systems.',
-    author: 'David Kim',
-    role: 'Senior Recruiter at Meta',
-    avatar: 'DK',
-  },
-];
-
 const TRUST_BADGES = [
-  { id: 'ssl', icon: FiShield, label: '256-bit SSL' },
-  { id: 'gdpr', icon: FiAward, label: 'GDPR Compliant' },
-  { id: 'rating', icon: FiStar, label: '4.9/5 Rating' },
-  { id: 'guarantee', icon: FiCheckCircle, label: '30-Day Guarantee' },
+  { id: 'ssl', icon: FiShield, label: 'SSL Secure' },
+  { id: 'gdpr', icon: FiShield, label: 'GDPR Ready' },
 ];
 
 const SOCIAL_PROVIDERS = [
@@ -118,18 +75,6 @@ const SOCIAL_PROVIDERS = [
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-const compactNumberFormatter = new Intl.NumberFormat(navigator.language || 'en', {
-  notation: 'compact',
-  maximumFractionDigits: 0,
-});
-
-const easeOutCubic = (value) => 1 - Math.pow(1 - value, 3);
-
-const formatStatValue = (key, value) => {
-  if (key === 'successRate') return `${value}%`;
-  return `${compactNumberFormatter.format(value)}+`;
-};
-
 const getRouteMeta = (pathname, title, subtitle) => {
   const routes = {
     '/login': {
@@ -140,7 +85,7 @@ const getRouteMeta = (pathname, title, subtitle) => {
     },
     '/signup': {
       heroTitle: 'Start Your Journey',
-      heroSubtitle: 'Join professionals using Resume Ai Pro to land better opportunities',
+      heroSubtitle: 'Build your ATS-optimised resume in minutes',
       formTitle: 'Create your free account',
       formSubtitle: 'Start building your ATS-optimized resume in minutes.',
     },
@@ -175,15 +120,9 @@ const AuthLayout = ({ children, title, subtitle }) => {
   const shouldReduceMotion = useReducedMotion();
   const { loginWithProvider } = useAuth();
 
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [loadingProvider, setLoadingProvider] = useState(null);
-  const [isPaused, setIsPaused] = useState(false);
-  const [stats, setStats] = useState(() =>
-    shouldReduceMotion ? TARGET_STATS : { users: 0, resumes: 0, successRate: 0 }
-  );
 
   const mountedRef = useRef(true);
-  const statsAnimationRef = useRef(null);
 
   const isLogin = location.pathname === '/login';
   const isSignup = location.pathname === '/signup';
@@ -194,68 +133,14 @@ const AuthLayout = ({ children, title, subtitle }) => {
     [location.pathname, title, subtitle]
   );
 
-  const currentTestimonialData = TESTIMONIALS[currentTestimonial];
-
   // ── Lifecycle ─────────────────────────────────────────────────────────
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (statsAnimationRef.current) cancelAnimationFrame(statsAnimationRef.current);
     };
   }, []);
-
-  // ── Animated Stats ───────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (shouldReduceMotion) {
-      setStats(TARGET_STATS);
-      return undefined;
-    }
-
-    const duration = 1200;
-    const startTime = performance.now();
-
-    const animateStats = (timestamp) => {
-      if (!mountedRef.current) return;
-
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const easedProgress = easeOutCubic(progress);
-
-      setStats({
-        users: Math.round(TARGET_STATS.users * easedProgress),
-        resumes: Math.round(TARGET_STATS.resumes * easedProgress),
-        successRate: Math.round(TARGET_STATS.successRate * easedProgress),
-      });
-
-      if (progress < 1) {
-        statsAnimationRef.current = requestAnimationFrame(animateStats);
-      }
-    };
-
-    statsAnimationRef.current = requestAnimationFrame(animateStats);
-
-    return () => {
-      if (statsAnimationRef.current) cancelAnimationFrame(statsAnimationRef.current);
-    };
-  }, [shouldReduceMotion]);
-
-  // ── Testimonial Rotation ─────────────────────────────────────────────
-
-  useEffect(() => {
-    if (shouldReduceMotion || TESTIMONIALS.length <= 1) return undefined;
-
-    if (isPaused) return undefined;
-
-    const intervalId = setInterval(() => {
-      if (mountedRef.current) {
-        setCurrentTestimonial((prev) => (prev + 1) % TESTIMONIALS.length);
-      }
-    }, 8000);
-
-    return () => clearInterval(intervalId);
-  }, [shouldReduceMotion, isPaused]);
 
   // ── Social Login Handler ────────────────────────────────────────────
 
@@ -331,7 +216,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
             transition={{ duration: 0.55 }}
           >
             {/* Brand */}
-            <div className="mb-8">
+            <div className="mb-10">
               <div className="mb-2 flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
                   <FiFileText className="h-6 w-6 text-white" />
@@ -347,114 +232,34 @@ const AuthLayout = ({ children, title, subtitle }) => {
               <p className="mt-2 text-lg text-white/80">{routeMeta.heroSubtitle}</p>
             </div>
 
-            {/* Stats */}
-            <motion.div
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="mb-8 grid grid-cols-3 gap-4"
-            >
-              {[
-                { key: 'users', icon: FiUsers, label: 'Active Users' },
-                { key: 'resumes', icon: FiFileText, label: 'Resumes Created' },
-                { key: 'successRate', icon: FiTrendingUp, label: 'Success Rate' },
-              ].map(({ key, icon: Icon, label }) => (
-                <div
-                  key={key}
-                  className="rounded-xl border border-white/20 bg-white/10 p-4 text-center backdrop-blur-sm hover:bg-white/15 transition-colors"
-                >
-                  <Icon className="mx-auto mb-2 h-6 w-6 text-white/80" />
-                  <div className="text-2xl font-bold text-white">
-                    {formatStatValue(key, stats[key])}
-                  </div>
-                  <div className="text-xs text-white/70">{label}</div>
-                </div>
-              ))}
-            </motion.div>
-
             {/* Features */}
             <motion.div
               initial={shouldReduceMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 }}
-              className="mb-8 space-y-3"
+              transition={{ delay: 0.15 }}
+              className="space-y-4"
             >
               {FEATURES.map((feature, index) => (
                 <motion.div
                   key={feature.id}
                   initial={shouldReduceMotion ? false : { opacity: 0, x: -16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + index * 0.08 }}
+                  transition={{ delay: 0.2 + index * 0.08 }}
                   className="group flex items-center gap-3 text-white/90"
                 >
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/20 group-hover:scale-105 group-hover:bg-white/30 transition-all">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/20 group-hover:scale-105 group-hover:bg-white/30 transition-all">
                     <feature.icon className={cn('h-4 w-4', feature.iconClassName)} />
                   </div>
                   <span className="text-base">{feature.text}</span>
                 </motion.div>
               ))}
             </motion.div>
-
-            {/* Testimonial */}
-            <div
-              className="rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm"
-              aria-live="polite"
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}
-            >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentTestimonialData.id}
-                  initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={shouldReduceMotion ? {} : { opacity: 0, y: -16 }}
-                  transition={{ duration: 0.35 }}
-                >
-                  <div className="mb-3 flex gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <FiStar key={i} className="h-4 w-4 fill-current text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="mb-4 text-base italic text-white/90">
-                    "{currentTestimonialData.text}"
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-white/30 to-white/10 font-semibold text-white">
-                      {currentTestimonialData.avatar}
-                    </div>
-                    <div>
-                      <p className="font-medium text-white">{currentTestimonialData.author}</p>
-                      <p className="text-sm text-white/70">{currentTestimonialData.role}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-
-              {/* Dot indicators */}
-              <div className="mt-4 flex justify-center gap-2">
-                {TESTIMONIALS.map((testimonial, index) => (
-                  <button
-                    key={testimonial.id}
-                    type="button"
-                    onClick={() => setCurrentTestimonial(index)}
-                    className={cn(
-                      'h-1.5 rounded-full transition-all',
-                      index === currentTestimonial
-                        ? 'w-8 bg-white'
-                        : 'w-2 bg-white/40 hover:bg-white/60'
-                    )}
-                    aria-label={`View testimonial ${index + 1}`}
-                    aria-pressed={index === currentTestimonial}
-                  />
-                ))}
-              </div>
-            </div>
           </motion.div>
         </div>
 
         {/* Trust Badges */}
         <div className="absolute bottom-4 left-4 right-4 z-10">
-          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-white/65">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-white/65">
             {TRUST_BADGES.map((badge) => (
               <div key={badge.id} className="flex items-center gap-1.5">
                 <badge.icon className="h-3 w-3" />
@@ -563,16 +368,13 @@ const AuthLayout = ({ children, title, subtitle }) => {
 
           {/* Mobile Trust Badges */}
           <div className="mt-8 lg:hidden">
-            <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-400">
-              <div className="flex items-center gap-1">
-                <FiShield className="h-3 w-3" /> SSL Secure
-              </div>
-              <div className="flex items-center gap-1">
-                <FiAward className="h-3 w-3" /> GDPR Ready
-              </div>
-              <div className="flex items-center gap-1">
-                <FiStar className="h-3 w-3" /> 4.9/5 Rating
-              </div>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-400">
+              {TRUST_BADGES.map((badge) => (
+                <div key={badge.id} className="flex items-center gap-1">
+                  <badge.icon className="h-3 w-3" />
+                  {badge.label}
+                </div>
+              ))}
             </div>
           </div>
 

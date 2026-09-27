@@ -36,6 +36,10 @@ import {
   FiBarChart2,
   FiUpload,
   FiEdit,
+  FiLayout,
+  FiSquare,
+  FiUser,
+  FiMonitor,
 } from 'react-icons/fi';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
@@ -48,13 +52,20 @@ import { formatDistanceToNow } from 'date-fns';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive', 'tech'];
+
 const TEMPLATE_ICONS = {
-  modern: '🎨',
-  classic: '📄',
-  creative: '✨',
-  minimal: '◻️',
-  executive: '👔',
-  tech: '💻',
+  modern: FiLayout,
+  classic: FiFileText,
+  creative: FiStar,
+  minimal: FiSquare,
+  executive: FiUser,
+  tech: FiMonitor,
+};
+
+// Renders the correct SVG icon for a template name.
+const renderTemplateIcon = (template, className = 'w-6 h-6') => {
+  const Icon = TEMPLATE_ICONS[template?.toLowerCase()] || FiFileText;
+  return <Icon className={className} aria-hidden="true" />;
 };
 
 // ── StatCard Component (Extracted) ─────────────────────────────────────────
@@ -738,8 +749,8 @@ const UserDashboard = () => {
                   navigate(`/builder?template=${template}`);
                 }}
               >
-                <div className="aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg mb-2 flex items-center justify-center text-4xl">
-                  {TEMPLATE_ICONS[template]}
+                <div className="aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg mb-2 flex items-center justify-center">
+                  {renderTemplateIcon(template, 'w-16 h-16 text-gray-400 dark:text-gray-500')}
                 </div>
                 <p className="text-center text-sm font-medium capitalize">{template}</p>
               </motion.div>

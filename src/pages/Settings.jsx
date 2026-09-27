@@ -35,6 +35,7 @@ import {
   FiWifi,
   FiWifiOff,
   FiHardDrive,
+  FiAlertTriangle,
 } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
@@ -189,7 +190,7 @@ const Settings = () => {
       id: 1,
       device: 'MacBook Pro',
       browser: 'Chrome',
-      location: 'San Francisco, CA',
+      location: 'Karachi, Sindh | PK',
       lastActive: 'Now',
       current: true,
     },
@@ -197,7 +198,7 @@ const Settings = () => {
       id: 2,
       device: 'iPhone 15 Pro',
       browser: 'Safari',
-      location: 'San Francisco, CA',
+      location: 'Karachi, Sindh | PK',
       lastActive: '2 hours ago',
       current: false,
     },
@@ -589,7 +590,10 @@ const Settings = () => {
       >
         <div className="space-y-4">
           <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200">
-            <p className="text-sm text-red-700 font-medium mb-2">⚠️ This cannot be undone</p>
+            <div className="flex items-center gap-2 mb-2">
+              <FiAlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" aria-hidden="true" />
+              <span className="text-sm text-red-700 font-medium">This cannot be undone</span>
+            </div>
             <p className="text-xs text-red-600">
               All resumes, data, and settings will be permanently deleted.
             </p>

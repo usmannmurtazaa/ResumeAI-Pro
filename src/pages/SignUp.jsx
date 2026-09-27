@@ -3,7 +3,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import SignUpForm from '../components/auth/SignUpForm';
 import AuthLayout from '../components/layouts/AuthLayout';
-import { usePageTitle } from '../hooks/useDocumentTitle';
 import Loader from '../components/common/Loader';
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -15,13 +14,6 @@ const SignUp = () => {
   // Get plan from URL params
   const params = new URLSearchParams(location.search);
   const selectedPlan = params.get('plan');
-
-  // Set page title
-  usePageTitle({
-    title: 'Create Your Free Account',
-    description:
-      'Join 50,000+ professionals using Resume Ai Pro to create ATS-optimized resumes. Free plan available.',
-  });
 
   // Show loader while auth initializes
   if (loading || initializing) {

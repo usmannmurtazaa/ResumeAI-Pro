@@ -2,7 +2,7 @@ import { FiLayout, FiFileText, FiStar, FiCpu, FiBook } from 'react-icons/fi';
 
 export const siteConfig = {
   name: 'Resume Ai Pro',
-  shortName: 'Maniesta',
+  shortName: 'Resume Ai Pro',
   tagline: 'AI-Powered ATS Resume Builder',
   description:
     'Create professional, ATS-optimized resumes with AI-powered suggestions. Stand out from the crowd and land your dream job faster with Resume Ai Pro.',
@@ -20,38 +20,36 @@ export const siteConfig = {
   ],
 
   url: process.env.REACT_APP_SITE_URL || 'https://resumeaixpro.netlify.app',
-  apiUrl: process.env.REACT_APP_API_URL || 'https://api.resumeai.pro',
+  // apiUrl removed - the app uses the Firebase SDK directly, not a REST API.
+  // Any code reading siteConfig.apiUrl will receive an empty string.
+  apiUrl: '',
 
   author: 'Usman Murtaza',
   authorLinks: {
-    github: 'https://github.com/usmannmurtazaa',
+    github: 'https://github.com/Usmannmurtazaa',
     portfolio: 'https://usmanmurtaza.netlify.app',
-    linkedin: 'https://linkedin.com/in/usmanmurtaza01',
-    twitter: 'https://twitter.com/usmannmurtazaa',
-    email: 'usman@resumeai.pro',
+    linkedin: 'https://www.linkedin.com/in/Usmannmurtazaa/',
+    twitter: 'https://twitter.com/usmann_murtazaa',
+    email: 'usmanmurtazaportfolio@gmail.com',
   },
 
+  // Brand social accounts have not been created yet. Empty strings here
+  // mean the Footer (and any other consumer that filters on `href`) will
+  // simply not render these icons. Add real URLs when the accounts exist.
   links: {
-    twitter: 'https://twitter.com/resumeaixpro',
-    github: 'https://github.com/resumeaixpro',
-    linkedin: 'https://linkedin.com/company/resumeaixpro',
-    facebook: 'https://facebook.com/resumeaixpro',
-    instagram: 'https://instagram.com/resumeaixpro',
-    discord: 'https://discord.gg/resumeaixpro',
+    twitter: '',
+    github: '',
+    linkedin: '',
+    facebook: '',
+    instagram: '',
+    discord: '',
   },
 
   contact: {
-    email: 'support@resumeai.pro',
-    sales: 'sales@resumeai.pro',
-    press: 'press@resumeai.pro',
-    careers: 'careers@resumeai.pro',
-    phone: '+1 (555) 123-4567',
+    email: 'usmanmurtazaportfolio@gmail.com',
     address: {
-      street: '123 Tech Street',
-      city: 'San Francisco',
-      state: 'CA',
-      zip: '94105',
-      country: 'United States',
+      city: 'Karachi',
+      country: 'Pakistan',
     },
   },
 
@@ -64,8 +62,8 @@ export const siteConfig = {
 
   twitter: {
     card: 'summary_large_image',
-    site: '@resumeaixpro',
-    creator: '@usmannmurtazaa',
+    site: '@usmann_murtazaa',
+    creator: '@usmann_murtazaa',
   },
 
   themeColor: '#3b82f6',
@@ -75,9 +73,6 @@ export const siteConfig = {
 
   termsUrl: '/terms',
   privacyUrl: '/privacy',
-  cookiePolicyUrl: '/cookies',
-  refundPolicyUrl: '/refund',
-  accessibilityUrl: '/accessibility',
 
   pricing: {
     currency: 'USD',
@@ -195,6 +190,192 @@ export const siteConfig = {
     },
   ],
 
+  // ── SEO Configuration ────────────────────────────────────────────────
+  // Central source of truth for per-route metadata. The SeoManager
+  // component reads this via getSeoForPath(pathname) and injects the
+  // correct <title>, <meta name="description">, <link rel="canonical">,
+  // and <meta name="robots"> for the current route.
+  seo: {
+    siteName: 'Resume Ai Pro',
+    siteUrl: 'https://resumeaixpro.netlify.app',
+    defaultImage: 'https://resumeaixpro.netlify.app/og-image.png',
+    defaultImageAlt: 'Resume Ai Pro - AI-Powered ATS Resume Builder',
+    twitterHandle: '@usmann_murtazaa',
+    twitterCreator: '@usmann_murtazaa',
+    authorName: 'Usman Murtaza',
+    defaultRobots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+
+    routes: {
+      // ─── Public, indexable ────────────────────────────────────────
+      '/': {
+        title: 'Resume Ai Pro - AI-Powered ATS Resume Builder',
+        description:
+          'Create ATS-optimised resumes with AI-powered suggestions, 25+ professional templates, real-time scoring, and instant PDF download. Free to start.',
+        robots: 'index, follow',
+      },
+      '/features': {
+        title: 'Features - AI Resume Builder Tools | Resume Ai Pro',
+        description:
+          'Explore Resume Ai Pro features: AI content generation, ATS scoring, keyword suggestions, LinkedIn import, and 25+ professional templates.',
+        robots: 'index, follow',
+      },
+      '/pricing': {
+        title: 'Pricing - Free & Premium Resume Plans | Resume Ai Pro',
+        description:
+          'Simple pricing for every job seeker. Start free, upgrade for unlimited resumes, premium templates, and AI-powered optimisation. No credit card required.',
+        robots: 'index, follow',
+      },
+      '/templates': {
+        title: 'Resume Templates - Professional & ATS-Ready | Resume Ai Pro',
+        description:
+          'Browse 25+ professional resume templates optimised for ATS. Modern, classic, creative, and tech designs. Pick one, customise, and download.',
+        robots: 'index, follow',
+      },
+      '/blog': {
+        title: 'Career & Resume Blog | Resume Ai Pro',
+        description:
+          'Practical advice on resume writing, ATS optimisation, job search strategy, and career growth - written for modern job seekers.',
+        robots: 'index, follow',
+      },
+      '/blog/:slug': {
+        title: 'Article | Resume Ai Pro',
+        description:
+          'Practical advice on resume writing, ATS optimisation, and job search strategy from the Resume Ai Pro team.',
+        robots: 'index, follow',
+      },
+      '/about': {
+        title: 'About Usman Murtaza & Resume Ai Pro',
+        description:
+          'Learn about Resume Ai Pro, created by Usman Murtaza - a Full Stack Developer building modern web applications with React and AI.',
+        robots: 'index, follow',
+      },
+      '/careers': {
+        title: 'Careers - Join Resume Ai Pro',
+        description:
+          'Explore career opportunities at Resume Ai Pro and the Maniesta ecosystem. We hire developers, designers, and content writers.',
+        robots: 'index, follow',
+      },
+      '/contact': {
+        title: 'Contact Resume Ai Pro - Support & Inquiries',
+        description:
+          'Get in touch with Resume Ai Pro for support, feedback, partnerships, or business inquiries. We respond within 24 hours.',
+        robots: 'index, follow',
+      },
+      '/help': {
+        title: 'Help Center | Resume Ai Pro',
+        description:
+          'Find answers to common questions about using Resume Ai Pro - building resumes, ATS scoring, templates, billing, and account management.',
+        robots: 'index, follow',
+      },
+      '/faq': {
+        title: 'FAQ - Frequently Asked Questions | Resume Ai Pro',
+        description:
+          'Answers to common questions about ATS resumes, Resume Ai Pro features, pricing, and how to land more interviews.',
+        robots: 'index, follow',
+      },
+      '/privacy': {
+        title: 'Privacy Policy | Resume Ai Pro',
+        description:
+          'How Resume Ai Pro collects, uses, and protects your personal data. Your privacy and data security are our priority.',
+        robots: 'index, follow',
+      },
+      '/terms': {
+        title: 'Terms of Service | Resume Ai Pro',
+        description:
+          'Terms and conditions for using Resume Ai Pro. Read our acceptable use policy, subscription terms, and user responsibilities.',
+        robots: 'index, follow',
+      },
+
+      // ─── Auth routes (not for indexing) ──────────────────────────
+      '/login': {
+        title: 'Sign In | Resume Ai Pro',
+        description: 'Sign in to your Resume Ai Pro account to manage your resumes.',
+        robots: 'noindex, nofollow',
+      },
+      '/signup': {
+        title: 'Create Account | Resume Ai Pro',
+        description:
+          'Create a free Resume Ai Pro account and start building ATS-optimised resumes.',
+        robots: 'noindex, nofollow',
+      },
+      '/forgot-password': {
+        title: 'Reset Password | Resume Ai Pro',
+        description: 'Reset your Resume Ai Pro account password.',
+        robots: 'noindex, nofollow',
+      },
+      '/verify-email': {
+        title: 'Verify Email | Resume Ai Pro',
+        description: 'Verify your email address to complete your Resume Ai Pro registration.',
+        robots: 'noindex, nofollow',
+      },
+
+      // ─── Protected routes (require auth, not for indexing) ───────
+      '/dashboard': {
+        title: 'Dashboard | Resume Ai Pro',
+        description: 'Your Resume Ai Pro dashboard.',
+        robots: 'noindex, nofollow',
+      },
+      '/builder/:id?': {
+        title: 'Resume Builder | Resume Ai Pro',
+        description: 'Build and edit your resume with AI assistance.',
+        robots: 'noindex, nofollow',
+      },
+      '/profile': {
+        title: 'Profile | Resume Ai Pro',
+        description: 'Manage your Resume Ai Pro profile.',
+        robots: 'noindex, nofollow',
+      },
+      '/settings': {
+        title: 'Settings | Resume Ai Pro',
+        description: 'Manage your Resume Ai Pro preferences.',
+        robots: 'noindex, nofollow',
+      },
+      '/my-resumes': {
+        title: 'My Resumes | Resume Ai Pro',
+        description: 'View and manage all of your resumes.',
+        robots: 'noindex, nofollow',
+      },
+      '/preview/:id': {
+        title: 'Preview Resume | Resume Ai Pro',
+        description: 'Preview your resume.',
+        robots: 'noindex, nofollow',
+      },
+      '/ats-scanner': {
+        title: 'ATS Scanner | Resume Ai Pro',
+        description: 'Scan your resume for ATS compatibility and get optimisation tips.',
+        robots: 'noindex, nofollow',
+      },
+      '/billing': {
+        title: 'Billing | Resume Ai Pro',
+        description: 'Manage your Resume Ai Pro subscription and billing.',
+        robots: 'noindex, nofollow',
+      },
+      '/analytics': {
+        title: 'Analytics | Resume Ai Pro',
+        description: 'Track your resume performance and job application analytics.',
+        robots: 'noindex, nofollow',
+      },
+      '/cover-letter': {
+        title: 'Cover Letter Builder | Resume Ai Pro',
+        description: 'Build AI-assisted cover letters that match your resume.',
+        robots: 'noindex, nofollow',
+      },
+
+      // ─── Admin (never index) ──────────────────────────────────────
+      '/admin/*': {
+        title: 'Admin | Resume Ai Pro',
+        description: 'Resume Ai Pro admin panel.',
+        robots: 'noindex, nofollow',
+      },
+    },
+
+    notFound: {
+      title: 'Page Not Found | Resume Ai Pro',
+      description: 'The page you are looking for does not exist or has been moved.',
+      robots: 'noindex, nofollow',
+    },
+  },
+
   // Navigation
   navigation: {
     main: [
@@ -205,11 +386,11 @@ export const siteConfig = {
     ],
     dashboard: [
       { name: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard' },
-      { name: 'My Resumes', href: '/dashboard/resumes', icon: 'FileText' },
-      { name: 'Templates', href: '/dashboard/templates', icon: 'Layout' },
-      { name: 'ATS Scanner', href: '/dashboard/scanner', icon: 'Scan' },
-      { name: 'Analytics', href: '/dashboard/analytics', icon: 'BarChart' },
-      { name: 'Settings', href: '/dashboard/settings', icon: 'Settings' },
+      { name: 'My Resumes', href: '/my-resumes', icon: 'FileText' },
+      { name: 'Templates', href: '/templates', icon: 'Layout' },
+      { name: 'ATS Scanner', href: '/ats-scanner', icon: 'Scan' },
+      { name: 'Analytics', href: '/analytics', icon: 'BarChart' },
+      { name: 'Settings', href: '/settings', icon: 'Settings' },
     ],
     admin: [
       { name: 'Admin Dashboard', href: '/admin', icon: 'Shield' },
@@ -239,7 +420,6 @@ export const siteConfig = {
       legal: [
         { name: 'Privacy', href: '/privacy' },
         { name: 'Terms', href: '/terms' },
-        { name: 'Cookie Policy', href: '/cookies' },
       ],
     },
   },
@@ -387,7 +567,8 @@ export const siteConfig = {
   buildTime: process.env.REACT_APP_BUILD_TIME || new Date().toISOString(),
 };
 
-// Helper functions
+// ── Helper functions ─────────────────────────────────────────────────
+
 export const getFeatureFlag = (featureName) => {
   return siteConfig.features[featureName] || false;
 };
@@ -402,7 +583,7 @@ export const getTemplateById = (templateId) => {
 };
 
 export const getIndustryById = (industryId) => {
-  return siteConfig.industries.find((i) => i.id === industryId);
+  return siteConfig.industries?.find((i) => i.id === industryId);
 };
 
 export const getErrorMessage = (category, errorCode) => {
@@ -434,6 +615,42 @@ export const getNavigationItem = (path) => {
     ...siteConfig.navigation.admin,
   ];
   return allNav.find((item) => item.href === path);
+};
+
+/**
+ * Returns the SEO metadata for a given pathname.
+ *
+ * Handles:
+ *   - Exact matches            → '/pricing'
+ *   - Dynamic segments         → '/blog/:slug', '/builder/:id?', '/preview/:id'
+ *   - Prefix wildcards         → '/admin/*'
+ *   - Fallback to notFound     → for unmatched paths
+ *
+ * @param {string} pathname - The current route pathname (without search/hash).
+ * @returns {{ title: string, description: string, robots: string }}
+ */
+export const getSeoForPath = (pathname) => {
+  const routes = siteConfig.seo.routes;
+
+  // 1. Exact match
+  if (routes[pathname]) return routes[pathname];
+
+  // 2. Dynamic segments - convert ':param' to a wildcard and test
+  for (const pattern of Object.keys(routes)) {
+    if (!pattern.includes(':')) continue;
+    const regexStr = '^' + pattern.replace(/:[^/]+/g, '[^/]+').replace(/\?$/, '?') + '$';
+    if (new RegExp(regexStr).test(pathname)) return routes[pattern];
+  }
+
+  // 3. Prefix wildcards - e.g. '/admin/*'
+  for (const pattern of Object.keys(routes)) {
+    if (!pattern.endsWith('/*')) continue;
+    const prefix = pattern.slice(0, -2);
+    if (pathname === prefix || pathname.startsWith(prefix + '/')) return routes[pattern];
+  }
+
+  // 4. Fallback
+  return siteConfig.seo.notFound;
 };
 
 export default siteConfig;

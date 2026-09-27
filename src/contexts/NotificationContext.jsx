@@ -8,6 +8,25 @@ import React, {
   useRef,
 } from 'react';
 import {
+  FiCheckCircle,
+  FiInfo,
+  FiAlertTriangle,
+  FiXCircle,
+  FiFileText,
+  FiEdit3,
+  FiTrash2,
+  FiDownload,
+  FiCopy,
+  FiBarChart2,
+  FiAward,
+  FiCreditCard,
+  FiGift,
+  FiTool,
+  FiBell,
+  FiUser,
+  FiZap,
+} from 'react-icons/fi';
+import {
   collection,
   query,
   where,
@@ -63,26 +82,35 @@ export const NotificationTypes = {
   TIP: 'tip',
 };
 
-const NOTIFICATION_ICONS = {
-  [NotificationTypes.SUCCESS]: '✅',
-  [NotificationTypes.INFO]: 'ℹ️',
-  [NotificationTypes.WARNING]: '⚠️',
-  [NotificationTypes.ERROR]: '❌',
-  [NotificationTypes.RESUME_CREATED]: '📄',
-  [NotificationTypes.RESUME_UPDATED]: '📝',
-  [NotificationTypes.RESUME_DELETED]: '🗑️',
-  [NotificationTypes.RESUME_DOWNLOADED]: '📥',
-  [NotificationTypes.RESUME_DUPLICATED]: '📋',
-  [NotificationTypes.ATS_SCORE_CHANGED]: '📊',
-  [NotificationTypes.ATS_SCORE_MILESTONE]: '🏆',
-  [NotificationTypes.SUBSCRIPTION_EXPIRING]: '💳',
-  [NotificationTypes.SUBSCRIPTION_RENEWED]: '✅',
-  [NotificationTypes.PAYMENT_FAILED]: '❌',
-  [NotificationTypes.NEW_FEATURE]: '🎉',
-  [NotificationTypes.SYSTEM_MAINTENANCE]: '🔧',
-  [NotificationTypes.SYSTEM]: '🔔',
-  [NotificationTypes.WELCOME]: '👋',
-  [NotificationTypes.TIP]: '💡',
+// SVG icon components for each notification type. Consumers can render
+// them via React.createElement or as <IconComponent /> in JSX.
+const NOTIFICATION_ICON_COMPONENTS = {
+  [NotificationTypes.SUCCESS]: FiCheckCircle,
+  [NotificationTypes.INFO]: FiInfo,
+  [NotificationTypes.WARNING]: FiAlertTriangle,
+  [NotificationTypes.ERROR]: FiXCircle,
+  [NotificationTypes.RESUME_CREATED]: FiFileText,
+  [NotificationTypes.RESUME_UPDATED]: FiEdit3,
+  [NotificationTypes.RESUME_DELETED]: FiTrash2,
+  [NotificationTypes.RESUME_DOWNLOADED]: FiDownload,
+  [NotificationTypes.RESUME_DUPLICATED]: FiCopy,
+  [NotificationTypes.ATS_SCORE_CHANGED]: FiBarChart2,
+  [NotificationTypes.ATS_SCORE_MILESTONE]: FiAward,
+  [NotificationTypes.SUBSCRIPTION_EXPIRING]: FiCreditCard,
+  [NotificationTypes.SUBSCRIPTION_RENEWED]: FiCheckCircle,
+  [NotificationTypes.PAYMENT_FAILED]: FiXCircle,
+  [NotificationTypes.NEW_FEATURE]: FiGift,
+  [NotificationTypes.SYSTEM_MAINTENANCE]: FiTool,
+  [NotificationTypes.SYSTEM]: FiBell,
+  [NotificationTypes.WELCOME]: FiUser,
+  [NotificationTypes.TIP]: FiZap,
+};
+
+// Renders the correct SVG icon for a notification type as a React element,
+// suitable for passing to toast({ icon }) or rendering inline.
+const renderNotificationIcon = (type) => {
+  const IconComponent = NOTIFICATION_ICON_COMPONENTS[type] || FiBell;
+  return <IconComponent className="w-5 h-5" aria-hidden="true" />;
 };
 
 const NOTIFICATION_COLORS = {
@@ -325,13 +353,13 @@ export const NotificationProvider = ({ children }) => {
           metadata,
           read: false,
           createdAt: serverTimestamp(),
-          icon: NOTIFICATION_ICONS[type] || '🔔',
+          icon: type || NotificationTypes.SYSTEM,
         };
 
         const docRef = await addDoc(collection(db, 'notifications'), notificationData);
 
         if (showToast) {
-          toast(message, { icon: NOTIFICATION_ICONS[type] || '🔔', duration: 5000 });
+          toast(message, { icon: renderNotificationIcon(type), duration: 5000 });
         }
 
         if (showBrowser) {
@@ -480,7 +508,7 @@ export const NotificationProvider = ({ children }) => {
       welcome: (userName, options) =>
         createNotification({
           type: NotificationTypes.WELCOME,
-          title: 'Welcome to Resume Ai Pro! 🎉',
+          title: 'Welcome to Resume Ai Pro!',
           message: `Hi ${userName}! Let's create your first professional resume.`,
           ...options,
         }),
@@ -515,7 +543,7 @@ export const NotificationProvider = ({ children }) => {
       atsScoreMilestone: (resumeName, score, options) =>
         createNotification({
           type: NotificationTypes.ATS_SCORE_MILESTONE,
-          title: '🏆 ATS Milestone!',
+          title: 'ATS Milestone!',
           message: `"${resumeName}" reached ${score}%!`,
           ...options,
         }),
@@ -536,7 +564,7 @@ export const NotificationProvider = ({ children }) => {
       tip: (tip, options) =>
         createNotification({
           type: NotificationTypes.TIP,
-          title: '💡 Pro Tip',
+          title: 'Pro Tip',
           message: tip,
           ...options,
         }),
@@ -573,7 +601,7 @@ export const NotificationProvider = ({ children }) => {
       hasUnreadOfType,
       notify,
       NotificationTypes,
-      NotificationIcons: NOTIFICATION_ICONS,
+      NotificationIcons: NOTIFICATION_ICON_COMPONENTS,
       NotificationColors: NOTIFICATION_COLORS,
     }),
     [

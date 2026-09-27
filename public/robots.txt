@@ -3,6 +3,10 @@
 
 User-agent: *
 Allow: /
+
+# Private and authenticated routes.
+# These pages also emit <meta name="robots" content="noindex"> via the app,
+# so Google will not index them even if a link is discovered.
 Disallow: /dashboard
 Disallow: /builder
 Disallow: /profile
@@ -14,22 +18,11 @@ Disallow: /ats-scanner
 Disallow: /analytics
 Disallow: /cover-letter
 Disallow: /admin
-Disallow: /verify-email
 
-# Public marketing routes: all allowed (no Disallow means allow)
-# /
-# /features
-# /pricing
-# /templates
-# /blog
-# /about
-# /careers
-# /contact
-# /help
-# /faq
-# /privacy
-# /terms
-# /login (allow for SEO signal but private in practice)
-# /signup
+# Auth routes — no SEO value
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /verify-email
 
 Sitemap: https://resumeaixpro.netlify.app/sitemap.xml

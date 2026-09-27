@@ -2,27 +2,19 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  FiUser,
   FiFileText,
-  FiActivity,
   FiAward,
-  FiTrendingUp,
   FiClock,
   FiTarget,
-  FiZap,
   FiCheckCircle,
-  FiRefreshCw,
   FiArrowRight,
   FiPlus,
-  FiStar,
   FiInfo,
   FiBell,
   FiX,
   FiChevronRight,
-  FiUsers,
   FiBarChart2,
   FiDownload,
-  FiEye,
   FiCalendar,
 } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
@@ -35,10 +27,8 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Progress from '../components/ui/Progress';
-import Tooltip from '../components/ui/Tooltip';
 import Modal from '../components/ui/Modal';
-import { SkeletonText, SkeletonCard } from '../components/ui/Skeleton';
-import { usePageTitle } from '../hooks/useDocumentTitle';
+import { SkeletonCard } from '../components/ui/Skeleton';
 import toast from 'react-hot-toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -87,7 +77,7 @@ const KEYBOARD_SHORTCUTS = [
 
 // ── StatCard Component ────────────────────────────────────────────────────
 
-const StatCard = React.memo(({ icon: Icon, label, value, trend, trendLabel, color, onClick }) => (
+const StatCard = React.memo(({ icon: Icon, label, value, color, onClick }) => (
   <motion.div
     whileHover={onClick ? { scale: 1.02 } : undefined}
     onClick={onClick}
@@ -102,16 +92,6 @@ const StatCard = React.memo(({ icon: Icon, label, value, trend, trendLabel, colo
         <p className="text-2xl sm:text-3xl font-bold mt-1 text-gray-900 dark:text-white truncate">
           {value}
         </p>
-        {trend !== undefined && (
-          <div className="flex items-center gap-1.5 mt-2">
-            <span
-              className={cn('text-xs font-medium', trend >= 0 ? 'text-green-500' : 'text-red-500')}
-            >
-              {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
-            </span>
-            {trendLabel && <span className="text-xs text-gray-400">{trendLabel}</span>}
-          </div>
-        )}
       </div>
       <div className={cn('p-3 rounded-xl bg-gradient-to-br', color)}>
         <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -152,7 +132,8 @@ QuickActionCard.displayName = 'QuickActionCard';
 
 const ResumeCardCompact = React.memo(({ resume, onClick }) => {
   const score = resume.atsScore || 0;
-  const updatedAt = resume.updatedAt ? new Date(resume.updatedAt) : new Date();
+  const updatedAt =
+    resume.updatedAt?.toDate?.() || (resume.updatedAt ? new Date(resume.updatedAt) : new Date());
   const timeAgo = (() => {
     const diff = Date.now() - updatedAt.getTime();
     const minutes = Math.floor(diff / 60000);
@@ -235,23 +216,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [greeting, setGreeting] = useState('');
+  const [greeting] = useState(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  });
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
-
-  usePageTitle({
-    title: 'Dashboard',
-    description: 'Manage your resumes, track ATS scores, and monitor your progress.',
-  });
-
-  // ── Greeting ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good morning');
-    else if (hour < 18) setGreeting('Good afternoon');
-    else setGreeting('Good evening');
-  }, []);
 
   // ── Welcome message from signup ─────────────────────────────────────
 
@@ -299,7 +271,6 @@ const Dashboard = () => {
   );
 
   const handleUpgrade = useCallback(() => navigate('/pricing'), [navigate]);
-  const handleViewNotifications = useCallback(() => navigate('/notifications'), [navigate]);
 
   // ── Loading State ────────────────────────────────────────────────────
 
@@ -438,8 +409,6 @@ const Dashboard = () => {
             icon={FiFileText}
             label="Total Resumes"
             value={stats?.total || 0}
-            trend={stats?.total > 0 ? 12 : undefined}
-            trendLabel="from last week"
             color="from-blue-500 to-cyan-500"
             onClick={() => navigate('/my-resumes')}
           />
@@ -454,8 +423,6 @@ const Dashboard = () => {
             icon={FiTarget}
             label="Avg ATS Score"
             value={`${stats?.avgScore || 0}%`}
-            trend={stats?.avgScore > 70 ? 5 : -3}
-            trendLabel="from last month"
             color="from-purple-500 to-pink-500"
             onClick={() => navigate('/analytics')}
           />
@@ -464,7 +431,6 @@ const Dashboard = () => {
             label="Notifications"
             value={unreadCount}
             color="from-orange-500 to-red-500"
-            onClick={handleViewNotifications}
           />
         </div>
 
@@ -569,7 +535,7 @@ const Dashboard = () => {
             Let's get you started with your first professional resume. Choose a template to begin.
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {['modern', 'classic', 'creative', 'minimal'].map((template) => (
+            {['modern', 'classic', 'creative', 'tech'].map((template) => (
               <button
                 key={template}
                 onClick={async () => {

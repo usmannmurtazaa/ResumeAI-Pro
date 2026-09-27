@@ -1,3 +1,13 @@
+# Netlify SPA fallback for Resume Ai Pro
+#
+# All app routes serve index.html with status 200 so React Router can
+# handle navigation client-side. Deep links like /pricing, /blog/some-slug,
+# /builder/abc123, and /admin/users all resolve to index.html and the client
+# renders the correct page.
+#
+# Existing static files (JS, CSS, images, fonts under /static/* and
+# /assets/*) are served first by Netlify automatically — no explicit
+# rules are needed for them. Netlify only falls through to the catch-all
+# below when no real file matches the requested path.
+
 /*    /index.html   200
-/assets/*    /assets/:splat   200
-/static/*    /static/:splat   200

@@ -1,4 +1,3 @@
-
 # 🚀 ResumeAI Pro
 
 <div align="center">
@@ -15,7 +14,6 @@
   <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" alt="React" />
   <img src="https://img.shields.io/badge/Firebase-10-FFCA28?logo=firebase&logoColor=white" alt="Firebase" />
   <img src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/OpenAI-API-412991?logo=openai&logoColor=white" alt="OpenAI" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome" />
 </p>
@@ -39,24 +37,27 @@ The project was designed and built end-to-end by **[Usman Murtaza](https://usman
 - Live preview that updates as you type
 - Auto-save to Firestore
 - Multiple resume templates with distinct visual styles
-- Export to PDF
+- Export to PDF (client-side generation)
+- Drag-and-drop reordering of resume sections
 
 ### AI Assistance
 - AI-driven content suggestions for summaries, bullet points, and skill descriptions
-- Suggestions powered by the OpenAI API
 - ATS-focused phrasing prompts
+- Suggestions served through a server-side proxy so API keys stay private
 
 ### Authentication & Data
 - Email/password authentication via Firebase
-- Google sign-in
+- Google sign-in via Firebase Auth
 - Per-user resume storage in Cloud Firestore
 - User dashboard for managing multiple resumes
+- Persistent offline cache via Firestore (persistentLocalCache)
 
 ### UI/UX
 - Responsive layout across mobile, tablet, and desktop
 - Dark theme with glassmorphism styling
-- Smooth transitions and micro-interactions
+- Smooth transitions and micro-interactions (Framer Motion)
 - Accessible markup and keyboard navigation
+- Command palette (⌘K) for quick navigation
 
 ---
 
@@ -74,22 +75,30 @@ The live demo is connected to a Firebase project and supports real sign-up. You 
 | Category | Technology |
 |---|---|
 | Framework | React 18 |
-| Routing | React Router |
+| Routing | React Router v6 |
 | Styling | Tailwind CSS |
 | Animations | Framer Motion |
-| Forms | React Hook Form |
-| Icons | Lucide React |
-| PDF export | jsPDF + html2canvas |
+| Icons | Lucide React + React Icons |
+| State Management | Context API + Redux (for complex flows) |
+| Drag & Drop | React DnD |
+| Notifications | React Hot Toast |
+| PDF export | Client-side generation (see `src/utils/pdfGenerator.js`) |
 
 ### Backend & Services
 | Category | Technology |
 |---|---|
-| Platform | Firebase |
+| Platform | Firebase (Spark plan) |
 | Database | Cloud Firestore |
 | Auth | Firebase Authentication |
-| Storage | Firebase Storage |
-| AI | OpenAI API |
+| Analytics | Firebase Analytics (GA4) |
+| Performance | Firebase Performance Monitoring |
+| Remote Config | Firebase Remote Config |
+| Messaging | Firebase Cloud Messaging |
+| Serverless Functions | Netlify Functions (Stripe, AI proxy, resume helpers) |
+| AI | OpenAI API (called through Netlify Functions, not from the browser) |
 | Hosting | Netlify |
+
+> **Note on the Spark plan:** this project runs on Firebase's free Spark plan, which does not include Cloud Storage or Cloud Functions. File uploads and server-side logic are handled via Netlify Functions instead. Cloud Firestore is used for all persistent data.
 
 ---
 
@@ -99,8 +108,9 @@ The live demo is connected to a Firebase project and supports real sign-up. You 
 
 - Node.js 18 or higher
 - npm 9 or higher
-- A Firebase project
-- An OpenAI API key
+- A Firebase project (Spark plan is sufficient)
+- A Netlify account (for functions and hosting, if deploying)
+- An OpenAI API key, if you enable AI features — keep this key server-side only (in Netlify environment variables), never in the browser
 
 ### Installation
 
@@ -114,7 +124,7 @@ npm install
 
 # 3. Set up environment variables
 cp .env.example .env
-# Edit .env with your Firebase and OpenAI credentials
+# Edit .env with your Firebase credentials
 
 # 4. Start the development server
 npm start
@@ -127,16 +137,24 @@ The app runs at `http://localhost:3000`.
 Create a `.env` file at the project root with:
 
 ```
+# Firebase (client-side, safe to expose — these are public identifiers)
 REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
 REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 REACT_APP_FIREBASE_PROJECT_ID=your_project_id
 REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
-REACT_APP_OPENAI_API_KEY=your_openai_api_key
+
+# Optional Firebase services
+REACT_APP_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
+REACT_APP_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
+REACT_APP_FIREBASE_VAPID_KEY=your_vapid_key
+
+# Site URL (for canonical URLs and analytics)
+REACT_APP_SITE_URL=https://resumeaixpro.netlify.app
 ```
 
-Refer to `.env.example` for the full list.
+> **Server-side secrets (OpenAI API key, Stripe keys, etc.) go in Netlify's environment variables**, not in this file. See `netlify/functions/` for how those are consumed. Refer to `.env.example` for the full list.
 
 ---
 
@@ -158,16 +176,22 @@ netlify deploy --prod
 
 ```
 ResumeAI-Pro/
-├── public/
+├── public/               # Static assets and index.html
+├── netlify/
+│   └── functions/        # Serverless functions (Stripe, AI proxy, resume helpers)
 ├── src/
 │   ├── components/       # Reusable UI components
-│   ├── pages/            # Route-level pages
-│   ├── context/          # React contexts (auth, theme)
-│   ├── firebase/         # Firebase configuration
+│   ├── config/           # siteConfig and route metadata
+│   ├── contexts/         # React contexts (auth, theme, settings, notifications, resume)
+│   ├── data/             # Static data (blog posts, constants)
 │   ├── hooks/            # Custom React hooks
-│   ├── utils/            # Helpers and constants
-│   └── App.js
+│   ├── pages/            # Route-level pages
+│   ├── services/         # Firebase, analytics, storage, export services
+│   ├── styles/           # Global CSS and animations
+│   ├── utils/            # Helpers (pdfGenerator, atsScoring, validators, formatters)
+│   └── App.jsx           # Root component with routes
 ├── .env.example
+├── netlify.toml          # Netlify build, redirects, headers, CSP
 ├── package.json
 └── README.md
 ```

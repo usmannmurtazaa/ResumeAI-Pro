@@ -1,8 +1,9 @@
 // ── Service Worker Configuration ────────────────────────────────────────────
 const CONFIG = {
-  // Cache versioning - bump this number to force cache updates
-  CACHE_VERSION: '2.5.0',
-  
+  // Cache versioning — bump this number on every content-changing deploy
+  // to force old caches to be deleted on activate.
+  CACHE_VERSION: '2.5.1',
+
   // Cache names
   CACHE_NAMES: {
     STATIC: 'resumeai-static',
@@ -11,7 +12,7 @@ const CONFIG = {
     IMAGES: 'resumeai-images',
     PAGES: 'resumeai-pages',
   },
-  
+
   // Cache limits (max items)
   LIMITS: {
     DYNAMIC: 50,
@@ -19,28 +20,24 @@ const CONFIG = {
     PAGES: 20,
     FONTS: 10,
   },
-  
+
   // Time before stale resources are revalidated (ms)
   STALE_TIMEOUT: 30 * 60 * 1000, // 30 minutes
-  
-  // Resources to precache (critical for offline functionality)
-  PRECACHE_URLS: [
-    '/',
-    '/index.html',
-    '/manifest.json',
-    '/favicon.ico',
-    '/offline.html', // Optional: offline fallback page
-  ],
-  
-  // Cache strategies per resource type
+
+  // Precache list — only files that actually exist in /public.
+  // (Removed /offline.html — that file does not exist in public/.)
+  PRECACHE_URLS: ['/', '/index.html', '/manifest.json', '/favicon.ico'],
+
+  // Cache strategies per resource type.
+  // Note: STATIC_ASSETS (JS/CSS bundles) are intentionally bypassed in the
+  // fetch handler below — webpack chunks change on every deploy and must
+  // not be served stale from the SW cache.
   STRATEGIES: {
-    NAVIGATION: 'network-first', // Always get fresh HTML
-    STATIC_ASSETS: 'cache-first',  // JS, CSS bundles (hashed in filenames)
-    FONTS: 'cache-first',          // Fonts rarely change
-    IMAGES: 'stale-while-revalidate', // Images can be stale
-    API: 'network-only',           // Never cache API responses
+    NAVIGATION: 'network-first',
+    FONTS: 'cache-first',
+    IMAGES: 'stale-while-revalidate',
   },
-  
+
   // URL patterns to exclude from caching
   EXCLUDE_PATTERNS: [
     '/api/',
@@ -51,10 +48,10 @@ const CONFIG = {
     'analytics',
     'gtag',
     'gtm',
-    'hot-update', // HMR in development
+    'hot-update',
     'chrome-extension',
-    'sockjs-node',  // Webpack dev server
-    '.json',        // Dynamic JSON (except manifest)
+    'sockjs-node',
+    '.json',
   ],
 };
 
@@ -72,7 +69,7 @@ const getCacheName = (type) => {
  * Checks if a URL should be excluded from caching.
  */
 const shouldExclude = (url) => {
-  return CONFIG.EXCLUDE_PATTERNS.some(pattern => url.includes(pattern));
+  return CONFIG.EXCLUDE_PATTERNS.some((pattern) => url.includes(pattern));
 };
 
 /**
@@ -86,13 +83,31 @@ const getResourceType = (request) => {
   if (destination === 'font' || pathname.includes('fonts.')) return 'FONTS';
   if (destination === 'image' || /\.(png|jpg|jpeg|gif|svg|webp|ico)$/i.test(pathname)) return 'IMAGES';
   if (destination === 'document' || request.mode === 'navigate') return 'PAGES';
-  
+
   return 'DYNAMIC';
 };
 
 /**
+ * Trims a cache to stay within its size limit.
+ * Called after every cache write instead of using setInterval — SWs are
+ * terminated after ~30s of idle time, so timers never fire.
+ */
+const trimCache = async (cacheName, maxItems) => {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+
+  if (keys.length > maxItems) {
+    const deleteCount = keys.length - maxItems;
+    for (let i = 0; i < deleteCount; i++) {
+      await cache.delete(keys[i]);
+    }
+    console.log(`🗑️ Trimmed ${deleteCount} items from ${cacheName}`);
+  }
+};
+
+/**
  * Network-first strategy (best for HTML pages).
- * Falls back to cache if network fails, then to offline page.
+ * Falls back to cache if network fails, then to offline fallback.
  */
 const networkFirst = async (request, cacheName) => {
   try {
@@ -101,7 +116,7 @@ const networkFirst = async (request, cacheName) => {
     // Cache valid responses
     if (networkResponse && networkResponse.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone());
     }
 
     return networkResponse;
@@ -119,11 +134,6 @@ const networkFirst = async (request, cacheName) => {
       if (indexShell) {
         return indexShell;
       }
-
-      const offlinePage = await caches.match('/offline.html');
-      if (offlinePage) {
-        return offlinePage;
-      }
     }
 
     return new Response('You are offline and this resource is not cached.', {
@@ -137,22 +147,22 @@ const networkFirst = async (request, cacheName) => {
 };
 
 /**
- * Cache-first strategy (best for versioned assets like JS/CSS bundles).
+ * Cache-first strategy (best for versioned assets like fonts).
  * Falls back to network if not in cache.
  */
 const cacheFirst = async (request, cacheName) => {
   const cachedResponse = await caches.match(request);
-  
+
   if (cachedResponse) {
     // Check if cache is stale
     const cacheTime = getCacheTime(cachedResponse);
     if (cacheTime && Date.now() - cacheTime > CONFIG.STALE_TIMEOUT) {
-      // Stale - update in background
+      // Stale - update in background (fire and forget)
       updateCache(request, cacheName);
     }
     return cachedResponse;
   }
-  
+
   // Not in cache, try network
   return networkFirst(request, cacheName);
 };
@@ -184,20 +194,34 @@ const staleWhileRevalidate = async (request, cacheName) => {
 
 /**
  * Updates cache with fresh network response.
+ * Runs a trim after every write so caches stay within their size limit —
+ * this replaces the previous setInterval approach which never fired because
+ * service workers are terminated after ~30s of idle time.
  */
 const updateCache = async (request, cacheName) => {
   try {
     const cache = await caches.open(cacheName);
     const networkResponse = await fetch(request);
-    
+
     if (networkResponse && networkResponse.ok) {
       await cache.put(request, networkResponse.clone());
+
+      // Trim the cache we just wrote to. Fire-and-forget — we don't await it.
+      const type = Object.keys(CONFIG.CACHE_NAMES).find(
+        (key) => getCacheName(key) === cacheName
+      );
+      if (type && CONFIG.LIMITS[type]) {
+        trimCache(cacheName, CONFIG.LIMITS[type]).catch(() => {
+          // Ignore trim errors — they should not break the fetch
+        });
+      }
+
       return networkResponse;
     }
   } catch (error) {
     console.warn('Background cache update failed:', error);
   }
-  
+
   // If everything fails, return whatever was cached
   return caches.match(request);
 };
@@ -210,43 +234,27 @@ const getCacheTime = (response) => {
   return dateHeader ? new Date(dateHeader).getTime() : null;
 };
 
-/**
- * Trims cache to stay within size limits.
- */
-const trimCache = async (cacheName, maxItems) => {
-  const cache = await caches.open(cacheName);
-  const keys = await cache.keys();
-  
-  if (keys.length > maxItems) {
-    const deleteCount = keys.length - maxItems;
-    for (let i = 0; i < deleteCount; i++) {
-      await cache.delete(keys[i]);
-    }
-    console.log(`🗑️ Trimmed ${deleteCount} items from ${cacheName}`);
-  }
-};
-
 // ── Install Event ───────────────────────────────────────────────────────────
 
 self.addEventListener('install', (event) => {
   console.log('🚀 Service Worker installing...');
-  
+
   event.waitUntil(
     (async () => {
       try {
         const cache = await caches.open(getCacheName('STATIC'));
-        
+
         // Precache critical resources
-        const cachePromises = CONFIG.PRECACHE_URLS.map(url => {
-          return cache.add(url).catch(error => {
+        const cachePromises = CONFIG.PRECACHE_URLS.map((url) => {
+          return cache.add(url).catch((error) => {
             console.warn(`Failed to precache ${url}:`, error);
             // Don't fail the whole install if one resource fails
           });
         });
-        
+
         await Promise.allSettled(cachePromises);
         console.log('✅ Precache complete');
-        
+
         // Force the waiting service worker to become active
         return self.skipWaiting();
       } catch (error) {
@@ -261,41 +269,41 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   console.log('🎯 Service Worker activating...');
-  
+
   event.waitUntil(
     (async () => {
       try {
         // Get all cache names
         const cacheNames = await caches.keys();
-        
+
         // Get current cache prefixes
-        const currentCaches = Object.values(CONFIG.CACHE_NAMES).map(name => 
-          `${name}-v${CONFIG.CACHE_VERSION}`
+        const currentCaches = Object.values(CONFIG.CACHE_NAMES).map(
+          (name) => `${name}-v${CONFIG.CACHE_VERSION}`
         );
-        
+
         // Delete old caches
-        const deletePromises = cacheNames.map(cacheName => {
+        const deletePromises = cacheNames.map((cacheName) => {
           if (!currentCaches.includes(cacheName)) {
             console.log('🗑️ Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         });
-        
+
         await Promise.all(deletePromises.filter(Boolean));
         console.log('✅ Old caches cleaned');
-        
+
         // Take control of all clients immediately
         await self.clients.claim();
-        
+
         // Notify all clients about the update
         const clients = await self.clients.matchAll();
-        clients.forEach(client => {
+        clients.forEach((client) => {
           client.postMessage({
             type: 'SW_UPDATED',
             version: CONFIG.CACHE_VERSION,
           });
         });
-        
+
         console.log('✅ Service Worker activated');
       } catch (error) {
         console.error('❌ Activation failed:', error);
@@ -309,54 +317,57 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  
+
   // Skip non-GET requests
   if (request.method !== 'GET') return;
-  
-  // Skip cross-origin requests (except fonts.googleapis.com)
-  if (!url.origin.includes(self.location.origin) && 
-      !url.hostname.includes('fonts.googleapis.com') &&
-      !url.hostname.includes('fonts.gstatic.com')) {
+
+  // Skip cross-origin requests (except Google Fonts).
+  // Uses exact origin comparison instead of substring includes() to avoid
+  // matching attacker-controlled hostnames like resumeaixpro.netlify.app.evil.com
+  const isSameOrigin = url.origin === self.location.origin;
+  const isGoogleFonts =
+    url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
+
+  if (!isSameOrigin && !isGoogleFonts) {
     return;
   }
 
-  // Critical: do not intercept webpack/React chunks - prevents SW from returning
+  // Critical: do not intercept webpack/React chunks — prevents SW from returning
   // synthetic 503 Responses that show as "Failed to load resource: 503" for lazy routes.
   if (
     url.pathname.startsWith('/static/') ||
     request.destination === 'script' ||
     request.destination === 'style'
   ) {
-    event.respondWith(fetch(request));
     return;
   }
-  
+
   // Skip excluded URLs
   if (shouldExclude(request.url)) return;
-  
+
   const resourceType = getResourceType(request);
   const cacheName = getCacheName(resourceType);
   const strategy = CONFIG.STRATEGIES[resourceType] || 'network-first';
-  
+
   // Choose strategy based on resource type
   switch (strategy) {
     case 'network-first':
       event.respondWith(networkFirst(request, cacheName));
       break;
-      
+
     case 'cache-first':
       event.respondWith(cacheFirst(request, cacheName));
       break;
-      
+
     case 'stale-while-revalidate':
       event.respondWith(staleWhileRevalidate(request, cacheName));
       break;
-      
+
     case 'network-only':
       // Don't cache, just fetch
       event.respondWith(fetch(request));
       break;
-      
+
     default:
       event.respondWith(networkFirst(request, cacheName));
   }
@@ -368,61 +379,37 @@ self.addEventListener('message', (event) => {
   if (!event.data || !event.data.type) {
     return;
   }
-  
+
   const { type, payload } = event.data;
-  
-  // FIX: If no type is provided, ignore the message instead of logging warning
-  if (!type) {
-    return; // This prevents the "Unknown message type: undefined" warning
-  }
-  
+
   switch (type) {
     case 'SKIP_WAITING':
       self.skipWaiting();
       break;
-      
+
     case 'CLEAR_ALL_CACHES':
       event.waitUntil(
-        caches.keys().then(cacheNames => {
-          return Promise.all(
-            cacheNames.map(name => caches.delete(name))
-          );
+        caches.keys().then((cacheNames) => {
+          return Promise.all(cacheNames.map((name) => caches.delete(name)));
         })
       );
       break;
-      
+
     case 'GET_VERSION':
-      // FIX: Safe check for ports before accessing
+      // Safe check for ports before accessing
       if (event.ports && event.ports[0]) {
         event.ports[0].postMessage({
           version: CONFIG.CACHE_VERSION,
         });
       }
       break;
-      
+
     case 'UPDATE_CACHE':
       if (payload?.url) {
-        event.waitUntil(
-          updateCache(payload.url, getCacheName('DYNAMIC'))
-        );
+        event.waitUntil(updateCache(payload.url, getCacheName('DYNAMIC')));
       }
       break;
-      
-    case 'SW_UPDATED':
-      // Handle service worker update notifications from clients
-      console.log('Service Worker updated to version:', payload?.version || CONFIG.CACHE_VERSION);
-      break;
-      
-    case 'SYNC_OFFLINE_DATA':
-      // Handle sync data messages from clients
-      console.log('Sync request received for:', payload?.category);
-      break;
-      
-    case 'NOTIFICATION_CLICKED':
-      // Handle notification click forwarded from clients
-      console.log('Notification click handled:', payload);
-      break;
-      
+
     default:
       console.warn('Unknown message type:', type, 'from:', event.source);
   }
@@ -432,57 +419,38 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-resumes') {
-    event.waitUntil(
-      // Sync offline resumes with server
-      syncOfflineResumes()
-    );
+    event.waitUntil(syncOfflineResumes());
   }
-  
+
   if (event.tag === 'sync-analytics') {
-    event.waitUntil(
-      // Sync offline analytics events
-      syncOfflineAnalytics()
-    );
+    event.waitUntil(syncOfflineAnalytics());
   }
 });
 
-/**
- * Example: Sync offline resumes with server when back online.
- * Implement based on your app's data structure.
- */
 const syncOfflineResumes = async () => {
   try {
-    // Get all clients
     const clients = await self.clients.matchAll();
-    
-    // Notify clients to sync their data
-    clients.forEach(client => {
+    clients.forEach((client) => {
       client.postMessage({
         type: 'SYNC_OFFLINE_DATA',
         category: 'resumes',
       });
     });
-    
     console.log('🔄 Resume sync triggered');
   } catch (error) {
     console.error('❌ Resume sync failed:', error);
   }
 };
 
-/**
- * Example: Sync offline analytics events.
- */
 const syncOfflineAnalytics = async () => {
   try {
     const clients = await self.clients.matchAll();
-    
-    clients.forEach(client => {
+    clients.forEach((client) => {
       client.postMessage({
         type: 'SYNC_OFFLINE_DATA',
         category: 'analytics',
       });
     });
-    
     console.log('🔄 Analytics sync triggered');
   } catch (error) {
     console.error('❌ Analytics sync failed:', error);
@@ -499,11 +467,10 @@ self.addEventListener('push', (event) => {
 
   try {
     const data = event.data.json();
-    
+
     const options = {
       body: data.body || 'You have a new notification',
-      icon: data.icon || '/icon-192x192.png',
-      badge: data.badge || '/badge-72x72.png',
+      icon: data.icon || '/web-app-manifest-192x192.png',
       image: data.image,
       vibrate: data.vibrate || [200, 100, 200],
       tag: data.tag || 'default',
@@ -518,25 +485,17 @@ self.addEventListener('push', (event) => {
       silent: data.silent || false,
     };
 
-    event.waitUntil(
-      self.registration.showNotification(
-        data.title || 'Resume Ai Pro',
-        options
-      )
-    );
+    event.waitUntil(self.registration.showNotification(data.title || 'Resume Ai Pro', options));
   } catch (error) {
     console.error('Push notification error:', error);
-    
+
     // Fallback: show basic notification
     const fallbackOptions = {
       body: 'You have a new notification from Resume Ai Pro',
-      icon: '/icon-192x192.png',
-      badge: '/badge-72x72.png',
+      icon: '/web-app-manifest-192x192.png',
     };
-    
-    event.waitUntil(
-      self.registration.showNotification('Resume Ai Pro', fallbackOptions)
-    );
+
+    event.waitUntil(self.registration.showNotification('Resume Ai Pro', fallbackOptions));
   }
 });
 
@@ -544,20 +503,18 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
+
   const url = event.notification.data?.url || '/';
   const action = event.action;
-  
+
   event.waitUntil(
     (async () => {
       try {
-        // Find or create a client window
         const clientList = await self.clients.matchAll({
           type: 'window',
           includeUncontrolled: true,
         });
-        
-        // If there's an existing window, focus it
+
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
             await client.focus();
@@ -569,8 +526,7 @@ self.addEventListener('notificationclick', (event) => {
             return;
           }
         }
-        
-        // Otherwise, open a new window
+
         if (self.clients.openWindow) {
           await self.clients.openWindow(url);
         }
@@ -580,30 +536,5 @@ self.addEventListener('notificationclick', (event) => {
     })()
   );
 });
-
-// ── Periodic Cache Cleanup ──────────────────────────────────────────────────
-
-// Clean up caches periodically to prevent storage bloat
-setInterval(async () => {
-  try {
-    await trimCache(getCacheName('DYNAMIC'), CONFIG.LIMITS.DYNAMIC);
-    await trimCache(getCacheName('IMAGES'), CONFIG.LIMITS.IMAGES);
-    await trimCache(getCacheName('PAGES'), CONFIG.LIMITS.PAGES);
-    await trimCache(getCacheName('FONTS'), CONFIG.LIMITS.FONTS);
-    
-    // Report storage usage
-    if ('storage' in navigator && 'estimate' in navigator.storage) {
-      const estimate = await navigator.storage.estimate();
-      const usagePercent = (estimate.usage / estimate.quota) * 100;
-      
-      if (usagePercent > 80) {
-        console.warn('⚠️ Storage usage high:', usagePercent.toFixed(1) + '%');
-        // Could trigger emergency cache cleanup
-      }
-    }
-  } catch (error) {
-    console.error('Cache cleanup error:', error);
-  }
-}, 60 * 60 * 1000); // Run every hour
 
 console.log('📦 Service Worker v' + CONFIG.CACHE_VERSION + ' loaded');

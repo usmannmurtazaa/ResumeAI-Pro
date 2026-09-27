@@ -4,25 +4,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus,
   FiTrash2,
+  FiExternalLink,
+  FiGithub,
   FiCalendar,
-  FiBriefcase,
-  FiMapPin,
+  FiCode,
+  FiStar,
+  FiUsers,
   FiChevronDown,
   FiChevronUp,
   FiCheckCircle,
   FiAlertCircle,
   FiCopy,
-  FiClock,
+  FiEye,
   FiMoreHorizontal,
   FiZap,
-  FiInfo,
-  FiTarget,
-  FiUsers,
-  FiDollarSign,
-  FiStar,
-  FiTrendingUp,
+  FiFolder,
+  FiRocket,
+  FiBriefcase,
+  FiBookOpen,
   FiAward,
-  FiMove,
 } from 'react-icons/fi';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
@@ -30,186 +30,139 @@ import Badge from '../../ui/Badge';
 import Card from '../../ui/Card';
 import Progress from '../../ui/Progress';
 import Tooltip from '../../ui/Tooltip';
+import Modal from '../../ui/Modal';
 import toast from 'react-hot-toast';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { useDebouncedCallback } from '../../../hooks/useDebounce';
 
-// ── Constants ─────────────────────────────────────────────────────────────
+// ── Constants (Module Level) ─────────────────────────────────────────────
 
-const ACTION_VERBS = {
-  leadership: [
-    'Led',
-    'Managed',
-    'Directed',
-    'Supervised',
-    'Coordinated',
-    'Spearheaded',
-    'Orchestrated',
-    'Headed',
-  ],
-  achievement: [
-    'Achieved',
-    'Increased',
-    'Decreased',
-    'Improved',
-    'Reduced',
-    'Generated',
-    'Delivered',
-    'Exceeded',
-  ],
-  development: [
-    'Developed',
-    'Created',
-    'Designed',
-    'Built',
-    'Implemented',
-    'Launched',
-    'Established',
-    'Founded',
-  ],
-  analysis: [
-    'Analyzed',
-    'Evaluated',
-    'Assessed',
-    'Researched',
-    'Investigated',
-    'Identified',
-    'Reviewed',
-    'Audited',
-  ],
-  collaboration: [
-    'Collaborated',
-    'Partnered',
-    'Facilitated',
-    'Negotiated',
-    'Communicated',
-    'Presented',
-    'Advised',
-    'Consulted',
-  ],
-  optimization: [
-    'Optimized',
-    'Streamlined',
-    'Enhanced',
-    'Automated',
-    'Restructured',
-    'Revitalized',
-    'Transformed',
-    'Modernized',
-  ],
-};
-
-const EMPLOYMENT_ICONS = {
-  'full-time': '💼',
-  'part-time': '🕐',
-  contract: '📋',
-  freelance: '🚀',
-  internship: '🎓',
-  volunteer: '🤝',
-};
-
-const ATS_TIPS = [
-  'Start each bullet with a strong action verb',
-  'Include quantifiable results (%, $, #)',
-  'Use industry-standard keywords from job descriptions',
-  'Keep formatting simple - avoid tables or columns',
-  'Aim for 3-5 bullet points per position',
+const PROJECT_TYPES = [
+  { id: 'personal', name: 'Personal', icon: FiRocket },
+  { id: 'work', name: 'Work', icon: FiBriefcase },
+  { id: 'open-source', name: 'Open Source', icon: FiStar },
+  { id: 'academic', name: 'Academic', icon: FiBookOpen },
+  { id: 'freelance', name: 'Freelance', icon: FiUsers },
+  { id: 'hackathon', name: 'Hackathon', icon: FiAward },
 ];
 
-// ── Utility Functions ─────────────────────────────────────────────────────
+const TECH_CATEGORIES = {
+  frontend: [
+    'React',
+    'Vue.js',
+    'Angular',
+    'Next.js',
+    'TypeScript',
+    'JavaScript',
+    'HTML5',
+    'CSS3',
+    'Tailwind CSS',
+    'Redux',
+  ],
+  backend: ['Node.js', 'Python', 'Java', 'Go', 'Rust', 'C#', 'PHP', 'Ruby', 'GraphQL', 'REST API'],
+  database: [
+    'PostgreSQL',
+    'MongoDB',
+    'MySQL',
+    'Redis',
+    'Elasticsearch',
+    'Firebase',
+    'Supabase',
+    'DynamoDB',
+  ],
+  devops: ['Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'CI/CD', 'Jenkins', 'Terraform', 'Nginx'],
+  mobile: ['React Native', 'Flutter', 'Swift', 'Kotlin', 'iOS', 'Android', 'Expo'],
+  ai: ['TensorFlow', 'PyTorch', 'OpenAI', 'LangChain', 'Scikit-learn', 'Pandas', 'NumPy'],
+};
 
-const calculateDuration = (startDate, endDate, isCurrent) => {
+// ── Utility Functions ────────────────────────────────────────────────────
+
+const getProjectIcon = (type) => PROJECT_TYPES.find((t) => t.id === type)?.icon || FiFolder;
+
+const calculateProjectDuration = (startDate, endDate, isCurrent) => {
   if (!startDate) return null;
   const start = new Date(startDate);
   const end = isCurrent ? new Date() : endDate ? new Date(endDate) : new Date();
   const months =
     (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
   if (months < 0) return null;
+  if (months === 0) return 'Less than a month';
   const years = Math.floor(months / 12);
   const remainingMonths = months % 12;
-  if (years === 0) return `${remainingMonths} mo${remainingMonths !== 1 ? 's' : ''}`;
-  if (remainingMonths === 0) return `${years} yr${years !== 1 ? 's' : ''}`;
-  return `${years} yr${years !== 1 ? 's' : ''} ${remainingMonths} mo`;
+  if (years === 0) return `${remainingMonths} month${remainingMonths !== 1 ? 's' : ''}`;
+  if (remainingMonths === 0) return `${years} year${years !== 1 ? 's' : ''}`;
+  return `${years} yr ${remainingMonths} mo`;
 };
 
-const calculateTotalExperience = (experiences) => {
-  if (!experiences?.length) return { years: 0, months: 0 };
-  let totalMonths = 0;
-  experiences.forEach((exp) => {
-    if (exp.startDate) {
-      const start = new Date(exp.startDate);
-      const end = exp.current ? new Date() : exp.endDate ? new Date(exp.endDate) : new Date();
-      const months =
-        (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-      if (months > 0) totalMonths += months;
-    }
-  });
-  return { years: Math.floor(totalMonths / 12), months: totalMonths % 12 };
+const generateDescriptionTemplate = (name, type) => {
+  const templates = {
+    personal: `A personal project built to explore and master new technologies. ${name || '[Project]'} demonstrates proficiency in full-stack development and problem-solving.`,
+    work: `A key initiative at [Company] that delivered significant business value. ${name || '[Project]'} improved efficiency and received positive feedback.`,
+    'open-source': `An open-source contribution that helps developers [solve problem]. ${name || '[Project]'} has garnered community engagement and stars.`,
+    hackathon: `A rapid prototype developed during [Hackathon] addressing [problem]. ${name || '[Project]'} won recognition for innovation.`,
+    freelance: `A client project delivering custom solutions. ${name || '[Project]'} resulted in measurable improvements in client metrics.`,
+    academic: `A research project completed as part of [Course]. ${name || '[Project]'} explores innovative solutions with promising results.`,
+  };
+  return templates[type] || templates.personal;
 };
 
-const analyzeDescription = (description) => {
-  if (!description) return { score: 0, suggestions: [] };
-  let score = 0;
-  const suggestions = [];
-
-  const hasActionVerb = Object.values(ACTION_VERBS)
-    .flat()
-    .some((verb) => description.toLowerCase().includes(verb.toLowerCase()));
-  if (hasActionVerb) score += 30;
-  else suggestions.push('Start bullets with strong action verbs');
-
-  const hasMetrics =
-    /(\d+%|\$\d+|\d+\s*(people|users|clients|team)|increased|decreased|reduced|improved)/i.test(
-      description
-    );
-  if (hasMetrics) score += 40;
-  else suggestions.push('Include quantifiable achievements with numbers');
-
-  const words = description.split(/\s+/).filter(Boolean).length;
-  if (words >= 30) score += 30;
-  else suggestions.push('Add more detail (aim for 30+ words)');
-
-  return { score: Math.min(score, 100), suggestions };
-};
-
-const generateBullet = (title, company, category) => {
-  const verbs = ACTION_VERBS[category] || ACTION_VERBS.achievement;
-  const verb = verbs[Math.floor(Math.random() * verbs.length)];
-  const templates = [
-    `${verb} ${title?.toLowerCase() || '[title]'} initiatives at ${company || '[Company]'}, resulting in [X]% improvement in [metric].`,
-    `${verb} [project] that generated $[X] in revenue and improved [process] by [Y]%.`,
-    `${verb} a team of [X] to deliver [project] on time and under budget.`,
-    `${verb} and implemented [solution] that reduced costs by [X]% and increased efficiency.`,
-    `${verb} cross-functional collaboration to launch [product] serving [X] users.`,
-  ];
-  return `• ${templates[Math.floor(Math.random() * templates.length)]}`;
-};
-
-const createEmptyExperience = () => ({
-  company: '',
-  title: '',
-  location: '',
+const createEmptyProject = () => ({
+  name: '',
+  description: '',
+  technologies: '',
+  link: '',
+  github: '',
   startDate: '',
   endDate: '',
   current: false,
-  description: '',
-  achievements: [],
-  technologies: [],
+  type: 'personal',
+  role: '',
   teamSize: '',
-  budget: '',
-  employmentType: 'full-time',
+  features: '',
+  challenges: '',
+  outcomes: '',
+  featured: false,
 });
+
+// ── Simple Debounce Hook ──────────────────────────────────────────────────
+
+const useDebounce = (callback, delay) => {
+  const timeoutRef = useRef(null);
+  const callbackRef = useRef(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+  const debouncedFn = useCallback(
+    (...args) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => callbackRef.current(...args), delay);
+    },
+    [delay]
+  );
+  useEffect(
+    () => () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    },
+    []
+  );
+  return debouncedFn;
+};
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-const Experience = ({ data = [], onChange, onValidationChange }) => {
+const Projects = ({ data = [], onChange, onValidationChange }) => {
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
   const [viewMode, setViewMode] = useState('detailed');
   const [sortOrder, setSortOrder] = useState('date');
-  const [showBulletSuggestions, setShowBulletSuggestions] = useState({});
-  const [totalExperience, setTotalExperience] = useState({ years: 0, months: 0 });
+  const [showTechSuggestions, setShowTechSuggestions] = useState({});
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [projectStats, setProjectStats] = useState({
+    total: 0,
+    featured: 0,
+    withLinks: 0,
+    techCount: 0,
+  });
 
   const mountedRef = useRef(true);
   const previousDataRef = useRef(data);
@@ -221,12 +174,12 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
     setValue,
     formState: { errors, isDirty },
   } = useForm({
-    defaultValues: { experience: data?.length ? data : [createEmptyExperience()] },
+    defaultValues: { projects: data?.length ? data : [createEmptyProject()] },
     mode: 'onChange',
   });
 
-  const { fields, append, remove, move } = useFieldArray({ control, name: 'experience' });
-  const watchedFields = watch('experience');
+  const { fields, append, remove, move } = useFieldArray({ control, name: 'projects' });
+  const watchedFields = watch('projects');
 
   // ── Lifecycle ──────────────────────────────────────────────────────────
 
@@ -237,37 +190,29 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
     };
   }, []);
 
-  // Reset form when external data changes
   useEffect(() => {
     if (JSON.stringify(data) !== JSON.stringify(previousDataRef.current)) {
       previousDataRef.current = data;
-      if (data?.length) {
-        data.forEach((item, index) => {
-          Object.entries(item).forEach(([key, value]) => {
-            setValue(`experience.${index}.${key}`, value);
-          });
-        });
-      }
+      data?.forEach((item, i) =>
+        Object.entries(item).forEach(([k, v]) => setValue(`projects.${i}.${k}`, v))
+      );
     }
   }, [data, setValue]);
 
-  // ── Handle Save ────────────────────────────────────────────────────────
+  // ── FIXED: Handle Save ────────────────────────────────────────────────
 
   const handleSave = useCallback(
     (formData) => {
       if (!mountedRef.current) return;
-
       const sorted = [...(formData || [])].sort((a, b) => {
-        if (sortOrder === 'date') {
-          const dateA = a.current ? '9999' : a.endDate || '';
-          const dateB = b.current ? '9999' : b.endDate || '';
-          return dateB.localeCompare(dateA);
-        }
-        if (sortOrder === 'company') return (a.company || '').localeCompare(b.company || '');
-        if (sortOrder === 'title') return (a.title || '').localeCompare(b.title || '');
+        if (sortOrder === 'date')
+          return (b.current ? '9999' : b.endDate || b.startDate || '').localeCompare(
+            a.current ? '9999' : a.endDate || a.startDate || ''
+          );
+        if (sortOrder === 'name') return (a.name || '').localeCompare(b.name || '');
+        if (sortOrder === 'featured') return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
         return 0;
       });
-
       onChange?.(sorted);
       setAutoSaveStatus('saved');
       setTimeout(() => {
@@ -277,9 +222,7 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
     [sortOrder, onChange]
   );
 
-  // ── Debounced Auto-Save (shared hook) ─────────────────────────────────
-
-  const { debouncedCallback: debouncedSave } = useDebouncedCallback(handleSave, 1000);
+  const debouncedSave = useDebounce(handleSave, 1000);
 
   useEffect(() => {
     if (isDirty && watchedFields) {
@@ -288,98 +231,105 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
     }
   }, [watchedFields, isDirty, debouncedSave]);
 
-  // ── Completion & Stats ────────────────────────────────────────────────
+  // ── Stats & Completion ────────────────────────────────────────────────
 
   useEffect(() => {
     if (!watchedFields) return;
+    let total = 0,
+      completed = 0;
+    let featured = 0,
+      withLinks = 0;
+    const techSet = new Set();
 
-    let totalFields = 0,
-      completedFields = 0;
-    watchedFields.forEach((exp) => {
-      ['company', 'title', 'startDate', 'description'].forEach((field) => {
-        totalFields++;
-        if (exp[field]?.trim()) completedFields++;
+    watchedFields.forEach((p) => {
+      ['name', 'description', 'technologies'].forEach((f) => {
+        total++;
+        if (p[f]?.trim()) completed++;
       });
+      if (p.featured) featured++;
+      if (p.link || p.github) withLinks++;
+      if (p.technologies)
+        p.technologies.split(',').forEach((t) => techSet.add(t.trim().toLowerCase()));
     });
 
-    const pct = totalFields > 0 ? Math.round((completedFields / totalFields) * 100) : 0;
-    setCompletionPercentage(pct);
-    setTotalExperience(calculateTotalExperience(watchedFields));
-
+    setCompletionPercentage(total > 0 ? Math.round((completed / total) * 100) : 0);
+    setProjectStats({ total: watchedFields.length, featured, withLinks, techCount: techSet.size });
     onValidationChange?.({
       isValid: Object.keys(errors).length === 0,
-      completionPercentage: pct,
+      completionPercentage,
       count: fields.length,
     });
   }, [watchedFields, errors, fields.length, onValidationChange]);
 
   // ── Handlers ──────────────────────────────────────────────────────────
 
-  const addExperience = useCallback(() => {
-    append(createEmptyExperience());
-    toast.success('New experience entry added');
+  const addProject = useCallback(() => {
+    append(createEmptyProject());
+    toast.success('Project added');
   }, [append]);
-
-  const duplicateExperience = useCallback(
-    (index) => {
-      const item = { ...watchedFields[index] };
-      delete item.id;
-      append(item);
-      toast.success('Experience duplicated');
-    },
-    [watchedFields, append]
-  );
-
-  const removeExperience = useCallback(
-    (index) => {
-      remove(index);
-      toast.success('Experience removed');
+  const removeProject = useCallback(
+    (idx) => {
+      remove(idx);
+      toast.success('Project removed');
     },
     [remove]
   );
-
-  const toggleExpand = useCallback((index) => {
-    setExpandedItems((prev) => {
-      const next = new Set(prev);
-      next.has(index) ? next.delete(index) : next.add(index);
-      return next;
-    });
-  }, []);
-
+  const toggleExpand = useCallback(
+    (idx) =>
+      setExpandedItems((p) => {
+        const n = new Set(p);
+        n.has(idx) ? n.delete(idx) : n.add(idx);
+        return n;
+      }),
+    []
+  );
+  const toggleFeatured = useCallback(
+    (idx) => {
+      const v = watchedFields[idx]?.featured;
+      setValue(`projects.${idx}.featured`, !v);
+      toast.success(v ? 'Removed from featured' : 'Added to featured');
+    },
+    [watchedFields, setValue]
+  );
   const moveItem = useCallback(
-    (from, to) => {
-      if (to >= 0 && to < fields.length) {
-        move(from, to);
+    (f, t) => {
+      if (t >= 0 && t < fields.length) {
+        move(f, t);
         toast.success('Order updated');
       }
     },
     [fields.length, move]
   );
 
-  const handleGenerateBullet = useCallback(
-    (index, category) => {
-      const exp = watchedFields[index];
-      const bullet = generateBullet(exp?.title, exp?.company, category);
-      const currentDesc = exp?.description || '';
-      const newDesc = currentDesc ? `${currentDesc}\n${bullet}` : bullet;
-      setValue(`experience.${index}.description`, newDesc, { shouldValidate: true });
-      setShowBulletSuggestions((prev) => ({ ...prev, [index]: false }));
-      toast.success('Achievement bullet added!');
+  const addTech = useCallback(
+    (index, tech) => {
+      const current = watchedFields[index]?.technologies || '';
+      const arr = current
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      if (!arr.includes(tech)) {
+        arr.push(tech);
+        setValue(`projects.${index}.technologies`, arr.join(', '), { shouldValidate: true });
+        toast.success(`Added ${tech}`);
+      } else {
+        toast.error(`${tech} already added`);
+      }
     },
     [watchedFields, setValue]
   );
 
-  // ── Drag and Drop ──────────────────────────────────────────────────────
-
-  const onDragEnd = useCallback(
-    (result) => {
-      if (!result.destination) return;
-      move(result.source.index, result.destination.index);
+  const handleGenerateDescription = useCallback(
+    (index) => {
+      const proj = watchedFields[index];
+      const desc = generateDescriptionTemplate(proj?.name, proj?.type);
+      setValue(`projects.${index}.description`, desc, { shouldValidate: true });
+      toast.success('Description generated!');
     },
-    [move]
+    [watchedFields, setValue]
   );
 
-  // ── Animation Variants ────────────────────────────────────────────────
+  // ── Animation ─────────────────────────────────────────────────────────
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -397,403 +347,462 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-xl font-semibold">Work Experience</h3>
+            <h3 className="text-xl font-semibold">Projects</h3>
             {fields.length > 0 && (
               <Badge variant="primary" size="sm">
-                {fields.length} {fields.length === 1 ? 'Position' : 'Positions'}
+                {fields.length}
               </Badge>
             )}
-            {totalExperience.years > 0 && (
-              <Badge variant="success" size="sm">
-                <FiClock className="w-3 h-3 mr-1" />
-                {totalExperience.years}+ yrs
+            {projectStats.featured > 0 && (
+              <Badge variant="warning" size="sm">
+                <FiStar className="w-3 h-3 mr-1" />
+                {projectStats.featured} Featured
               </Badge>
             )}
           </div>
-          {fields.length > 0 && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 max-w-xs">
-                <Progress value={completionPercentage} size="sm" showPercentage />
-              </div>
-              {autoSaveStatus === 'saved' && (
-                <span className="text-xs text-green-500">
-                  <FiCheckCircle className="w-3 h-3 inline mr-1" />
-                  Saved
-                </span>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <Progress value={completionPercentage} size="sm" showPercentage className="max-w-xs" />
+            {autoSaveStatus === 'saved' && (
+              <span className="text-xs text-green-500">
+                <FiCheckCircle className="w-3 h-3 inline mr-1" />
+                Saved
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50"
+            className="input-field !py-2 !w-auto text-sm"
           >
             <option value="date">Most Recent</option>
-            <option value="company">By Company</option>
-            <option value="title">By Title</option>
+            <option value="name">By Name</option>
+            <option value="featured">Featured</option>
           </select>
           <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-            {['detailed', 'compact'].map((mode) => (
+            {['detailed', 'compact'].map((m) => (
               <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-3 py-1 text-sm rounded-md capitalize ${
-                  viewMode === mode ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
-                }`}
+                key={m}
+                onClick={() => setViewMode(m)}
+                className={`px-3 py-1 text-sm rounded-md capitalize ${viewMode === m ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
               >
-                {mode}
+                {m}
               </button>
             ))}
           </div>
-          <Button type="button" variant="primary" onClick={addExperience} icon={<FiPlus />}>
+          <Button type="button" variant="primary" onClick={addProject} icon={<FiPlus />}>
             Add
           </Button>
         </div>
       </div>
 
-      {/* Total Experience Summary */}
-      {totalExperience.years > 0 && (
-        <Card className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
-          <div className="flex items-center gap-4">
-            <FiBriefcase className="w-8 h-8 text-blue-500" />
-            <div>
-              <p className="text-sm text-gray-500">Total Experience</p>
-              <p className="text-xl font-bold">
-                {totalExperience.years > 0 &&
-                  `${totalExperience.years} yr${totalExperience.years > 1 ? 's' : ''}`}
-                {totalExperience.months > 0 && ` ${totalExperience.months} mo`}
-              </p>
-            </div>
+      {/* Stats Dashboard */}
+      {fields.length > 0 && (
+        <Card className="p-4">
+          <div className="grid grid-cols-4 gap-4 text-center">
+            {[
+              { value: projectStats.total, label: 'Projects' },
+              { value: projectStats.withLinks, label: 'With Links' },
+              { value: projectStats.techCount, label: 'Technologies' },
+              { value: projectStats.featured, label: 'Featured' },
+            ].map((s, i) => (
+              <div key={i}>
+                <p className="text-2xl font-bold">{s.value}</p>
+                <p className="text-xs text-gray-500">{s.label}</p>
+              </div>
+            ))}
           </div>
         </Card>
       )}
 
-      {/* Experience List */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="experience-list">
-          {(provided) => (
-            <div className="space-y-4" ref={provided.innerRef} {...provided.droppableProps}>
-              <AnimatePresence mode="popLayout">
-                {fields.map((field, index) => {
-                  const exp = watchedFields?.[index] || {};
-                  const duration = calculateDuration(exp.startDate, exp.endDate, exp.current);
-                  const analysis = analyzeDescription(exp.description);
-                  const isExpanded = expandedItems.has(index) || viewMode === 'detailed';
+      {/* Projects List */}
+      <motion.div
+        className="space-y-4"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <AnimatePresence mode="popLayout">
+          {fields.map((field, index) => {
+            const proj = watchedFields?.[index] || {};
+            const duration = calculateProjectDuration(proj.startDate, proj.endDate, proj.current);
+            const isExpanded = expandedItems.has(index) || viewMode === 'detailed';
+            const ProjectIcon = getProjectIcon(proj.type);
 
-                  return (
-                    <Draggable key={field.id} draggableId={field.id} index={index}>
-                      {(provided, snapshot) => (
-                        <motion.div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          variants={itemVariants}
-                          initial="hidden"
-                          animate="visible"
-                          exit="exit"
-                          layout
-                          className={
-                            snapshot.isDragging ? 'shadow-2xl ring-2 ring-primary-500' : ''
-                          }
-                        >
-                          <Card className="relative overflow-hidden">
-                            {/* Compact Header */}
-                            <div
-                              className="p-4 sm:p-6 cursor-pointer"
-                              onClick={() => viewMode === 'compact' && toggleExpand(index)}
-                            >
-                              <div className="flex items-start gap-4">
-                                <div
-                                  {...provided.dragHandleProps}
-                                  className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 mt-2"
-                                >
-                                  <FiMove className="w-5 h-5" />
-                                </div>
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30 flex items-center justify-center text-2xl flex-shrink-0">
-                                  {EMPLOYMENT_ICONS[exp.employmentType] || '💼'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0">
-                                      <h4 className="font-semibold truncate">
-                                        {exp.title || 'New Position'}
-                                      </h4>
-                                      <p className="text-primary-600 dark:text-primary-400 text-sm">
-                                        {exp.company || 'Company Name'}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          moveItem(index, index - 1);
-                                        }}
-                                        disabled={index === 0}
-                                        className={`p-1 rounded ${
-                                          index === 0
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                        }`}
-                                      >
-                                        <FiChevronUp className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          moveItem(index, index + 1);
-                                        }}
-                                        disabled={index === fields.length - 1}
-                                        className={`p-1 rounded ${
-                                          index === fields.length - 1
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                        }`}
-                                      >
-                                        <FiChevronDown className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-gray-500">
-                                    {exp.location && (
-                                      <span>
-                                        <FiMapPin className="w-3 h-3 inline mr-1" />
-                                        {exp.location}
-                                      </span>
-                                    )}
-                                    {exp.startDate && (
-                                      <span>
-                                        <FiCalendar className="w-3 h-3 inline mr-1" />
-                                        {exp.startDate} -{' '}
-                                        {exp.current ? 'Present' : exp.endDate || 'Present'}
-                                      </span>
-                                    )}
-                                    {duration && (
-                                      <span>
-                                        <FiClock className="w-3 h-3 inline mr-1" />
-                                        {duration}
-                                      </span>
-                                    )}
-                                    {exp.employmentType !== 'full-time' && (
-                                      <Badge variant="secondary" size="sm">
-                                        {exp.employmentType}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {!isExpanded && exp.description && (
-                                    <p className="mt-2 text-sm text-gray-500 line-clamp-2">
-                                      {exp.description}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Expanded Form */}
-                            <AnimatePresence>
-                              {isExpanded && (
-                                <motion.div
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: 'auto' }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  className="px-4 sm:px-6 pb-6 border-t border-gray-200 dark:border-gray-700 space-y-4"
-                                >
-                                  {/* Action Buttons */}
-                                  <div className="flex justify-end gap-2 pt-4">
-                                    <button
-                                      type="button"
-                                      onClick={() => duplicateExperience(index)}
-                                      className="p-2 text-gray-500 hover:text-primary-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    >
-                                      <FiCopy className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeExperience(index)}
-                                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                                    >
-                                      <FiTrash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-
-                                  {/* Form Fields */}
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Input
-                                      label="Job Title"
-                                      icon={<FiBriefcase />}
-                                      placeholder="e.g., Senior Software Engineer"
-                                      {...register(`experience.${index}.title`, {
-                                        required: 'Required',
-                                      })}
-                                      error={errors.experience?.[index]?.title?.message}
-                                    />
-                                    <Input
-                                      label="Company"
-                                      placeholder="e.g., Google"
-                                      {...register(`experience.${index}.company`, {
-                                        required: 'Required',
-                                      })}
-                                      error={errors.experience?.[index]?.company?.message}
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <Input
-                                      label="Start Date"
-                                      type="month"
-                                      icon={<FiCalendar />}
-                                      {...register(`experience.${index}.startDate`, {
-                                        required: 'Required',
-                                      })}
-                                    />
-                                    <div>
-                                      <Input
-                                        label="End Date"
-                                        type="month"
-                                        icon={<FiCalendar />}
-                                        disabled={exp.current}
-                                        {...register(`experience.${index}.endDate`, {
-                                          required: !exp.current && 'Required',
-                                        })}
-                                      />
-                                      <label className="flex items-center gap-2 mt-2">
-                                        <input
-                                          type="checkbox"
-                                          {...register(`experience.${index}.current`)}
-                                          className="rounded border-gray-300 text-primary-600"
-                                        />
-                                        <span className="text-sm">Currently work here</span>
-                                      </label>
-                                    </div>
-                                  </div>
-
-                                  {/* Description with ATS Analysis */}
-                                  <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                      <label className="text-sm font-medium">
-                                        Description & Achievements
-                                      </label>
-                                      <div className="flex items-center gap-2">
-                                        <Badge
-                                          variant={
-                                            analysis.score >= 70
-                                              ? 'success'
-                                              : analysis.score >= 40
-                                                ? 'warning'
-                                                : 'error'
-                                          }
-                                          size="sm"
-                                        >
-                                          ATS: {analysis.score}%
-                                        </Badge>
-                                        <div className="relative">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                              setShowBulletSuggestions((prev) => ({
-                                                ...prev,
-                                                [index]: !prev[index],
-                                              }))
-                                            }
-                                            icon={<FiZap />}
-                                          >
-                                            Suggest
-                                          </Button>
-                                          <AnimatePresence>
-                                            {showBulletSuggestions[index] && (
-                                              <motion.div
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.95 }}
-                                                className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border z-10"
-                                              >
-                                                <div className="p-2">
-                                                  {Object.keys(ACTION_VERBS).map((cat) => (
-                                                    <button
-                                                      key={cat}
-                                                      type="button"
-                                                      onClick={() =>
-                                                        handleGenerateBullet(index, cat)
-                                                      }
-                                                      className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg capitalize"
-                                                    >
-                                                      {cat} Verbs
-                                                    </button>
-                                                  ))}
-                                                </div>
-                                              </motion.div>
-                                            )}
-                                          </AnimatePresence>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <textarea
-                                      {...register(`experience.${index}.description`, {
-                                        required: 'Required',
-                                      })}
-                                      rows={5}
-                                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 outline-none resize-none text-sm font-mono"
-                                      placeholder="• Led development of [project] resulting in [X]% improvement..."
-                                    />
-                                    {analysis.suggestions.length > 0 && (
-                                      <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                                        <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-1">
-                                          Suggestions:
-                                        </p>
-                                        <ul className="text-xs text-yellow-600 dark:text-yellow-300 space-y-0.5">
-                                          {analysis.suggestions.map((s, i) => (
-                                            <li key={i}>• {s}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* ATS Tips */}
-                                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                    <p className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">
-                                      ATS Tips
-                                    </p>
-                                    <ul className="text-xs text-blue-600 dark:text-blue-300 space-y-0.5">
-                                      {ATS_TIPS.map((tip, i) => (
-                                        <li key={i}>• {tip}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                </motion.div>
+            return (
+              <motion.div
+                key={field.id}
+                variants={itemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                layout
+              >
+                <Card className={`relative ${proj.featured ? 'ring-2 ring-yellow-400' : ''}`}>
+                  {/* Compact Header */}
+                  <div
+                    className="p-4 cursor-pointer"
+                    onClick={() => viewMode === 'compact' && toggleExpand(index)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center flex-shrink-0">
+                        <ProjectIcon
+                          className="w-5 h-5 text-purple-600 dark:text-purple-400"
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h4 className="font-semibold truncate flex items-center gap-1.5">
+                              {proj.name || 'New Project'}
+                              {proj.featured && (
+                                <FiStar className="w-4 h-4 text-yellow-500 fill-current flex-shrink-0" />
                               )}
-                            </AnimatePresence>
-                          </Card>
-                        </motion.div>
-                      )}
-                    </Draggable>
-                  );
-                })}
-              </AnimatePresence>
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+                            </h4>
+                            {proj.role && (
+                              <p className="text-sm text-gray-500 truncate">{proj.role}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveItem(index, index - 1);
+                              }}
+                              disabled={index === 0}
+                              className={`p-1 rounded ${index === 0 ? 'opacity-50' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                            >
+                              <FiChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveItem(index, index + 1);
+                              }}
+                              disabled={index === fields.length - 1}
+                              className={`p-1 rounded ${index === fields.length - 1 ? 'opacity-50' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                            >
+                              <FiChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        {proj.technologies && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {proj.technologies
+                              .split(',')
+                              .slice(0, 3)
+                              .map((t, i) => (
+                                <Badge key={i} variant="secondary" size="sm">
+                                  {t.trim()}
+                                </Badge>
+                              ))}
+                            {proj.technologies.split(',').length > 3 && (
+                              <Badge variant="secondary" size="sm">
+                                +{proj.technologies.split(',').length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3 mt-1.5">
+                          {proj.link && (
+                            <a
+                              href={proj.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-primary-500"
+                            >
+                              <FiExternalLink className="w-3 h-3 inline mr-1" />
+                              Demo
+                            </a>
+                          )}
+                          {proj.github && (
+                            <a
+                              href={proj.github}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-gray-500"
+                            >
+                              <FiGithub className="w-3 h-3 inline mr-1" />
+                              GitHub
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-      {/* Empty State */}
-      {fields.length === 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
-          <FiBriefcase className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h4 className="text-lg font-medium mb-2">No Work Experience</h4>
-          <p className="text-gray-500 mb-4">
-            Add your professional experience to showcase your career
-          </p>
-          <Button onClick={addExperience} icon={<FiPlus />}>
-            Add Experience
-          </Button>
-        </motion.div>
-      )}
+                  {/* Expanded Form */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="px-4 sm:px-5 pb-5 border-t border-gray-200 dark:border-gray-700 space-y-4"
+                      >
+                        <div className="flex justify-end gap-2 pt-4">
+                          <button
+                            type="button"
+                            onClick={() => toggleFeatured(index)}
+                            className={`p-2 rounded-lg ${proj.featured ? 'text-yellow-500 bg-yellow-50' : 'text-gray-500 hover:text-yellow-500'}`}
+                          >
+                            <FiStar className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedProject(proj);
+                              setShowPreviewModal(true);
+                            }}
+                            className="p-2 text-gray-500 hover:text-primary-500 rounded-lg"
+                          >
+                            <FiEye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const dup = { ...watchedFields[index] };
+                              delete dup.id;
+                              append(dup);
+                            }}
+                            className="p-2 text-gray-500 hover:text-primary-500 rounded-lg"
+                          >
+                            <FiCopy className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeProject(index)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input
+                            label="Project Name"
+                            placeholder="e.g., E-commerce Platform"
+                            {...register(`projects.${index}.name`, { required: 'Required' })}
+                          />
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Type</label>
+                            <select {...register(`projects.${index}.type`)} className="input-field">
+                              {PROJECT_TYPES.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <Input
+                          label="Your Role"
+                          placeholder="e.g., Lead Developer"
+                          {...register(`projects.${index}.role`)}
+                        />
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium">Description</label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGenerateDescription(index)}
+                              icon={<FiZap />}
+                            >
+                              Generate
+                            </Button>
+                          </div>
+                          <textarea
+                            {...register(`projects.${index}.description`, { required: 'Required' })}
+                            rows={4}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 outline-none resize-none text-sm"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium">Technologies</label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setShowTechSuggestions((p) => ({ ...p, [index]: !p[index] }))
+                              }
+                            >
+                              Suggest
+                            </Button>
+                          </div>
+                          <Input
+                            icon={<FiCode />}
+                            placeholder="React, Node.js, PostgreSQL..."
+                            {...register(`projects.${index}.technologies`, {
+                              required: 'Required',
+                            })}
+                          />
+                          <AnimatePresence>
+                            {showTechSuggestions[index] && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg max-h-48 overflow-y-auto"
+                              >
+                                {Object.entries(TECH_CATEGORIES).map(([cat, techs]) => (
+                                  <div key={cat} className="mb-2">
+                                    <p className="text-xs font-medium capitalize mb-1">{cat}</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {techs.map((tech) => (
+                                        <button
+                                          key={tech}
+                                          type="button"
+                                          onClick={() => addTech(index, tech)}
+                                          className="px-2 py-0.5 text-xs bg-white dark:bg-gray-700 rounded hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                                        >
+                                          {tech}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input
+                            label="Live URL"
+                            icon={<FiExternalLink />}
+                            placeholder="https://..."
+                            {...register(`projects.${index}.link`)}
+                          />
+                          <Input
+                            label="GitHub"
+                            icon={<FiGithub />}
+                            placeholder="https://github.com/..."
+                            {...register(`projects.${index}.github`)}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input
+                            label="Start Date"
+                            type="month"
+                            icon={<FiCalendar />}
+                            {...register(`projects.${index}.startDate`)}
+                          />
+                          <div>
+                            <Input
+                              label="End Date"
+                              type="month"
+                              icon={<FiCalendar />}
+                              disabled={proj.current}
+                              {...register(`projects.${index}.endDate`)}
+                            />
+                            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                {...register(`projects.${index}.current`)}
+                                className="rounded border-gray-300 text-primary-600"
+                              />
+                              <span className="text-sm">Ongoing</span>
+                            </label>
+                          </div>
+                        </div>
+                        {duration && (
+                          <p className="text-sm text-gray-500">
+                            <FiCalendar className="w-3 h-3 inline mr-1" />
+                            {duration}
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+
+        {/* Empty State */}
+        {fields.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
+            <FiFolder className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h4 className="text-lg font-medium mb-2">No Projects</h4>
+            <p className="text-gray-500 mb-4">Showcase your work</p>
+            <Button onClick={addProject} icon={<FiPlus />}>
+              Add Project
+            </Button>
+          </motion.div>
+        )}
+      </motion.div>
+
+      {/* Preview Modal */}
+      <Modal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        title="Project Preview"
+      >
+        {selectedProject && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                {React.createElement(getProjectIcon(selectedProject.type), {
+                  className: 'w-6 h-6 text-purple-600 dark:text-purple-400',
+                  'aria-hidden': 'true',
+                })}
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">{selectedProject.name}</h3>
+                <p className="text-sm text-gray-500">{selectedProject.role}</p>
+              </div>
+            </div>
+            <p className="text-sm">{selectedProject.description}</p>
+            {selectedProject.technologies && (
+              <div className="flex flex-wrap gap-1">
+                {selectedProject.technologies.split(',').map((t, i) => (
+                  <Badge key={i} variant="secondary">
+                    {t.trim()}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              {selectedProject.link && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(selectedProject.link, '_blank')}
+                >
+                  <FiExternalLink className="w-4 h-4 mr-1" />
+                  Demo
+                </Button>
+              )}
+              {selectedProject.github && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(selectedProject.github, '_blank')}
+                >
+                  <FiGithub className="w-4 h-4 mr-1" />
+                  GitHub
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
 
-export default React.memo(Experience);
+export default React.memo(Projects);

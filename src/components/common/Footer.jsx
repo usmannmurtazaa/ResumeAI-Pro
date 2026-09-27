@@ -31,33 +31,11 @@ import Input from '../ui/Input';
 import Badge from '../ui/Badge';
 import Tooltip from '../ui/Tooltip';
 import toast from 'react-hot-toast';
+import { siteConfig } from '../../config/siteConfig';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const CURRENT_YEAR = new Date().getFullYear();
 const SCROLL_THRESHOLD = 400;
-
-// ── Default Config (fallback if siteConfig is missing) ─────────────────────
-
-const DEFAULT_CONFIG = {
-  name: 'Resume Ai Pro',
-  links: {
-    github: 'https://github.com/resumeaixpro',
-    twitter: 'https://twitter.com/resumeaixpro',
-    facebook: 'https://facebook.com/resumeaixpro',
-    instagram: 'https://instagram.com/resumeaixpro',
-    youtube: null,
-    discord: null,
-  },
-  authorLinks: {
-    linkedin: 'https://linkedin.com/in/usmanmurtaza',
-    portfolio: 'https://usmanmurtaza.netlify.app',
-  },
-  contact: {
-    email: 'support@resumeaixpro.com',
-    phone: '+1 (555) 123-4567',
-    address: { city: 'San Francisco, CA' },
-  },
-};
 
 // ── Custom Hook: Online Status ────────────────────────────────────────────
 
@@ -85,7 +63,7 @@ const useOnlineStatus = () => {
 // ── Component ──────────────────────────────────────────────────────────────
 
 const Footer = () => {
-  const config = useMemo(() => DEFAULT_CONFIG, []);
+  const config = siteConfig;
 
   const isOnline = useOnlineStatus();
 
@@ -159,7 +137,7 @@ const Footer = () => {
       }
 
       toast.success('Successfully subscribed! Check your inbox.', {
-        icon: '📧',
+        icon: <FiMail className="w-5 h-5 text-primary-500" />,
         duration: 4000,
       });
     } catch (error) {
@@ -185,7 +163,7 @@ const Footer = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       toast.success('Thank you for your feedback! We appreciate it.', {
-        icon: '💡',
+        icon: <FiMessageCircle className="w-5 h-5 text-primary-500" />,
         duration: 3000,
       });
 
@@ -225,8 +203,6 @@ const Footer = () => {
       legal: [
         { to: '/privacy', label: 'Privacy Policy' },
         { to: '/terms', label: 'Terms of Service' },
-        { to: '/cookies', label: 'Cookie Policy' },
-        { to: '/accessibility', label: 'Accessibility' },
       ],
       social: [
         { href: config.links?.github, icon: FiGithub, label: 'GitHub' },
@@ -246,19 +222,13 @@ const Footer = () => {
       {
         icon: FiMail,
         label: 'Email',
-        value: config.contact?.email || 'support@resumeaixpro.com',
-        href: `mailto:${config.contact?.email || 'support@resumeaixpro.com'}`,
-      },
-      {
-        icon: FiPhone,
-        label: 'Phone',
-        value: config.contact?.phone || '+1 (555) 123-4567',
-        href: `tel:${(config.contact?.phone || '+15551234567').replace(/\D/g, '')}`,
+        value: config.contact?.email || 'usmanmurtazaportfolio@gmail.com',
+        href: `mailto:${config.contact?.email || 'usmanmurtazaportfolio@gmail.com'}`,
       },
       {
         icon: FiMapPin,
         label: 'Location',
-        value: config.contact?.address?.city || 'San Francisco, CA',
+        value: config.contact?.address?.city || 'Karachi, PK',
       },
       {
         icon: FiClock,
@@ -560,10 +530,10 @@ const Footer = () => {
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     disabled={submittingFeedback}
                   >
-                    <option value="suggestion">💡 Suggestion</option>
-                    <option value="bug">🐛 Bug Report</option>
-                    <option value="feature">🚀 Feature Request</option>
-                    <option value="other">💬 Other</option>
+                    <option value="suggestion">Suggestion</option>
+                    <option value="bug">Bug Report</option>
+                    <option value="feature">Feature Request</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
 
