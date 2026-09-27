@@ -18,8 +18,6 @@ import {
   FiLayout,
   FiTarget,
   FiHelpCircle,
-  FiCommand,
-  FiStar,
   FiZap,
   FiCreditCard,
   FiShield,
@@ -35,7 +33,6 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Avatar from '../ui/Avatar';
-import Tooltip from '../ui/Tooltip';
 import toast from 'react-hot-toast';
 
 // ── Inline Hooks ──────────────────────────────────────────────────────

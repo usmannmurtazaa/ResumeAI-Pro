@@ -10,11 +10,8 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiCheckCircle,
-  FiAlertCircle,
   FiCopy,
-  FiInfo,
   FiClock,
-  FiTrendingUp,
   FiMoreHorizontal,
   FiMove,
   FiAward,
@@ -27,7 +24,6 @@ import Button from '../../ui/Button';
 import Badge from '../../ui/Badge';
 import Card from '../../ui/Card';
 import Progress from '../../ui/Progress';
-import Tooltip from '../../ui/Tooltip';
 import toast from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { useDebouncedCallback } from '../../../hooks/useDebounce';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,10 +13,8 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiCheckCircle,
-  FiAlertCircle,
   FiCopy,
   FiEye,
-  FiMoreHorizontal,
   FiZap,
   FiFolder,
   FiRocket,
@@ -29,7 +27,6 @@ import Button from '../../ui/Button';
 import Badge from '../../ui/Badge';
 import Card from '../../ui/Card';
 import Progress from '../../ui/Progress';
-import Tooltip from '../../ui/Tooltip';
 import Modal from '../../ui/Modal';
 import toast from 'react-hot-toast';
 

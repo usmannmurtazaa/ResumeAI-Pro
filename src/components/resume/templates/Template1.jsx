@@ -15,7 +15,6 @@ import {
   FiCode,
   FiFolder,
   FiCheckCircle,
-  FiStar,
   FiClock,
 } from 'react-icons/fi';
 

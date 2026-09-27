@@ -8,17 +8,14 @@ import {
   FiLayout,
   FiBookOpen,
   FiHelpCircle,
-  FiArrowRight,
   FiClock,
   FiTrendingUp,
   FiCornerDownLeft,
   FiArrowUp,
   FiArrowDown,
   FiMic,
-  FiLoader,
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
-import toast from 'react-hot-toast';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const MAX_RESULTS = 8;

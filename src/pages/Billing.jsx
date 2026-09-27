@@ -3,17 +3,12 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import {
-  FiCreditCard,
   FiCheckCircle,
   FiCalendar,
-  FiDollarSign,
   FiAward,
   FiRefreshCw,
-  FiExternalLink,
   FiChevronRight,
   FiAlertCircle,
-  FiShield,
-  FiStar,
 } from 'react-icons/fi';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';

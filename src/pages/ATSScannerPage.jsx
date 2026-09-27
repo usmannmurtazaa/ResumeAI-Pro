@@ -7,7 +7,6 @@ import Card from '../components/ui/Card';
 import {
   FiArrowLeft,
   FiInfo,
-  FiAlertCircle,
   FiCheckCircle,
   FiFileText,
   FiKey,
@@ -15,7 +14,7 @@ import {
   FiTarget,
 } from 'react-icons/fi';
 import Button from '../components/ui/Button';
-import { useDocumentTitle, usePageTitle } from '../hooks/useDocumentTitle';
+import { usePageTitle } from '../hooks/useDocumentTitle';
 import Loader from '../components/common/Loader';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import toast from 'react-hot-toast';

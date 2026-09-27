@@ -8,7 +8,6 @@ import {
   FiBriefcase,
   FiPenTool,
   FiUser,
-  FiMinimize,
 } from 'react-icons/fi';
 
 // ── Application Constants ────────────────────────────────────────────────

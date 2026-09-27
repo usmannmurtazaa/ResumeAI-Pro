@@ -9,7 +9,6 @@ import {
   FiMaximize2,
   FiMinimize2,
   FiPrinter,
-  FiCopy,
   FiCheck,
   FiLoader,
   FiAlertCircle,

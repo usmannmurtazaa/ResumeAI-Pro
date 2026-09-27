@@ -5,7 +5,6 @@ import {
   FiAlertCircle,
   FiCheckCircle,
   FiAward,
-  FiTarget,
   FiHelpCircle,
   FiArrowUp,
   FiArrowDown,

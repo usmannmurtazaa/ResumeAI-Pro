@@ -15,18 +15,11 @@ import {
   FiCode,
   FiFolder,
   FiCheckCircle,
-  FiStar,
   FiClock,
   FiUser,
-  FiTarget,
   FiFlag,
-  FiTrendingUp,
-  FiUsers,
   FiHeart,
-  FiCoffee,
   FiMoreHorizontal,
-  FiDownload,
-  FiShare2,
   FiArrowRight,
 } from 'react-icons/fi';
 

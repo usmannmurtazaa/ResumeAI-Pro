@@ -10,23 +10,13 @@ import {
   FiPieChart,
   FiActivity,
   FiAward,
-  FiClock,
   FiChevronRight,
   FiRefreshCw,
-  FiFileText,
-  FiAlertCircle,
-  FiCalendar,
-  FiArrowUp,
-  FiArrowDown,
-  FiUsers,
-  FiStar,
-  FiZap,
 } from 'react-icons/fi';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import Progress from '../components/ui/Progress';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useResumeContext } from '../contexts/ResumeContext';
@@ -42,8 +32,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
   Legend,
   Area,
   AreaChart,

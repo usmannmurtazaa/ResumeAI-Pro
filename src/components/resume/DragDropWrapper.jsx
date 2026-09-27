@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import {
   FiMove,
@@ -8,7 +8,6 @@ import {
   FiUnlock,
   FiEye,
   FiEyeOff,
-  FiMoreVertical,
   FiCopy,
   FiTrash2,
 } from 'react-icons/fi';

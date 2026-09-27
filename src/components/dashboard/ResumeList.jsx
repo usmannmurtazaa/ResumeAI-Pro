@@ -10,7 +10,6 @@ import {
   FiX,
   FiCheckCircle,
   FiClock,
-  FiCalendar,
   FiChevronLeft,
   FiChevronRight,
   FiEye,
@@ -24,7 +23,6 @@ import Badge from '../ui/Badge';
 import Progress from '../ui/Progress';
 import Tooltip from '../ui/Tooltip';
 import { formatDistanceToNow } from 'date-fns';
-import toast from 'react-hot-toast';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const ITEMS_PER_PAGE = 12;

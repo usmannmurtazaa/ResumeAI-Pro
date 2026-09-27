@@ -9,9 +9,7 @@ import {
   FiMapPin,
   FiSave,
   FiCamera,
-  FiLock,
   FiShield,
-  FiBell,
   FiGlobe,
   FiBriefcase,
   FiLink,
@@ -19,7 +17,6 @@ import {
   FiLinkedin,
   FiTwitter,
   FiTrash2,
-  FiEdit2,
   FiCheckCircle,
   FiAlertCircle,
   FiAward,
@@ -33,7 +30,6 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Progress from '../components/ui/Progress';
 import Modal from '../components/ui/Modal';
-import Tooltip from '../components/ui/Tooltip';
 import Avatar from '../components/ui/Avatar';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import toast from 'react-hot-toast';

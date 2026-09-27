@@ -10,7 +10,6 @@ import {
   FiTrendingUp,
   FiArrowLeft,
 } from 'react-icons/fi';
-import AuthLayout from '../components/layouts/AuthLayout';
 import { useAuth } from '../hooks/useAuth';
 import LoginForm from '../components/auth/LoginForm';
 import ThemeToggle from '../components/common/ThemeToggle';

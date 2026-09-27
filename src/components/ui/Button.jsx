@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo } from 'react';
+import React, { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { FiLoader } from 'react-icons/fi';
 

@@ -1,4 +1,4 @@
-import React, { forwardRef, useState, useId, useCallback, useEffect, useRef } from 'react';
+import React, { forwardRef, useId, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 

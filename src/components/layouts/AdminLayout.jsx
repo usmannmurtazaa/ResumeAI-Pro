@@ -29,7 +29,6 @@ import {
   FiTerminal,
   FiUser,
   FiUsers,
-  FiX,
   FiZap,
 } from 'react-icons/fi';
 import Sidebar from '../../components/common/Sidebar';

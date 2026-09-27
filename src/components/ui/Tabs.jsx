@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, createContext, useContext } from 'react';
+import React, { useState, useCallback, useRef, createContext, useContext } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 // ── Utility ───────────────────────────────────────────────────────────────

@@ -13,7 +13,6 @@ import {
   FiDownload,
   FiUser,
   FiFileText,
-  FiCreditCard,
   FiX,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';

@@ -9,7 +9,6 @@ import {
   addDoc,
   updateDoc,
   onSnapshot,
-  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,9 +23,7 @@ import {
   FiTrash2,
   FiTrendingUp,
   FiTrendingDown,
-  FiAward,
   FiClock,
-  FiCheckCircle,
   FiAlertCircle,
   FiTarget,
   FiZap,
@@ -35,7 +32,6 @@ import {
   FiStar,
   FiBarChart2,
   FiUpload,
-  FiEdit,
   FiLayout,
   FiSquare,
   FiUser,
@@ -43,8 +39,6 @@ import {
 } from 'react-icons/fi';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
-import Badge from '../ui/Badge';
-import Progress from '../ui/Progress';
 import Modal from '../ui/Modal';
 import ResumeCard from './ResumeCard';
 import toast from 'react-hot-toast';

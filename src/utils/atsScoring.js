@@ -4,9 +4,6 @@
 import {
   industryKeywords,
   actionVerbs,
-  detectIndustry,
-  suggestKeywords,
-  calculateKeywordRelevance,
 } from './atsKeywords';
 
 // ── Constants ─────────────────────────────────────────────────────────────

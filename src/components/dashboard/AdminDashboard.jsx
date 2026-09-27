@@ -3,14 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   collection,
-  getDocs,
-  deleteDoc,
   doc,
   updateDoc,
-  query,
-  where,
-  orderBy,
-  limit,
   onSnapshot,
   writeBatch,
 } from 'firebase/firestore';
@@ -34,16 +28,12 @@ import {
   FiUserX,
   FiUserCheck,
   FiEye,
-  FiShield,
   FiAward,
-  FiDownload,
   FiRefreshCw,
   FiChevronLeft,
   FiChevronRight,
   FiAlertCircle,
   FiLoader,
-  FiBarChart2,
-  FiPieChart,
   FiLock,
 } from 'react-icons/fi';
 

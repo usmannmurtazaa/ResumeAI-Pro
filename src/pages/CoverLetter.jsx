@@ -1,12 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FiFileText,
   FiPlus,
-  FiEdit3,
   FiTrash2,
-  FiCopy,
   FiDownload,
   FiEye,
   FiSave,
@@ -17,11 +13,8 @@ import {
   FiStar,
   FiLayout,
   FiPalette,
-  FiChevronRight,
-  FiX,
   FiLoader,
   FiAlertCircle,
-  FiCheckCircle,
 } from 'react-icons/fi';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import Card from '../components/ui/Card';
@@ -29,7 +22,6 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
-import Tooltip from '../components/ui/Tooltip';
 import { useAuth } from '../hooks/useAuth';
 import { useResume } from '../contexts/ResumeContext';
 import { usePageTitle } from '../hooks/useDocumentTitle';

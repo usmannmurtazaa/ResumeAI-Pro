@@ -14,7 +14,6 @@ import {
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
-import Tooltip from '../ui/Tooltip';
 import toast from 'react-hot-toast';
 import { getResumeTemplateLoader } from './templates/resolveTemplate';
 

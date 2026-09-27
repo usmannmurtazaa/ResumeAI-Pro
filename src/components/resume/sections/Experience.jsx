@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,17 +10,9 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiCheckCircle,
-  FiAlertCircle,
   FiCopy,
   FiClock,
-  FiMoreHorizontal,
   FiZap,
-  FiInfo,
-  FiTarget,
-  FiUsers,
-  FiDollarSign,
-  FiStar,
-  FiTrendingUp,
   FiAward,
   FiMove,
   FiFileText,
@@ -31,7 +23,6 @@ import Button from '../../ui/Button';
 import Badge from '../../ui/Badge';
 import Card from '../../ui/Card';
 import Progress from '../../ui/Progress';
-import Tooltip from '../../ui/Tooltip';
 import toast from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { useDebouncedCallback } from '../../../hooks/useDebounce';

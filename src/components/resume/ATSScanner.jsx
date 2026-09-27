@@ -10,31 +10,16 @@ import {
   FiDownload,
   FiCopy,
   FiAward,
-  FiTarget,
-  FiBriefcase,
-  FiBook,
   FiCode,
   FiRefreshCw,
-  FiX,
-  FiZap,
   FiInfo,
   FiBarChart2,
-  FiList,
-  FiStar,
-  FiArrowUp,
-  FiArrowDown,
-  FiExternalLink,
-  FiUser,
-  FiMail,
-  FiPhone,
-  FiMapPin,
 } from 'react-icons/fi';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Progress from '../ui/Progress';
 import Badge from '../ui/Badge';
 import Modal from '../ui/Modal';
-import Tooltip from '../ui/Tooltip';
 import { parseResumeFile } from '../../utils/resumeParser';
 import { calculateDetailedScore } from '../../utils/atsScoring';
 import { detectIndustry, suggestKeywords } from '../../utils/atsKeywords';

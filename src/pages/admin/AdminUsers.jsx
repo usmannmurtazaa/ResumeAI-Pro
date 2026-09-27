@@ -1,18 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
 import {
   FiUsers,
   FiSearch,
-  FiFilter,
   FiUserCheck,
   FiUserX,
   FiEye,
   FiDownload,
-  FiRefreshCw,
   FiTrash2,
   FiAlertCircle,
-  FiChevronLeft,
-  FiChevronRight,
 } from 'react-icons/fi';
 import AdminLayout from '../../components/layouts/AdminLayout';
 import Card from '../../components/ui/Card';
@@ -25,7 +20,6 @@ import {
   collection,
   getDocs,
   updateDoc,
-  deleteDoc,
   doc,
   query,
   orderBy,

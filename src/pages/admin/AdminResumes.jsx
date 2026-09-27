@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
 import {
   FiFileText,
   FiSearch,
-  FiFilter,
-  FiRefreshCw,
   FiDownload,
   FiEye,
   FiTrash2,
   FiTarget,
-  FiChevronLeft,
-  FiChevronRight,
   FiAlertCircle,
 } from 'react-icons/fi';
 import AdminLayout from '../../components/layouts/AdminLayout';
@@ -30,7 +25,6 @@ import {
   limit,
   startAfter,
   onSnapshot,
-  where,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import toast from 'react-hot-toast';

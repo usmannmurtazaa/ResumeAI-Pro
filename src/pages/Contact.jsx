@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   FiMail,
-  FiPhone,
   FiMapPin,
   FiSend,
   FiClock,
