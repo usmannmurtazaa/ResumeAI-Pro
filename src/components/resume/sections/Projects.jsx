@@ -17,11 +17,11 @@ import {
   FiEye,
   FiZap,
   FiFolder,
-  FiRocket,
   FiBriefcase,
   FiBookOpen,
   FiAward,
 } from 'react-icons/fi';
+import { FaRocket } from 'react-icons/fa';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
 import Badge from '../../ui/Badge';
@@ -33,7 +33,7 @@ import toast from 'react-hot-toast';
 // ── Constants (Module Level) ─────────────────────────────────────────────
 
 const PROJECT_TYPES = [
-  { id: 'personal', name: 'Personal', icon: FiRocket },
+  { id: 'personal', name: 'Personal', icon: FaRocket },
   { id: 'work', name: 'Work', icon: FiBriefcase },
   { id: 'open-source', name: 'Open Source', icon: FiStar },
   { id: 'academic', name: 'Academic', icon: FiBookOpen },
