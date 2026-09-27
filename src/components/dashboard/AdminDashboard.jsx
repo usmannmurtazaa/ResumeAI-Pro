@@ -1,13 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-  collection,
-  doc,
-  updateDoc,
-  onSnapshot,
-  writeBatch,
-} from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../ui/Button';

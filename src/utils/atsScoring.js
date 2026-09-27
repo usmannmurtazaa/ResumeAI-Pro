@@ -1,10 +1,7 @@
 // ── ATS Scoring Engine ─────────────────────────────────────────────────────
 // Comprehensive resume scoring with category breakdowns and actionable insights
 
-import {
-  industryKeywords,
-  actionVerbs,
-} from './atsKeywords';
+import { industryKeywords, actionVerbs } from './atsKeywords';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
