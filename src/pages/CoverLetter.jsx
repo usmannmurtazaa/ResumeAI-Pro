@@ -12,7 +12,7 @@ import {
   FiUser,
   FiStar,
   FiLayout,
-  FiPalette,
+  FiLayers,
   FiLoader,
   FiAlertCircle,
 } from 'react-icons/fi';
@@ -36,7 +36,7 @@ const TEMPLATES = [
     icon: FiFileText,
     color: 'from-blue-500 to-cyan-500',
   },
-  { id: 'modern', name: 'Modern', icon: FiPalette, color: 'from-purple-500 to-pink-500' },
+  { id: 'modern', name: 'Modern', icon: FiLayers, color: 'from-purple-500 to-pink-500' },
   { id: 'executive', name: 'Executive', icon: FiBriefcase, color: 'from-slate-700 to-slate-900' },
   { id: 'creative', name: 'Creative', icon: FiStar, color: 'from-orange-500 to-red-500' },
 ];
@@ -295,21 +295,6 @@ const CoverLetter = () => {
       toast.success('Deleted');
     },
     [coverLetters, selectedLetter, saveCoverLetters]
-  );
-
-  const handleDuplicate = useCallback(
-    (letter) => {
-      const dup = {
-        ...letter,
-        id: Date.now().toString(),
-        name: `${letter.name} (Copy)`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      saveCoverLetters([...coverLetters, dup]);
-      toast.success('Duplicated');
-    },
-    [coverLetters, saveCoverLetters]
   );
 
   const handleDownload = useCallback(
