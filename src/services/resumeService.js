@@ -19,6 +19,28 @@ import { db, logAnalyticsEvent } from './firebase';
 import { FREE_RESUME_LIMIT } from '../data/constants';
 const MAX_BATCH_SIZE = 400;
 
+// ── Field whitelist for resume updates ────────────────────────────────────
+// Mirrors `isAllowedResumeUpdate()` in `firestore.rules`. Keeping the
+// client-side whitelist aligned with the rules means:
+//   • A mis-typed prop in a caller is silently dropped here instead of
+//     producing a confusing `Missing or insufficient permissions` from
+//     Firestore.
+//   • Identity / ownership fields (`userId`, `createdAt`, `id`, …) never
+//     reach Firestore even if a caller accidentally includes them.
+// If the rules list changes, this set must be updated to match.
+const ALLOWED_RESUME_UPDATE_FIELDS = new Set([
+  'data',
+  'template',
+  'name',
+  'status',
+  'atsScore',
+  'downloadCount',
+  'viewCount',
+  'lastDownloaded',
+  'lastViewed',
+  'archivedAt',
+]);
+
 // ── Safe ATS Score Calculation ────────────────────────────────────────────
 
 const calculateATSScoreSafe = (data) => {
@@ -212,20 +234,72 @@ export const resumeService = {
   // ── Update ──────────────────────────────────────────────────────────────
 
   async updateResume(resumeId, resumeData) {
+    // Argument validation — fail fast with a clear message rather than
+    // sending a malformed payload to Firestore.
+    if (!resumeId || typeof resumeId !== 'string') {
+      throw new Error('A valid resumeId is required');
+    }
+    if (!resumeData || typeof resumeData !== 'object') {
+      throw new Error('A valid updates object is required');
+    }
+
     try {
       const ref = doc(db, 'resumes', resumeId);
-      let atsScore = resumeData.atsScore;
-      if (resumeData.data && !atsScore) atsScore = calculateATSScoreSafe(resumeData.data);
 
+      // 1. Whitelist the caller-supplied fields. Anything not on the
+      //    allow-list is dropped here so it never reaches Firestore.
+      //    This matches the server-side `isAllowedResumeUpdate()` rule.
+      const safeUpdates = {};
+      for (const key of Object.keys(resumeData)) {
+        if (ALLOWED_RESUME_UPDATE_FIELDS.has(key) && resumeData[key] !== undefined) {
+          safeUpdates[key] = resumeData[key];
+        }
+      }
+
+      // 2. Compute the ATS score only when the caller supplied fresh
+      //    `data` AND did not explicitly pass a numeric `atsScore`.
+      let atsScore;
+      if (typeof safeUpdates.atsScore === 'number') {
+        atsScore = safeUpdates.atsScore;
+      } else if (safeUpdates.data) {
+        atsScore = calculateATSScoreSafe(safeUpdates.data);
+      }
+
+      // 3. Determine the status.
+      //    - If the caller explicitly provided a non-empty status, that
+      //      value wins (e.g. `status: 'archived'` from archiveResume).
+      //    - Otherwise, derive it from the score, but only when we have
+      //      a numeric score to derive from. Do NOT downgrade the status
+      //      on updates that have nothing to do with the resume content
+      //      (e.g. bumping `downloadCount`).
+      const hasExplicitStatus =
+        typeof safeUpdates.status === 'string' && safeUpdates.status.length > 0;
+      let status;
+      if (hasExplicitStatus) {
+        status = safeUpdates.status;
+      } else if (typeof atsScore === 'number') {
+        status = atsScore >= 80 ? 'completed' : 'draft';
+      }
+
+      // 4. Build the final payload. `updatedAt` is added here — after the
+      //    whitelist — so it is always included and never accidentally
+      //    dropped by the field filter.
       const updates = {
-        ...resumeData,
-        atsScore,
+        ...safeUpdates,
         updatedAt: serverTimestamp(),
-        status: atsScore >= 80 ? 'completed' : resumeData.status || 'draft',
       };
+      if (typeof atsScore === 'number') {
+        updates.atsScore = atsScore;
+      }
+      if (status) {
+        updates.status = status;
+      }
 
       await updateDoc(ref, updates);
-      logAnalyticsEvent('resume_updated', { resumeId, atsScore });
+      logAnalyticsEvent('resume_updated', {
+        resumeId,
+        atsScore: typeof atsScore === 'number' ? atsScore : null,
+      });
       return true;
     } catch (error) {
       console.error('Error updating resume:', error);

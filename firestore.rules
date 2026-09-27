@@ -7,19 +7,77 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isPrivilegedAdmin() {
+    // ── Admin authorization ─────────────────────────────────────────────
+    //
+    // Two paths are accepted, in this order:
+    //
+    //   1. Custom claims on the caller's Firebase Auth ID token:
+    //      `admin: true`, `superAdmin: true`, or `role: 'admin'`.
+    //      This is the "classic" path. It is kept for backward
+    //      compatibility with any project that has claims-based admins
+    //      configured via a trusted backend.
+    //
+    //   2. Firestore `users/{callerUid}.role === 'admin'`. This is the
+    //      path the app itself supports: `authService.updateUserRole`
+    //      writes the Firestore role, and `AuthContext.userRole` reads
+    //      it. On the Spark plan there is no Cloud Functions runtime to
+    //      mint custom claims, so Firestore is the only source of truth
+    //      the deployed app can actually control.
+    //
+    // The Firestore path costs one additional `get()` read, but only when
+    // it is reached. Firestore rules short-circuit `||`, so normal user
+    // operations (own resume reads, own user doc updates) never evaluate
+    // `hasFirestoreAdminRole()`. The read only fires on attempts that a
+    // non-admin could not perform anyway.
+    //
+    // A non-admin with Firestore `role: 'user'` and no claims still fails
+    // exactly as before. Nothing about the security posture is loosened:
+    // a user cannot promote themselves — the `users/{userId}` update rule
+    // still rejects any write that touches `role`.
+    // ────────────────────────────────────────────────────────────────────
+
+    function hasAdminClaims() {
       return signedIn()
         && (request.auth.token.admin == true
             || request.auth.token.superAdmin == true
             || request.auth.token.role == 'admin');
     }
 
+    function hasFirestoreAdminRole() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isPrivilegedAdmin() {
+      return signedIn()
+        && (hasAdminClaims() || hasFirestoreAdminRole());
+    }
+
     function isSelf(uid) {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // Fields a signed-in user may write on their own /users/{uid} document.
+    // Covers every legitimate self-write the client performs:
+    //   - profile fields (edit form)
+    //   - audit fields (login / logout / hydrate)
+    //   - Auth-synced cache fields (provider link, phone verification,
+    //     email change, email verification)
+    //
+    // Fields NOT listed here and therefore never writable by the user on
+    // their own document:
+    //   role           -- privilege escalation
+    //   status         -- self-unsuspend
+    //   subscription   -- billing integrity
+    //   plan           -- billing integrity
+    //   createdAt      -- immutable
+    //   userId         -- identity
+    //
+    // Any change that touches one of those fields requires isPrivilegedAdmin().
     function isAllowedUserUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        // Profile fields (edit form)
         'displayName',
         'photoURL',
         'phone',
@@ -29,7 +87,22 @@ service cloud.firestore {
         'website',
         'github',
         'linkedin',
-        'twitter'
+        'twitter',
+        // Phone verification (written after Firebase Auth confirms the number)
+        'phoneNumber',
+        'phoneVerified',
+        // Auth provider tracking (synced from the Firebase Auth SDK)
+        'authProvider',
+        'linkedProviders',
+        // Audit fields (login / logout / hydrate)
+        'lastLogin',
+        'lastLogout',
+        'lastActive',
+        'updatedAt',
+        'metadata',
+        // Email cache (synced from Firebase Auth after updateEmail / verifyEmail)
+        'email',
+        'emailVerified'
       ]);
     }
 
@@ -49,6 +122,20 @@ service cloud.firestore {
       allow delete: if isSelf(userId) || isPrivilegedAdmin();
     }
 
+    // Fields a signed-in user may write on their own /resumes/{resumeId}
+    // document. Must stay aligned with `ALLOWED_RESUME_UPDATE_FIELDS` in
+    // `src/services/resumeService.js`.
+    //
+    // Fields NOT listed here are silently rejected at the rules layer if a
+    // client tries to include them:
+    //   userId     -- ownership; must never change
+    //   createdAt  -- immutable creation timestamp
+    //   id         -- document id, not a data field
+    //
+    // `updatedAt` is written by every updateResume / autoSaveResume /
+    // incrementViewCount / incrementDownloadCount call. `archivedAt` is
+    // written by archiveResume. Both are self-managed bookkeeping fields
+    // on the user's own document and must be permitted.
     function isAllowedResumeUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
         'data',
@@ -59,7 +146,9 @@ service cloud.firestore {
         'downloadCount',
         'viewCount',
         'lastDownloaded',
-        'lastViewed'
+        'lastViewed',
+        'archivedAt',
+        'updatedAt'
       ]);
     }
 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../services/firebase';
 import Loader from '../common/Loader';
 import { FiShield, FiAlertCircle, FiLock, FiLogIn, FiClock, FiActivity } from 'react-icons/fi';
 import Button from '../ui/Button';
@@ -16,40 +18,69 @@ const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
 // ── Security Utilities ──────────────────────────────────────────────────────
 
 /**
- * Verifies admin token claims on the server side.
- * In production, this should call your backend API.
+ * Verifies that a user should be allowed into the admin area.
+ *
+ * Two paths are accepted:
+ *
+ *   1. Firebase Auth custom claims — `admin`, `superAdmin`, or
+ *      `role: 'admin'`. This is the "classic" path and requires a trusted
+ *      backend (Cloud Function or manual Admin SDK script) to have set the
+ *      claims. Kept for backward compatibility with any project that has
+ *      claims-based admins configured.
+ *
+ *   2. Firestore `users/{uid}.role === 'admin'`. This is the path the app
+ *      itself supports: `authService.updateUserRole` writes the Firestore
+ *      role, `AuthContext` reads it into `userRole`, and `hasRole('admin')`
+ *      is used everywhere in the UI. On the Spark plan there is no
+ *      server-side way to mint custom claims, so Firestore is the only
+ *      source of truth the deployed app can actually control.
+ *
+ * A user whose Firestore `status === 'suspended'` is always rejected,
+ * regardless of claims or role. This prevents a stale admin from entering
+ * the panel after being suspended.
+ *
+ * NOTE: this is a client-side guard, not a security boundary. The
+ * authoritative check for admin-only Firestore operations lives in
+ * `firestore.rules`.
  */
 const verifyAdminServerSide = async (user) => {
   if (!user) return false;
 
   try {
-    // Force refresh to ensure the latest claims are present in the
-    // subsequent getIdTokenResult() call. The token string itself is
-    // not used here — it would be sent to a backend endpoint if
-    // server-side verification were enabled.
+    // Force a fresh token in case the caller's ID token is stale. This is
+    // required so that the claims path reflects the latest state and so any
+    // recently-revoked account is caught.
     await user.getIdToken(true);
 
-    // Verify token claims
     const decodedToken = await user.getIdTokenResult();
 
-    // Check for admin claim in Firebase custom claims
-    // In production, set these claims via Firebase Admin SDK or your backend
-    const isAdmin = decodedToken.claims.admin === true;
-    const isSuperAdmin = decodedToken.claims.superAdmin === true;
+    const isAdminClaim = decodedToken.claims.admin === true;
+    const isSuperAdminClaim = decodedToken.claims.superAdmin === true;
     const roleClaim = decodedToken.claims.role;
-    const isAdminRole = roleClaim === 'admin';
+    const isAdminRoleClaim = roleClaim === 'admin';
+    const hasClaimsAdmin = isAdminClaim || isSuperAdminClaim || isAdminRoleClaim;
 
-    if (!isAdmin && !isSuperAdmin && !isAdminRole) {
-      console.warn('Admin access denied: Missing admin claims in token');
+    // Read the Firestore user document. This is the app's source of truth
+    // for role / status. The read is permitted by the existing
+    // `allow read: if isSelf(userId) || isPrivilegedAdmin();` rule on
+    // `users/{userId}`.
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.exists() ? userSnap.data() : null;
+    const hasFirestoreAdmin = userData?.role === 'admin';
+    const isSuspended = userData?.status === 'suspended';
+
+    // Suspension always wins — even a claims-based admin is locked out
+    // once their Firestore `status` is 'suspended'.
+    if (isSuspended) {
+      console.warn('Admin access denied: account is suspended');
       return false;
     }
 
-    // Optional: Verify with your backend API
-    // const response = await fetch('/api/admin/verify', {
-    //   headers: { Authorization: `Bearer ${idToken}` }
-    // });
-    // const { valid } = await response.json();
-    // return valid;
+    if (!hasClaimsAdmin && !hasFirestoreAdmin) {
+      console.warn('Admin access denied: no admin claims and Firestore role is not admin');
+      return false;
+    }
 
     return true;
   } catch (error) {
@@ -94,9 +125,18 @@ const logAdminActivity = async (user, action, details = {}) => {
 };
 
 /**
- * Checks rate limiting for admin login attempts.
+ * Rate limiting helpers.
+ *
+ * The rate limiter is intended to protect the admin area from brute-force
+ * retries of `verifyAdminServerSide`. It only counts **failed** verification
+ * attempts — successful navigations between admin pages must not increment
+ * the counter, otherwise an admin browsing the panel for a few minutes would
+ * be locked out by their own legitimate activity.
+ *
+ * `getRateLimitState()` is read-only. `recordFailedAttempt()` is the only
+ * function that writes to `sessionStorage`.
  */
-const checkRateLimit = () => {
+const getRateLimitState = () => {
   const attempts = JSON.parse(sessionStorage.getItem('admin_login_attempts') || '[]');
   const now = Date.now();
 
@@ -109,11 +149,23 @@ const checkRateLimit = () => {
     return { allowed: false, timeToWait };
   }
 
-  // Record this attempt
+  return { allowed: true, timeToWait: 0 };
+};
+
+const recordFailedAttempt = () => {
+  const attempts = JSON.parse(sessionStorage.getItem('admin_login_attempts') || '[]');
+  const now = Date.now();
+  const recentAttempts = attempts.filter((time) => now - time < LOGIN_ATTEMPT_WINDOW);
   recentAttempts.push(now);
   sessionStorage.setItem('admin_login_attempts', JSON.stringify(recentAttempts));
+};
 
-  return { allowed: true, timeToWait: 0 };
+const clearRateLimitAttempts = () => {
+  try {
+    sessionStorage.removeItem('admin_login_attempts');
+  } catch {
+    // sessionStorage may be unavailable; nothing to do.
+  }
 };
 
 // ── Admin Route Component ───────────────────────────────────────────────────
@@ -151,8 +203,8 @@ const AdminRoute = ({
         setVerifying(true);
 
         try {
-          // Check rate limiting
-          const { allowed, timeToWait } = checkRateLimit();
+          // Check rate limiting state (read-only; does not record).
+          const { allowed, timeToWait } = getRateLimitState();
           if (!allowed) {
             toast.error(
               `Too many attempts. Try again in ${Math.ceil(timeToWait / 60000)} minutes.`
@@ -168,6 +220,11 @@ const AdminRoute = ({
             setAdminVerified(isVerified);
 
             if (isVerified) {
+              // Successful verification resets the failed-attempt counter so
+              // that a legitimately authorised admin can navigate the panel
+              // freely.
+              clearRateLimitAttempts();
+
               // Log successful admin access
               await logAdminActivity(user, 'admin_access_granted', {
                 route: location.pathname,
@@ -176,6 +233,9 @@ const AdminRoute = ({
 
               toast.success('Admin access verified', { duration: 2000 });
             } else {
+              // Only failed verifications count toward the rate limit.
+              recordFailedAttempt();
+
               // Log failed verification
               await logAdminActivity(user, 'admin_verification_failed', {
                 route: location.pathname,

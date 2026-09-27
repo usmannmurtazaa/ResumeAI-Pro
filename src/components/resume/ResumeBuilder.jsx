@@ -25,7 +25,7 @@ import Button from '../ui/Button';
 import Progress from '../ui/Progress';
 import Tooltip from '../ui/Tooltip';
 import Modal from '../ui/Modal';
-import { useDebounce } from '../../hooks/useDebounce';
+import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { useKeyboardShortcut } from '../../hooks/useKeyboardShortcut';
 import toast from 'react-hot-toast';
 
@@ -153,8 +153,12 @@ const ResumeBuilder = ({
   }, [initialData, reset]);
 
   // ── Debounced Auto-Save ──────────────────────────────────────────────
+  // The debounce lives here so that the async `onChange` callback fires only
+  // after ~1500ms of idle typing — not on every keystroke. The parent
+  // (`Builder.jsx`) applies its own debounce before writing to Firestore,
+  // so this layer protects against parent state churn / reset races.
 
-  const debouncedSave = useDebounce(
+  const { debouncedCallback: debouncedSave } = useDebouncedCallback(
     useCallback(async () => {
       if (!isDirty || !resumeId) return;
 

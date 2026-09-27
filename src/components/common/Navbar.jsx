@@ -73,6 +73,16 @@ const useScrollDirection = () => {
   return scrollDirection;
 };
 
+// Returns true when the keydown target is a form field or contenteditable
+// element. Bare-key shortcuts (e.g. `/`) must not fire while the user is
+// typing in one of these, otherwise `preventDefault` swallows the character.
+// Modified shortcuts (Ctrl+K, Cmd+N, etc.) still fire from any target.
+const isTypingTarget = (target) => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+};
+
 const useKeyboardShortcut = (key, callback, options = {}) => {
   const { ctrl = false, meta = false, shift = false, alt = false } = options;
   const callbackRef = useRef(callback);
@@ -81,7 +91,14 @@ const useKeyboardShortcut = (key, callback, options = {}) => {
   });
 
   useEffect(() => {
+    const hasModifier = ctrl || meta || shift || alt;
+
     const handler = (event) => {
+      // Skip bare-key shortcuts when the user is typing in a form field.
+      // Without this guard, the `/` shortcut calls preventDefault on every
+      // match and the character never reaches the input.
+      if (!hasModifier && isTypingTarget(event.target)) return;
+
       if (
         event.key.toLowerCase() === key.toLowerCase() &&
         event.ctrlKey === ctrl &&
