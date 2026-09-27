@@ -27,12 +27,18 @@ const Radio = forwardRef(
     ref
   ) => {
     const context = useContext(RadioContext);
+    const helperId = useId();
 
     const isChecked = context ? context.value === value : checked;
     const handleChange = context ? (e) => context.onChange(value) : onChange;
     const isDisabled = context?.disabled || disabled;
     const isError = context?.error || error;
     const groupName = context?.name || name;
+
+    // If there is an error (string), show it in the helper slot with error
+    // styling. Otherwise show the plain helperText. `aria-describedby` on
+    // the input points at this element so screen readers announce it.
+    const helperTextValue = typeof isError === 'string' ? isError : helperText;
 
     return (
       <label
@@ -52,7 +58,7 @@ const Radio = forwardRef(
             onChange={handleChange}
             disabled={isDisabled}
             className="sr-only peer"
-            aria-invalid={!!isError}
+            aria-describedby={helperTextValue ? helperId : undefined}
             {...props}
           />
 
@@ -90,8 +96,16 @@ const Radio = forwardRef(
               {label}
             </span>
           )}
-          {helperText && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{helperText}</p>
+          {helperTextValue && (
+            <p
+              id={helperId}
+              className={cn(
+                'text-xs mt-0.5',
+                isError ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'
+              )}
+            >
+              {helperTextValue}
+            </p>
           )}
         </div>
       </label>
@@ -118,6 +132,7 @@ export const RadioGroup = ({
 }) => {
   const generatedName = useId();
   const groupName = name || generatedName;
+  const groupHelperId = useId();
 
   const contextValue = {
     name: groupName,
@@ -129,7 +144,12 @@ export const RadioGroup = ({
 
   return (
     <RadioContext.Provider value={contextValue}>
-      <fieldset className={className} disabled={disabled} {...props}>
+      <fieldset
+        className={className}
+        disabled={disabled}
+        aria-describedby={error || helperText ? groupHelperId : undefined}
+        {...props}
+      >
         {label && (
           <legend
             className={cn(
@@ -150,10 +170,14 @@ export const RadioGroup = ({
         </div>
 
         {error && typeof error === 'string' && (
-          <p className="text-xs text-red-500 dark:text-red-400 mt-2">{error}</p>
+          <p id={groupHelperId} className="text-xs text-red-500 dark:text-red-400 mt-2">
+            {error}
+          </p>
         )}
         {helperText && !error && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">{helperText}</p>
+          <p id={groupHelperId} className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+            {helperText}
+          </p>
         )}
       </fieldset>
     </RadioContext.Provider>

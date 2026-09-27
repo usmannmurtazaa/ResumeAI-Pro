@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { FiSettings, FiSun, FiMoon, FiCheck, FiRotateCcw, FiMonitor, FiX } from 'react-icons/fi';
+import { FiSettings, FiSun, FiMoon, FiCheck, FiRotateCcw, FiMonitor } from 'react-icons/fi';
 import { useTheme } from '../../contexts/ThemeContext';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';

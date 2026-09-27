@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   collection,
   getDocs,
@@ -22,7 +22,7 @@ import Modal from '../ui/Modal';
 import Badge from '../ui/Badge';
 import Input from '../ui/Input';
 import toast from 'react-hot-toast';
-import { format, subDays, startOfDay } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import {
   FiUsers,
   FiFileText,

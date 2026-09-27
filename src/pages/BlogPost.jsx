@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import styled from 'styled-components';
+import PropTypes from 'prop-types';
 import {
   FiCalendar,
-  FiUser,
   FiClock,
-  FiStar,
   FiHeart,
   FiShare2,
   FiBookmark,
@@ -19,6 +18,7 @@ import {
   FiThumbsUp,
   FiMessageCircle,
   FiAlertCircle,
+  FiFileText,
 } from 'react-icons/fi';
 import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/ui/Card';

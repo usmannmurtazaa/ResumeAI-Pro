@@ -27,7 +27,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Progress from '../components/ui/Progress';
-import { SkeletonCard, SkeletonText } from '../components/ui/Skeleton';
+import { SkeletonCard } from '../components/ui/Skeleton';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useResumeContext } from '../contexts/ResumeContext';
 import toast from 'react-hot-toast';

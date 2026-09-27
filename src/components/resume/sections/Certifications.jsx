@@ -12,17 +12,29 @@ import {
   FiTrendingUp,
   FiGlobe,
   FiFile,
+  FiCheckCircle,
+  FiClock,
+  FiSearch,
+  FiPlus,
+  FiX,
+  FiMove,
+  FiChevronUp,
+  FiChevronDown,
+  FiCalendar,
+  FiEye,
+  FiCopy,
+  FiTrash2,
+  FiAward,
+  FiExternalLink,
 } from 'react-icons/fi';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
 import Badge from '../../ui/Badge';
 import Card from '../../ui/Card';
 import Progress from '../../ui/Progress';
-import Tooltip from '../../ui/Tooltip';
 import Modal from '../../ui/Modal';
 import toast from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { useDebouncedCallback } from '../../../hooks/useDebounce';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -94,6 +106,12 @@ const getCategorySuggestions = (category) => {
   }
   return Object.values(POPULAR_CERTIFICATIONS).flat().slice(0, 6);
 };
+
+// Returns the SVG icon component for a given category id, defaulting to
+// the FiAward icon when no match is found. Never returns an emoji — this
+// project uses SVG icons throughout.
+const getCategoryIcon = (categoryId) =>
+  CERTIFICATION_CATEGORIES.find((c) => c.id === categoryId)?.icon || FiAward;
 
 const createEmptyCertification = () => ({
   name: '',
@@ -247,11 +265,15 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
       }
     });
 
-    setCompletionPercentage(total > 0 ? Math.round((completed / total) * 100) : 0);
+    // Compute the percentage locally so we don't read stale state inside
+    // the effect (which would otherwise require `completionPercentage` in
+    // the dependency array and cause an infinite loop).
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    setCompletionPercentage(percentage);
     setCertStats({ total: watchedFields.length, verified, expiring, categories });
     onValidationChange?.({
       isValid: Object.keys(errors).length === 0,
-      completionPercentage,
+      completionPercentage: percentage,
       count: fields.length,
     });
   }, [watchedFields, errors, fields.length, onValidationChange]);
@@ -330,10 +352,6 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
 
   // ── Animation ─────────────────────────────────────────────────────────
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-  };
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
@@ -439,7 +457,7 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
             <option value="all">All Categories</option>
             {CERTIFICATION_CATEGORIES.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.icon} {c.name}
+                {c.name}
               </option>
             ))}
           </select>
@@ -455,6 +473,7 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
                 {filteredCertifications.map(({ cert, originalIndex }) => {
                   const expiryStatus = checkExpiryStatus(cert.expiryDate, cert.neverExpires);
                   const isExpanded = expandedItems.has(originalIndex) || viewMode === 'detailed';
+                  const CategoryIcon = getCategoryIcon(cert.category);
 
                   return (
                     <Draggable
@@ -490,9 +509,8 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
                                 >
                                   <FiMove className="w-5 h-5" />
                                 </div>
-                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center text-xl flex-shrink-0">
-                                  {CERTIFICATION_CATEGORIES.find((c) => c.id === cert.category)
-                                    ?.icon || '📜'}
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                  <CategoryIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between gap-2">
@@ -634,7 +652,7 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
                                     >
                                       {CERTIFICATION_CATEGORIES.map((c) => (
                                         <option key={c.id} value={c.id}>
-                                          {c.icon} {c.name}
+                                          {c.name}
                                         </option>
                                       ))}
                                     </select>
@@ -748,7 +766,7 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
           <option value="all">All Categories</option>
           {CERTIFICATION_CATEGORIES.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.icon} {c.name}
+              {c.name}
             </option>
           ))}
         </select>
@@ -791,42 +809,46 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
         onClose={() => setShowPreviewModal(false)}
         title="Certificate Preview"
       >
-        {selectedCert && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-2xl">
-                {CERTIFICATION_CATEGORIES.find((c) => c.id === selectedCert.category)?.icon || '📜'}
+        {selectedCert &&
+          (() => {
+            const PreviewCategoryIcon = getCategoryIcon(selectedCert.category);
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <PreviewCategoryIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">{selectedCert.name}</h3>
+                    <p className="text-primary-600 dark:text-primary-400 text-sm">
+                      {selectedCert.issuer}
+                    </p>
+                  </div>
+                </div>
+                {selectedCert.date && (
+                  <p className="text-sm">
+                    <span className="text-gray-500">Issued:</span> {formatDate(selectedCert.date)}
+                  </p>
+                )}
+                {selectedCert.credentialId && (
+                  <p className="text-sm">
+                    <span className="text-gray-500">ID:</span>{' '}
+                    <code className="font-mono">{selectedCert.credentialId}</code>
+                  </p>
+                )}
+                {selectedCert.link && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(selectedCert.link, '_blank')}
+                    className="w-full"
+                    icon={<FiExternalLink />}
+                  >
+                    Verify
+                  </Button>
+                )}
               </div>
-              <div>
-                <h3 className="text-lg font-bold">{selectedCert.name}</h3>
-                <p className="text-primary-600 dark:text-primary-400 text-sm">
-                  {selectedCert.issuer}
-                </p>
-              </div>
-            </div>
-            {selectedCert.date && (
-              <p className="text-sm">
-                <span className="text-gray-500">Issued:</span> {formatDate(selectedCert.date)}
-              </p>
-            )}
-            {selectedCert.credentialId && (
-              <p className="text-sm">
-                <span className="text-gray-500">ID:</span>{' '}
-                <code className="font-mono">{selectedCert.credentialId}</code>
-              </p>
-            )}
-            {selectedCert.link && (
-              <Button
-                variant="outline"
-                onClick={() => window.open(selectedCert.link, '_blank')}
-                className="w-full"
-                icon={<FiExternalLink />}
-              >
-                Verify
-              </Button>
-            )}
-          </div>
-        )}
+            );
+          })()}
       </Modal>
     </div>
   );

@@ -14,7 +14,6 @@ import {
   FiInfo,
   FiRefreshCw,
   FiLock,
-  FiX,
 } from 'react-icons/fi';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
@@ -27,7 +26,8 @@ const MAX_OTP_ATTEMPTS = 3;
 const RESEND_COOLDOWN = 60; // seconds
 const SMS_RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
 const MAX_SMS_PER_HOUR = 5;
-const OTP_LOCKOUT_DURATION = 5 * 60 * 1000; // 5 minutes
+const OTP_LOCKOUT_DURATION = 5 * 60 * 1000; // 5 minutes (milliseconds)
+const COOLDOWN_DURATION_EXTENDED = 5 * 60; // 5 minutes (seconds) — used when Firebase rate-limits
 
 // ── Custom Hook: SMS Rate Limiter ───────────────────────────────────────────
 
@@ -145,48 +145,6 @@ const PhoneAuth = ({
 
   const { isRateLimited, timeUntilReset, recordSmsSent } = useSmsRateLimiter();
 
-  // ── Modal Lifecycle ─────────────────────────────────────────────────────
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    if (isOpen) {
-      resetState();
-    }
-
-    return () => {
-      mountedRef.current = false;
-      cleanupRecaptcha();
-      abortPendingOperations();
-    };
-  }, [isOpen]);
-
-  // ── Resend Timer ────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-
-    const timer = setInterval(() => {
-      setResendTimer((prev) => Math.max(0, prev - 1));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [resendTimer]);
-
-  // ── OTP Lockout Timer ───────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!isLocked) return;
-
-    const timer = setTimeout(() => {
-      setIsLocked(false);
-      setOtpAttempts(0);
-      setError(null);
-    }, OTP_LOCKOUT_DURATION);
-
-    return () => clearTimeout(timer);
-  }, [isLocked]);
-
   // ── Cleanup Functions ───────────────────────────────────────────────────
 
   const resetState = useCallback(() => {
@@ -220,6 +178,48 @@ const PhoneAuth = ({
       abortControllerRef.current = null;
     }
   }, []);
+
+  // ── Modal Lifecycle ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    if (isOpen) {
+      resetState();
+    }
+
+    return () => {
+      mountedRef.current = false;
+      cleanupRecaptcha();
+      abortPendingOperations();
+    };
+  }, [isOpen, resetState, cleanupRecaptcha, abortPendingOperations]);
+
+  // ── Resend Timer ────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+
+    const timer = setInterval(() => {
+      setResendTimer((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [resendTimer]);
+
+  // ── OTP Lockout Timer ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isLocked) return;
+
+    const timer = setTimeout(() => {
+      setIsLocked(false);
+      setOtpAttempts(0);
+      setError(null);
+    }, OTP_LOCKOUT_DURATION);
+
+    return () => clearTimeout(timer);
+  }, [isLocked]);
 
   // ── reCAPTCHA Setup ─────────────────────────────────────────────────────
 
@@ -298,7 +298,7 @@ const PhoneAuth = ({
       recordSmsSent();
 
       toast.success('Verification code sent!', {
-        icon: '📱',
+        icon: <FiSmartphone className="w-5 h-5 text-primary-500" />,
         duration: 3000,
         id: 'otp-sent',
       });
@@ -488,7 +488,7 @@ const PhoneAuth = ({
 
         if (mode === 'signup') {
           toast.success('Account created successfully! Welcome!', {
-            icon: '🎉',
+            icon: <FiCheckCircle className="w-5 h-5 text-green-500" />,
             duration: 3000,
           });
         }
@@ -502,7 +502,7 @@ const PhoneAuth = ({
         });
 
         toast.success('Phone verified successfully!', {
-          icon: '✅',
+          icon: <FiCheckCircle className="w-5 h-5 text-green-500" />,
           duration: 2000,
         });
       }
@@ -514,7 +514,7 @@ const PhoneAuth = ({
 
       // Still succeed - authentication worked even if Firestore failed
       toast.success('Verified! Redirecting...', {
-        icon: '✅',
+        icon: <FiCheckCircle className="w-5 h-5 text-green-500" />,
         duration: 2000,
       });
 

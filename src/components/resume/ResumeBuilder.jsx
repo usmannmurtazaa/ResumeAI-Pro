@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useForm, FormProvider, useFieldArray } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   FiAlertCircle,
@@ -12,7 +12,6 @@ import {
   FiSave,
   FiLoader,
   FiLayout,
-  FiPlus,
 } from 'react-icons/fi';
 import PersonalInfo from './sections/PersonalInfo';
 import Education from './sections/Education';
@@ -23,7 +22,6 @@ import Certifications from './sections/Certifications';
 import ResumePreview from './ResumePreview';
 import TemplateSelector from './TemplateSelector';
 import Button from '../ui/Button';
-import Badge from '../ui/Badge';
 import Progress from '../ui/Progress';
 import Tooltip from '../ui/Tooltip';
 import Modal from '../ui/Modal';
@@ -100,16 +98,6 @@ const getEmptySectionData = (sectionId) => {
 const getSectionData = (formData, sectionId) =>
   formData?.[sectionId] ?? getEmptySectionData(sectionId);
 
-const isTypingTarget = (target) => {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  if (target.isContentEditable) return true;
-  if (target.closest('[contenteditable="true"]')) return true;
-  if (target.getAttribute('role') === 'textbox') return true;
-  return false;
-};
-
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 // ── Main Component ─────────────────────────────────────────────────────────
@@ -148,8 +136,7 @@ const ResumeBuilder = ({
     watch,
     setValue,
     getValues,
-    formState: { isDirty, errors, isValid },
-    trigger,
+    formState: { isDirty },
     reset,
   } = methods;
 
@@ -178,7 +165,8 @@ const ResumeBuilder = ({
         const data = getValues();
         await onChange?.(data);
         setSaveStatus('saved');
-        setTimeout(() => {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => {
           if (mountedRef.current) setSaveStatus('idle');
         }, 2000);
       } catch (error) {
@@ -208,7 +196,8 @@ const ResumeBuilder = ({
       await onChange?.(data);
       setSaveStatus('saved');
       toast.success('Resume saved');
-      setTimeout(() => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
         if (mountedRef.current) setSaveStatus('idle');
       }, 2000);
     } catch (error) {
@@ -290,6 +279,9 @@ const ResumeBuilder = ({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      // saveTimeoutRef holds a numeric timeout ID, not a DOM node. Reading
+      // `.current` in cleanup is safe — we explicitly want the latest value.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
   }, []);

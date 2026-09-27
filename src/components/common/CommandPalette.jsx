@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { FiCommand, FiSearch, FiX } from 'react-icons/fi';
+import { FiSearch, FiX } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useKeyboardShortcut } from '../../hooks/useKeyboardShortcut';
 

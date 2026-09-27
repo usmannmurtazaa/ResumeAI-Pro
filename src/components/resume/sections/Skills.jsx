@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus,
@@ -12,8 +12,6 @@ import {
   FiChevronUp,
   FiCheckCircle,
   FiAlertCircle,
-  FiStar,
-  FiInfo,
   FiTrash2,
   FiZap,
   FiGrid,
@@ -21,18 +19,14 @@ import {
   FiUpload,
   FiDownload,
   FiRefreshCw,
-  FiMove,
 } from 'react-icons/fi';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
 import Badge from '../../ui/Badge';
 import Card from '../../ui/Card';
 import Progress from '../../ui/Progress';
-import Tooltip from '../../ui/Tooltip';
 import Modal from '../../ui/Modal';
 import toast from 'react-hot-toast';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { useDebouncedCallback } from '../../../hooks/useDebounce';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -204,7 +198,6 @@ SkillItem.displayName = 'SkillItem';
 
 const Skills = ({ data = {}, onChange, onValidationChange }) => {
   const [newSkill, setNewSkill] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('technical');
   const [suggestions, setSuggestions] = useState([]);
   const [selectedIndustry, setSelectedIndustry] = useState('technology');
   const [expandedSections, setExpandedSections] = useState({
@@ -225,6 +218,7 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
   const mountedRef = useRef(true);
 
   const {
+    control,
     setValue,
     watch,
     formState: { isDirty },
@@ -237,10 +231,14 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
     },
   });
 
-  const technicalSkills = watch('technical') || [];
-  const softSkills = watch('soft') || [];
-  const languages = watch('languages') || [];
-  const skillDetails = watch('skillDetails') || {};
+  // ── Reactive form values via useWatch ─────────────────────────────────
+  // useWatch returns a stable reference when the underlying value has not
+  // changed, which prevents downstream useEffect / useCallback hooks from
+  // re-running on every render.
+  const technicalSkills = useWatch({ control, name: 'technical', defaultValue: [] });
+  const softSkills = useWatch({ control, name: 'soft', defaultValue: [] });
+  const languages = useWatch({ control, name: 'languages', defaultValue: [] });
+  const skillDetails = useWatch({ control, name: 'skillDetails', defaultValue: {} });
 
   // ── Lifecycle ──────────────────────────────────────────────────────────
 

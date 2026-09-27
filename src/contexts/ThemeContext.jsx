@@ -329,6 +329,9 @@ export const ThemeProvider = ({ children }) => {
       applyPreset,
       updateThemeColor,
       resetTheme,
+      setFontSize,
+      setReducedMotion,
+      setHighContrast,
     ]
   );
 

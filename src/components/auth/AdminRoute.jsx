@@ -23,8 +23,11 @@ const verifyAdminServerSide = async (user) => {
   if (!user) return false;
 
   try {
-    // Get the ID token with force refresh to ensure latest claims
-    const idToken = await user.getIdToken(true);
+    // Force refresh to ensure the latest claims are present in the
+    // subsequent getIdTokenResult() call. The token string itself is
+    // not used here — it would be sent to a backend endpoint if
+    // server-side verification were enabled.
+    await user.getIdToken(true);
 
     // Verify token claims
     const decodedToken = await user.getIdTokenResult();
@@ -133,7 +136,6 @@ const AdminRoute = ({
 
   const lastActivityRef = useRef(Date.now());
   const sessionCheckIntervalRef = useRef(null);
-  const redirectTimeoutRef = useRef(null);
   const mountedRef = useRef(true);
 
   // Check if user is coming from a different route
@@ -208,7 +210,7 @@ const AdminRoute = ({
     return () => {
       mountedRef.current = false;
     };
-  }, [loading, user, userRole, location.pathname]);
+  }, [loading, user, userRole, location.pathname, location.state?.from?.pathname]);
 
   // ── Session Timeout Management ──────────────────────────────────────────
 
@@ -242,6 +244,7 @@ const AdminRoute = ({
         clearInterval(sessionCheckIntervalRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminVerified, sessionTimeout]);
 
   const handleSessionTimeout = useCallback(async () => {
@@ -333,16 +336,6 @@ const AdminRoute = ({
       },
     });
   }, [user, navigate]);
-
-  // ── Cleanup on Unmount ─────────────────────────────────────────────────
-
-  useEffect(() => {
-    return () => {
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // ── Render States ──────────────────────────────────────────────────────
 

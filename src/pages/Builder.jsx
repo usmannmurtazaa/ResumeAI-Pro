@@ -18,11 +18,9 @@ import {
   FiMinimize2,
   FiMoreHorizontal,
   FiSave,
-  FiSquare,
   FiStar,
   FiTarget,
   FiTrash2,
-  FiUser,
   FiBook,
 } from 'react-icons/fi';
 import DashboardLayout from '../components/layouts/DashboardLayout';
@@ -179,8 +177,7 @@ const Builder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
-  const { getResume, createResume, updateResume, autoSaveResume, duplicateResume, deleteResume } =
-    useResume();
+  const { getResume, createResume, updateResume, duplicateResume, deleteResume } = useResume();
 
   const [activeResume, setActiveResume] = useState(null);
   const [resumeLoading, setResumeLoading] = useState(() => Boolean(id));
@@ -586,7 +583,14 @@ const Builder = () => {
       templateOverride: selectedTemplate,
       silent: true,
     });
-  }, [activeResume, debouncedSnapshot, id, persistExistingResume, selectedTemplate]);
+  }, [
+    activeResume,
+    debouncedFormData,
+    debouncedSnapshot,
+    id,
+    persistExistingResume,
+    selectedTemplate,
+  ]);
 
   // ── Flush pending save on page hide ─────────────────────────────────
 

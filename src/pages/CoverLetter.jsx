@@ -28,7 +28,6 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Input from '../components/ui/Input';
-import { Textarea } from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import Tooltip from '../components/ui/Tooltip';
 import { useAuth } from '../hooks/useAuth';

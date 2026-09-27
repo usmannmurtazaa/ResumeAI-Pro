@@ -6,32 +6,20 @@ import {
   FiSearch,
   FiRefreshCw,
   FiTrendingUp,
-  FiStar,
   FiX,
   FiFilter,
   FiCopy,
   FiDownload,
   FiInfo,
-  FiZap,
   FiGrid,
   FiList,
-  FiChevronDown,
-  FiChevronUp,
-  FiAlertCircle,
   FiTarget,
 } from 'react-icons/fi';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import Progress from '../ui/Progress';
 import Tooltip from '../ui/Tooltip';
-import Modal from '../ui/Modal';
-import Input from '../ui/Input';
-import {
-  suggestKeywords,
-  calculateKeywordRelevance,
-  industryKeywords,
-} from '../../utils/atsKeywords';
+import { suggestKeywords, calculateKeywordRelevance } from '../../utils/atsKeywords';
 import { INDUSTRIES } from '../../data/constants';
 import toast from 'react-hot-toast';
 
@@ -45,14 +33,6 @@ const PRIORITY_LEVELS = [
     color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30',
   },
   { value: 'low', label: 'Low Priority', color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30' },
-];
-
-const KEYWORD_CATEGORIES = [
-  { id: 'all', label: 'All' },
-  { id: 'technical', label: 'Technical' },
-  { id: 'soft', label: 'Soft' },
-  { id: 'industry', label: 'Industry' },
-  { id: 'role', label: 'Role Specific' },
 ];
 
 // ── Utility ───────────────────────────────────────────────────────────────
@@ -80,7 +60,6 @@ const KeywordSuggestions = ({
   const [showCategories, setShowCategories] = useState(true);
   const [selectedKeywords, setSelectedKeywords] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showJobMatch, setShowJobMatch] = useState(false);
   const [keywordStats, setKeywordStats] = useState(null);
   const [priorityFilter, setPriorityFilter] = useState('all');
 
@@ -97,47 +76,9 @@ const KeywordSuggestions = ({
     };
   }, []);
 
-  // ── Load Suggestions ─────────────────────────────────────────────────
-
-  const loadSuggestions = useCallback(() => {
-    setIsRefreshing(true);
-
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-
-    refreshTimerRef.current = setTimeout(() => {
-      if (!mountedRef.current) return;
-
-      const suggested = suggestKeywords(selectedIndustry, currentSkills, jobDescription);
-
-      const enhanced = suggested.map((keyword) => {
-        const relevance = calculateKeywordRelevance(keyword, selectedIndustry, jobDescription);
-        const category = detectKeywordCategory(keyword);
-        const priority = relevance >= 80 ? 'high' : relevance >= 60 ? 'medium' : 'low';
-        return {
-          keyword,
-          category,
-          relevance,
-          priority,
-          trending: Math.random() > 0.7,
-          popularity: Math.floor(Math.random() * 30) + 70,
-        };
-      });
-
-      setSuggestions(enhanced);
-      setIsRefreshing(false);
-    }, 300);
-  }, [selectedIndustry, currentSkills, jobDescription]);
-
-  useEffect(() => {
-    loadSuggestions();
-    return () => {
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    };
-  }, [loadSuggestions]);
-
   // ── Keyword Category Detection ──────────────────────────────────────
 
-  const detectKeywordCategory = (keyword) => {
+  const detectKeywordCategory = useCallback((keyword) => {
     const lower = keyword.toLowerCase();
     const technicalKeywords = [
       'javascript',
@@ -189,22 +130,99 @@ const KeywordSuggestions = ({
     if (technicalKeywords.some((t) => lower.includes(t))) return 'technical';
     if (softKeywords.some((s) => lower.includes(s))) return 'soft';
     return 'industry';
-  };
+  }, []);
+
+  // ── Load Suggestions ─────────────────────────────────────────────────
+
+  const loadSuggestions = useCallback(() => {
+    setIsRefreshing(true);
+
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+
+    refreshTimerRef.current = setTimeout(() => {
+      if (!mountedRef.current) return;
+
+      const suggested = suggestKeywords(selectedIndustry, currentSkills, jobDescription);
+
+      const enhanced = suggested.map((keyword) => {
+        const relevance = calculateKeywordRelevance(keyword, selectedIndustry, jobDescription);
+        const category = detectKeywordCategory(keyword);
+        const priority = relevance >= 80 ? 'high' : relevance >= 60 ? 'medium' : 'low';
+        return {
+          keyword,
+          category,
+          relevance,
+          priority,
+          trending: Math.random() > 0.7,
+          popularity: Math.floor(Math.random() * 30) + 70,
+        };
+      });
+
+      setSuggestions(enhanced);
+      setIsRefreshing(false);
+    }, 300);
+  }, [selectedIndustry, currentSkills, jobDescription, detectKeywordCategory]);
+
+  useEffect(() => {
+    loadSuggestions();
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, [loadSuggestions]);
+
+  // ── Filtered Suggestions ─────────────────────────────────────────────
+  // Declared above the callbacks that consume it. This prevents the
+  // temporal-dead-zone error that previously crashed the component.
+
+  const filteredSuggestions = useMemo(() => {
+    let filtered = suggestions.filter((s) => !addedSkills.includes(s.keyword));
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (s) => s.keyword.toLowerCase().includes(term) || s.category.toLowerCase().includes(term)
+      );
+    }
+
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter((s) => s.category === selectedCategory);
+    }
+
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter((s) => s.priority === priorityFilter);
+    }
+
+    return filtered.sort((a, b) => {
+      if (sortBy === 'relevance') return b.relevance - a.relevance;
+      if (sortBy === 'alphabetical') return a.keyword.localeCompare(b.keyword);
+      if (sortBy === 'trending') return (b.trending ? 1 : 0) - (a.trending ? 1 : 0);
+      if (sortBy === 'priority') {
+        const order = { high: 0, medium: 1, low: 2 };
+        return (order[a.priority] || 0) - (order[b.priority] || 0);
+      }
+      return b.popularity - a.popularity;
+    });
+  }, [suggestions, addedSkills, searchTerm, selectedCategory, priorityFilter, sortBy]);
+
+  const categories = useMemo(() => {
+    const unique = new Set(suggestions.map((s) => s.category));
+    return ['all', ...Array.from(unique)];
+  }, [suggestions]);
 
   // ── Stats ────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (suggestions.length > 0) {
-      const categories = {};
+      const categoryCounts = {};
       const priorities = { high: 0, medium: 0, low: 0 };
       suggestions.forEach((s) => {
-        categories[s.category] = (categories[s.category] || 0) + 1;
+        categoryCounts[s.category] = (categoryCounts[s.category] || 0) + 1;
         priorities[s.priority] = (priorities[s.priority] || 0) + 1;
       });
       const totalRelevance = suggestions.reduce((sum, s) => sum + s.relevance, 0);
       setKeywordStats({
         total: suggestions.length,
-        categories,
+        categories: categoryCounts,
         priorities,
         averageRelevance: Math.round(totalRelevance / suggestions.length),
         added: addedSkills.length,
@@ -250,13 +268,6 @@ const KeywordSuggestions = ({
     );
   }, []);
 
-  const selectAll = useCallback(() => {
-    const available = filteredSuggestions
-      .filter((s) => !addedSkills.includes(s.keyword))
-      .map((s) => s.keyword);
-    setSelectedKeywords(available);
-  }, [filteredSuggestions, addedSkills]);
-
   const clearSelection = useCallback(() => setSelectedKeywords([]), []);
   const clearAdded = useCallback(() => setAddedSkills([]), []);
 
@@ -292,43 +303,6 @@ const KeywordSuggestions = ({
     URL.revokeObjectURL(url);
     toast.success('Exported!');
   }, [filteredSuggestions, selectedIndustry]);
-
-  // ── Filter & Sort ───────────────────────────────────────────────────
-
-  const filteredSuggestions = useMemo(() => {
-    let filtered = suggestions.filter((s) => !addedSkills.includes(s.keyword));
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (s) => s.keyword.toLowerCase().includes(term) || s.category.toLowerCase().includes(term)
-      );
-    }
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter((s) => s.category === selectedCategory);
-    }
-
-    if (priorityFilter !== 'all') {
-      filtered = filtered.filter((s) => s.priority === priorityFilter);
-    }
-
-    return filtered.sort((a, b) => {
-      if (sortBy === 'relevance') return b.relevance - a.relevance;
-      if (sortBy === 'alphabetical') return a.keyword.localeCompare(b.keyword);
-      if (sortBy === 'trending') return (b.trending ? 1 : 0) - (a.trending ? 1 : 0);
-      if (sortBy === 'priority') {
-        const order = { high: 0, medium: 1, low: 2 };
-        return (order[a.priority] || 0) - (order[b.priority] || 0);
-      }
-      return b.popularity - a.popularity;
-    });
-  }, [suggestions, addedSkills, searchTerm, selectedCategory, priorityFilter, sortBy]);
-
-  const categories = useMemo(() => {
-    const unique = new Set(suggestions.map((s) => s.category));
-    return ['all', ...Array.from(unique)];
-  }, [suggestions]);
 
   // ── Render ────────────────────────────────────────────────────────────
 

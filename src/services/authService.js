@@ -14,8 +14,6 @@ import {
   linkWithPopup,
   OAuthProvider,
   onAuthStateChanged,
-  PhoneAuthProvider,
-  PhoneMultiFactorGenerator,
   reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -29,7 +27,6 @@ import {
   updateEmail,
   updatePassword,
   updateProfile,
-  verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   browserLocalPersistence,
   browserSessionPersistence,
 } from 'firebase/auth';
@@ -141,7 +138,11 @@ const hasPasswordProvider = (user) => user?.providerData?.some((p) => p.provider
 
 const getProviderIds = (user) => user?.providerData?.map((p) => p.providerId).filter(Boolean) || [];
 
-const buildLinkedProviderMap = (ids = []) => ids.reduce((acc, id) => ((acc[id] = true), acc), {});
+const buildLinkedProviderMap = (ids = []) =>
+  ids.reduce((acc, id) => {
+    acc[id] = true;
+    return acc;
+  }, {});
 
 const sanitizeProfileData = (data = {}) =>
   Object.fromEntries(

@@ -27,7 +27,7 @@ import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import Progress from '../ui/Progress';
 import Tooltip from '../ui/Tooltip';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 
 // ── Constants & Utilities ──────────────────────────────────────────────────
 

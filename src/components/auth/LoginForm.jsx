@@ -18,7 +18,6 @@ import {
   FiKey,
   FiSmile,
 } from 'react-icons/fi';
-import { FcGoogle } from 'react-icons/fc';
 import { FcPhone } from 'react-icons/fc';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../ui/Button';

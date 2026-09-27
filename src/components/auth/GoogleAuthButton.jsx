@@ -8,12 +8,11 @@ import {
   linkWithCredential,
   signInWithCredential,
   EmailAuthProvider,
-  fetchSignInMethodsForEmail,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../services/firebase';
 import { FcGoogle } from 'react-icons/fc';
-import { FiAlertCircle, FiCheckCircle, FiInfo, FiX } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiInfo } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
@@ -22,6 +21,17 @@ import toast from 'react-hot-toast';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
+
+// ── Pure helpers (module scope) ────────────────────────────────────────────
+// Moved outside the component so it does not need to be a dependency of
+// any hook that references it.
+const getDisplayNameFromEmail = (email) => {
+  if (!email) return 'User';
+  return email
+    .split('@')[0]
+    .replace(/[._]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -79,142 +89,90 @@ const GoogleAuthButton = ({
     };
   }, []);
 
-  // ── Handle Redirect Result ──────────────────────────────────────────────
-
-  useEffect(() => {
-    // FIXED: Only process redirect once
-    if (redirectProcessed) return;
-
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-
-        if (!mountedRef.current) return;
-
-        if (result) {
-          setRedirectProcessed(true);
-
-          const user = result.user;
-          await handleSuccessfulAuth(user, true);
-
-          // Handle pending credential if exists
-          if (pendingCredential && mode === 'link') {
-            try {
-              await linkWithCredential(user, pendingCredential);
-              toast.success('Google account linked successfully!');
-            } catch (linkError) {
-              console.error('Linking after redirect failed:', linkError);
-            }
-          }
-        }
-      } catch (error) {
-        if (!mountedRef.current) return;
-
-        console.error('Redirect result error:', error);
-
-        // Only show error if it's not a "no result" case
-        if (error.code !== 'auth/no-auth-event') {
-          handleAuthError(error);
-        }
-
-        setRedirectProcessed(true);
-      }
-    };
-
-    // Set timeout for redirect result (in case it never comes)
-    redirectTimeoutRef.current = setTimeout(() => {
-      if (mountedRef.current && !redirectProcessed) {
-        setRedirectProcessed(true);
-      }
-    }, 30000); // 30 second timeout
-
-    handleRedirectResult();
-
-    return () => {
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current);
-      }
-    };
-  }, [redirectProcessed]); // FIXED: Dependencies cleaned up
-
   // ── Successful Authentication Handler ───────────────────────────────────
+  // Memoized so the redirect-result effect below does not re-run on every
+  // render. Only depends on the values it actually reads: `mode` and
+  // `onSuccess`.
 
-  const handleSuccessfulAuth = async (user, isNewUser = false) => {
-    try {
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+  const handleSuccessfulAuth = useCallback(
+    async (user, isNewUser = false) => {
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
 
-      if (!userDoc.exists()) {
-        // Create new user document
-        const userData = {
-          email: user.email,
-          displayName: user.displayName || getDisplayNameFromEmail(user.email),
-          photoURL: user.photoURL || null,
-          role: 'user',
-          status: 'active',
-          emailVerified: user.emailVerified || false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-          authProvider: 'google',
-          providerData: {
-            providerId: GoogleAuthProvider.PROVIDER_ID,
-            uid: user.providerData?.[0]?.uid,
-          },
-          metadata: {
-            creationMethod: mode,
-            platform: navigator.platform,
-          },
-        };
+        if (!userDoc.exists()) {
+          // Create new user document
+          const userData = {
+            email: user.email,
+            displayName: user.displayName || getDisplayNameFromEmail(user.email),
+            photoURL: user.photoURL || null,
+            role: 'user',
+            status: 'active',
+            emailVerified: user.emailVerified || false,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastLogin: serverTimestamp(),
+            authProvider: 'google',
+            providerData: {
+              providerId: GoogleAuthProvider.PROVIDER_ID,
+              uid: user.providerData?.[0]?.uid,
+            },
+            metadata: {
+              creationMethod: mode,
+              platform: navigator.platform,
+            },
+          };
 
-        await setDoc(userDocRef, userData);
+          await setDoc(userDocRef, userData);
 
-        toast.success('Account created successfully! Welcome!', {
-          icon: '🎉',
-          duration: 3000,
-          id: 'google-auth-success',
-        });
-      } else {
-        // Update existing user document
-        const updateData = {
-          lastLogin: serverTimestamp(),
-          photoURL: user.photoURL || userDoc.data().photoURL,
-          emailVerified:
-            user.emailVerified !== undefined ? user.emailVerified : userDoc.data().emailVerified,
-          updatedAt: serverTimestamp(),
-        };
-
-        // Only update email if it changed
-        if (user.email && user.email !== userDoc.data().email) {
-          updateData.email = user.email;
-        }
-
-        await updateDoc(userDocRef, updateData);
-
-        // Only show welcome back for signin mode
-        if (mode === 'signin' && !isNewUser) {
-          toast.success('Welcome back! Signed in with Google', {
-            icon: '👋',
-            duration: 2000,
+          toast.success('Account created successfully! Welcome!', {
+            icon: '🎉',
+            duration: 3000,
             id: 'google-auth-success',
           });
+        } else {
+          // Update existing user document
+          const updateData = {
+            lastLogin: serverTimestamp(),
+            photoURL: user.photoURL || userDoc.data().photoURL,
+            emailVerified:
+              user.emailVerified !== undefined ? user.emailVerified : userDoc.data().emailVerified,
+            updatedAt: serverTimestamp(),
+          };
+
+          // Only update email if it changed
+          if (user.email && user.email !== userDoc.data().email) {
+            updateData.email = user.email;
+          }
+
+          await updateDoc(userDocRef, updateData);
+
+          // Only show welcome back for signin mode
+          if (mode === 'signin' && !isNewUser) {
+            toast.success('Welcome back! Signed in with Google', {
+              icon: '👋',
+              duration: 2000,
+              id: 'google-auth-success',
+            });
+          }
         }
+
+        onSuccess?.(user);
+      } catch (error) {
+        console.error('Firestore update failed:', error);
+
+        // Auth succeeded, Firestore failed - still call success
+        toast.success('Signed in successfully!', {
+          icon: '✅',
+          duration: 2000,
+          id: 'google-auth-success',
+        });
+
+        onSuccess?.(user);
       }
-
-      onSuccess?.(user);
-    } catch (error) {
-      console.error('Firestore update failed:', error);
-
-      // Auth succeeded, Firestore failed - still call success
-      toast.success('Signed in successfully!', {
-        icon: '✅',
-        duration: 2000,
-        id: 'google-auth-success',
-      });
-
-      onSuccess?.(user);
-    }
-  };
+    },
+    [mode, onSuccess]
+  );
 
   // ── Error Handler ───────────────────────────────────────────────────────
 
@@ -300,6 +258,68 @@ const GoogleAuthButton = ({
     [onError]
   );
 
+  // ── Handle Redirect Result ──────────────────────────────────────────────
+  // Runs on mount to pick up the result of a `signInWithRedirect` flow.
+  // The `redirectProcessed` guard makes the effect a no-op after the first
+  // successful (or timed-out) run. Dependencies are complete so that
+  // changes to `handleSuccessfulAuth` (which reads `mode` and `onSuccess`)
+  // do not use stale closures.
+
+  useEffect(() => {
+    if (redirectProcessed) return;
+
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+
+        if (!mountedRef.current) return;
+
+        if (result) {
+          setRedirectProcessed(true);
+
+          const user = result.user;
+          await handleSuccessfulAuth(user, true);
+
+          // Handle pending credential if exists
+          if (pendingCredential && mode === 'link') {
+            try {
+              await linkWithCredential(user, pendingCredential);
+              toast.success('Google account linked successfully!');
+            } catch (linkError) {
+              console.error('Linking after redirect failed:', linkError);
+            }
+          }
+        }
+      } catch (error) {
+        if (!mountedRef.current) return;
+
+        console.error('Redirect result error:', error);
+
+        // Only show error if it's not a "no result" case
+        if (error.code !== 'auth/no-auth-event') {
+          handleAuthError(error);
+        }
+
+        setRedirectProcessed(true);
+      }
+    };
+
+    // Set timeout for redirect result (in case it never comes)
+    redirectTimeoutRef.current = setTimeout(() => {
+      if (mountedRef.current && !redirectProcessed) {
+        setRedirectProcessed(true);
+      }
+    }, 30000); // 30 second timeout
+
+    handleRedirectResult();
+
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, [redirectProcessed, pendingCredential, mode, handleSuccessfulAuth, handleAuthError]);
+
   // ── Google Authentication Handler ───────────────────────────────────────
 
   const handleGoogleAuth = useCallback(async () => {
@@ -320,7 +340,7 @@ const GoogleAuthButton = ({
         ...(pendingEmail && { login_hint: pendingEmail }),
       });
 
-      // FIXED: Use redirect on mobile if specified
+      // Use redirect on mobile if specified
       if (redirectOnMobile && isMobile) {
         try {
           await signInWithRedirect(auth, provider);
@@ -345,7 +365,15 @@ const GoogleAuthButton = ({
         setLoading(false);
       }
     }
-  }, [loading, redirectOnMobile, isMobile, scopes, pendingEmail, handleAuthError]);
+  }, [
+    loading,
+    redirectOnMobile,
+    isMobile,
+    scopes,
+    pendingEmail,
+    handleAuthError,
+    handleSuccessfulAuth,
+  ]);
 
   // ── Account Linking Handler ─────────────────────────────────────────────
 
@@ -359,11 +387,11 @@ const GoogleAuthButton = ({
     setLinkError(null);
 
     try {
-      // FIXED: First sign in with email/password to get the user
+      // First sign in with email/password to get the user
       const emailCredential = EmailAuthProvider.credential(linkEmail, linkPassword);
       const userCredential = await signInWithCredential(auth, emailCredential);
 
-      // FIXED: Then link the Google credential to the signed-in user
+      // Then link the Google credential to the signed-in user
       if (pendingCredential) {
         await linkWithCredential(userCredential.user, pendingCredential);
 
@@ -413,14 +441,6 @@ const GoogleAuthButton = ({
   };
 
   // ── Utility Functions ───────────────────────────────────────────────────
-
-  const getDisplayNameFromEmail = (email) => {
-    if (!email) return 'User';
-    return email
-      .split('@')[0]
-      .replace(/[._]/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-  };
 
   const buttonLabel = label || (mode === 'signin' ? 'Continue with Google' : 'Sign up with Google');
 

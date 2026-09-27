@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
-import { doc, getDoc, setDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import toast from 'react-hot-toast';
 

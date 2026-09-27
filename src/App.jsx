@@ -5,6 +5,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { HelmetProvider } from 'react-helmet-async';
+import { FiTool } from 'react-icons/fi';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SettingsProvider } from './contexts/SettingsContext';
@@ -16,6 +17,7 @@ import Loader from './components/common/Loader';
 import RouteErrorBoundary from './components/common/RouteErrorBoundary';
 import SeoManager from './components/common/SeoManager';
 import SessionTimeoutWarning from './components/common/SessionTimeoutWarning';
+import SWUpdatePrompt from './components/common/SWUpdatePrompt';
 import { logAnalyticsEvent } from './services/firebase';
 import './styles/globals.css';
 import './styles/animations.css';
@@ -202,6 +204,11 @@ const useOnlineStatusFeedback = () => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // Capture the ref value once. It never changes, but this satisfies
+    // react-hooks/exhaustive-deps and makes the intent explicit.
+    const toastId = toastIdRef.current;
+
     const syncStatus = (nextOnline, { notify = true } = {}) => {
       setIsOnline(nextOnline);
       document.body.classList.toggle('offline', !nextOnline);
@@ -210,14 +217,14 @@ const useOnlineStatusFeedback = () => {
         return;
       }
       if (nextOnline) {
-        toast.dismiss(toastIdRef.current);
+        toast.dismiss(toastId);
         toast.success('Connection restored.', {
-          id: toastIdRef.current,
+          id: toastId,
           duration: 2500,
         });
       } else {
         toast.error('You are offline. Some features may be unavailable.', {
-          id: toastIdRef.current,
+          id: toastId,
           duration: Infinity,
         });
       }
@@ -231,7 +238,7 @@ const useOnlineStatusFeedback = () => {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      toast.dismiss(toastIdRef.current);
+      toast.dismiss(toastId);
     };
   }, []);
 
@@ -451,11 +458,12 @@ const AppShell = () => {
         />
 
         <SessionTimeoutWarning />
+        <SWUpdatePrompt />
 
         {isDevelopment && (
           <div className="pointer-events-none fixed bottom-4 left-4 z-50 opacity-50 transition-opacity hover:opacity-100 sm:bottom-6 sm:left-6">
             <div className="flex items-center gap-1.5 rounded-full bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-sm">
-              <span aria-hidden="true">🛠️</span>
+              <FiTool className="w-3.5 h-3.5" aria-hidden="true" />
               <span>
                 Development Mode
                 <span className="sr-only"> (this indicator only appears in development)</span>

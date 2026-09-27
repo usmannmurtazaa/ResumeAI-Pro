@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { FiRefreshCw, FiX } from 'react-icons/fi';
 
@@ -11,6 +12,11 @@ import { FiRefreshCw, FiX } from 'react-icons/fi';
  *
  * The new Service Worker calls skipWaiting() in its install handler, so
  * no SKIP_WAITING message is needed here — a simple page reload is enough.
+ *
+ * Note on animation: the toast body uses Framer Motion for its entrance
+ * (fade + lift). Exit animation is intentionally skipped because
+ * react-hot-toast removes the DOM node synchronously on dismiss, which
+ * would cut any exit animation off mid-frame.
  */
 const SWUpdatePrompt = () => {
   const toastIdRef = useRef(null);
@@ -24,10 +30,11 @@ const SWUpdatePrompt = () => {
 
       toastIdRef.current = toast.custom(
         (t) => (
-          <div
-            className={`flex items-center gap-3 rounded-xl border border-gray-200/60 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-xl dark:border-gray-700/60 dark:bg-gray-800/95 ${
-              t.visible ? 'animate-enter' : 'animate-leave'
-            }`}
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="flex items-center gap-3 rounded-xl border border-gray-200/60 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-xl dark:border-gray-700/60 dark:bg-gray-800/95"
             role="status"
             aria-live="polite"
           >
@@ -66,7 +73,7 @@ const SWUpdatePrompt = () => {
                 <FiX className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-          </div>
+          </motion.div>
         ),
         {
           duration: Infinity,
