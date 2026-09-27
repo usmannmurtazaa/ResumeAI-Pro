@@ -30,7 +30,7 @@ import Card from '../../ui/Card';
 import Modal from '../../ui/Modal';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebouncedCallback } from '../../../hooks/useDebounce';
-import { uploadFile } from '../../../services/firebase';
+import { storageService } from '../../../services/storageService';
 import toast from 'react-hot-toast';
 
 // ── Form Field Configuration ─────────────────────────────────────────────
@@ -305,7 +305,7 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
         const userId = user?.uid || 'anonymous';
         const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const path = `avatars/${userId}/profile-image-${Date.now()}-${safeFileName}`;
-        const { downloadURL } = await uploadFile(path, file);
+        const downloadURL = await storageService.uploadFile(path, file);
         if (mountedRef.current) {
           setProfileImageUrl(downloadURL);
           setValue('profileImage', downloadURL);
