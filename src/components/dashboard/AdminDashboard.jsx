@@ -1,7 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { collection, doc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getCountFromServer,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../ui/Button';
@@ -34,6 +46,15 @@ import {
 // ── Constants ───────────────────────────────────────────────────────────────
 const ITEMS_PER_PAGE = 10;
 const DATE_RANGES = { '7days': 7, '30days': 30, '90days': 90 };
+
+// The admin dashboard subscribes to the `users` and `resumes` collections.
+// Without a cap, Firestore streams every document on mount and re-reads any
+// changed document on every write, which exhausts the Spark-plan daily read
+// quota on even a modest tenant. These limits bound the initial load and the
+// per-write re-read cost deterministically. Accurate totals are fetched
+// separately via `getCountFromServer`.
+const ADMIN_USERS_LIMIT = 100;
+const ADMIN_RESUMES_LIMIT = 200;
 
 // ── StatCard Component (Outside Main Component) ────────────────────────────
 
@@ -108,6 +129,8 @@ const AdminDashboard = () => {
   });
   const [users, setUsers] = useState([]);
   const [resumes, setResumes] = useState([]);
+  const [totalUserCount, setTotalUserCount] = useState(0);
+  const [totalResumeCount, setTotalResumeCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // Track which action is loading
@@ -137,21 +160,55 @@ const AdminDashboard = () => {
     }
   }, [loading, isAdmin, navigate]);
 
-  // ── Real-time Subscriptions ──────────────────────────────────────────────
+  // ── Aggregate Counts (server-side, cheap) ────────────────────────────────
+  // These are separate from the paginated subscriptions below: the loaded
+  // window gives the table and derived stats, while these give accurate
+  // totals that do not require reading the collections.
+
+  const refreshTotalCounts = useCallback(async () => {
+    try {
+      const [usersSnap, resumesSnap] = await Promise.all([
+        getCountFromServer(collection(db, 'users')),
+        getCountFromServer(collection(db, 'resumes')),
+      ]);
+      if (!mountedRef.current) return;
+      setTotalUserCount(usersSnap.data().count || 0);
+      setTotalResumeCount(resumesSnap.data().count || 0);
+    } catch (err) {
+      console.error('Failed to fetch total counts:', err);
+      // Retain previous values on failure; do not spam toasts.
+    }
+  }, []);
+
+  // ── Real-time Subscriptions (bounded) ────────────────────────────────────
+  // The initial load and per-write re-read cost are both capped by
+  // ADMIN_USERS_LIMIT / ADMIN_RESUMES_LIMIT. Accurate totals come from
+  // `refreshTotalCounts()` above.
 
   useEffect(() => {
     mountedRef.current = true;
 
-    // FIXED: Proper cleanup with refs
-    const unsubUsers = onSnapshot(
+    const usersQuery = query(
       collection(db, 'users'),
+      orderBy('createdAt', 'desc'),
+      limit(ADMIN_USERS_LIMIT)
+    );
+
+    const resumesQuery = query(
+      collection(db, 'resumes'),
+      orderBy('createdAt', 'desc'),
+      limit(ADMIN_RESUMES_LIMIT)
+    );
+
+    const unsubUsers = onSnapshot(
+      usersQuery,
       (snapshot) => {
         if (!mountedRef.current) return;
         const usersData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setUsers(usersData);
       },
-      (error) => {
-        console.error('Users subscription error:', error);
+      (err) => {
+        console.error('Users subscription error:', err);
         if (mountedRef.current) {
           setError('Failed to load users data');
           toast.error('Failed to load users data');
@@ -160,14 +217,14 @@ const AdminDashboard = () => {
     );
 
     const unsubResumes = onSnapshot(
-      collection(db, 'resumes'),
+      resumesQuery,
       (snapshot) => {
         if (!mountedRef.current) return;
         const resumesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setResumes(resumesData);
       },
-      (error) => {
-        console.error('Resumes subscription error:', error);
+      (err) => {
+        console.error('Resumes subscription error:', err);
         if (mountedRef.current) {
           toast.error('Failed to load resumes data');
         }
@@ -175,19 +232,25 @@ const AdminDashboard = () => {
     );
 
     unsubscribeRefs.current = [unsubUsers, unsubResumes];
+
+    // Fetch accurate totals once. These do not need to be real-time because
+    // they are only used for the "Total" stat cards.
+    refreshTotalCounts();
+
     setLoading(false);
 
     return () => {
       mountedRef.current = false;
       unsubscribeRefs.current.forEach((unsub) => unsub?.());
     };
-  }, []); // FIXED: Empty dependency array - no need for users/resumes deps
+  }, [refreshTotalCounts]);
 
   // ── Update Stats ─────────────────────────────────────────────────────────
+  // Total users / total resumes use the accurate server-side counts. The
+  // remaining metrics are computed from the bounded loaded window, which is
+  // the most recent ADMIN_USERS_LIMIT / ADMIN_RESUMES_LIMIT documents.
 
   useEffect(() => {
-    if (!users.length && !resumes.length) return;
-
     const today = startOfDay(new Date()).toISOString();
 
     const activeCount = users.filter((u) => u.status === 'active').length;
@@ -198,8 +261,8 @@ const AdminDashboard = () => {
     const conversionRate = activeCount > 0 ? ((premiumCount / activeCount) * 100).toFixed(1) : 0;
 
     setStats({
-      totalUsers: users.length,
-      totalResumes: resumes.length,
+      totalUsers: totalUserCount,
+      totalResumes: totalResumeCount,
       activeUsers: activeCount,
       premiumUsers: premiumCount,
       suspendedUsers: suspendedCount,
@@ -207,7 +270,7 @@ const AdminDashboard = () => {
       newResumesToday,
       conversionRate,
     });
-  }, [users, resumes]);
+  }, [users, resumes, totalUserCount, totalResumeCount]);
 
   // ── Filtered Users (Memoized) ────────────────────────────────────────────
 
@@ -293,15 +356,23 @@ const AdminDashboard = () => {
     async (userId) => {
       setActionLoading(`delete-${userId}`);
       try {
-        const userResumes = resumes.filter((r) => r.userId === userId);
-        const batch = writeBatch(db);
+        // Fetch the user's full resume set directly. The `resumes` state is
+        // bounded by ADMIN_RESUMES_LIMIT and cannot be relied upon here.
+        const userResumesSnap = await getDocs(
+          query(collection(db, 'resumes'), where('userId', '==', userId))
+        );
 
-        userResumes.forEach((resume) => {
-          batch.delete(doc(db, 'resumes', resume.id));
+        const batch = writeBatch(db);
+        userResumesSnap.forEach((resumeDoc) => {
+          batch.delete(resumeDoc.ref);
         });
         batch.delete(doc(db, 'users', userId));
 
         await batch.commit();
+
+        // Update totals to reflect the removed documents.
+        await refreshTotalCounts();
+
         toast.success('User deleted successfully');
         setShowDeleteConfirm(false);
         setUserToDelete(null);
@@ -312,7 +383,7 @@ const AdminDashboard = () => {
         setActionLoading(null);
       }
     },
-    [resumes]
+    [refreshTotalCounts]
   );
 
   const handleSuspendUser = useCallback(async (userId, currentStatus) => {
@@ -331,9 +402,11 @@ const AdminDashboard = () => {
   }, []);
 
   const handleRefresh = useCallback(() => {
-    // Firestore real-time listeners auto-update, but we can refetch if needed
-    toast.success('Data is already real-time');
-  }, []);
+    // Firestore real-time listeners auto-update the loaded window; the
+    // aggregate counts are the only thing that needs an explicit refresh.
+    refreshTotalCounts();
+    toast.success('Data refreshed');
+  }, [refreshTotalCounts]);
 
   // ── Loading State ────────────────────────────────────────────────────────
 

@@ -15,6 +15,22 @@
   REACT_APP_ENVIRONMENT = "production"
   REACT_APP_ENABLE_ANALYTICS = "true"
 
+  # ── Netlify Secrets Scanning ────────────────────────────────────────────
+  # The following REACT_APP_* variables are public client configuration, not
+  # secrets. Every REACT_APP_* value is inlined into the browser bundle at
+  # build time (that is the CRA convention), and each of these values also
+  # appears as a fallback literal in the source tree — e.g. the site URL in
+  # `src/config/siteConfig.js`, the app name in `src/data/constants.js`, and
+  # the version string in `package.json`. Netlify's secret scanner treats the
+  # presence of those values in the repo as a potential leak and fails the
+  # build.
+  #
+  # Listing them here does NOT weaken secret protection. It only tells the
+  # scanner to skip these specific keys. Any env var that is a genuine
+  # secret MUST NOT use the REACT_APP_ prefix and MUST NOT be added to this
+  # list — it belongs in server-side Netlify Function environment variables.
+  SECRETS_SCAN_OMIT_KEYS = "REACT_APP_ENVIRONMENT,REACT_APP_NAME,REACT_APP_VERSION,REACT_APP_SUPPORT_EMAIL,REACT_APP_SITE_URL,REACT_APP_RESUME_API_URL"
+
 # ── Redirects ─────────────────────────────────────────────────────────────
 
 # SPA fallback

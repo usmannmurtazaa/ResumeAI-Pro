@@ -484,9 +484,6 @@ export const AuthProvider = ({ children }) => {
           toast.success('Welcome to Resume Ai Pro!');
         }
         resetSessionTimer();
-        SESSION_ACTIVITY_EVENTS.forEach((event) => {
-          document.addEventListener(event, handleUserActivity, { passive: true });
-        });
       } catch (error) {
         console.error('Error syncing auth state:', error);
         if (isActive && generation === hydrationGeneration) {
@@ -505,17 +502,28 @@ export const AuthProvider = ({ children }) => {
       if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
       if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
       if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
+    };
+  }, [clearAuthState, hydrateUserDocument, syncFirebaseUserState, resetSessionTimer]);
+
+  // ── Session Activity Listeners ──────────────────────────────────────
+  // Attached exactly once per signed-in session and removed on sign-out
+  // or unmount. Previously these were attached inside the onAuthStateChanged
+  // callback, which caused the same handlers to be re-registered on every
+  // auth event and accumulate duplicate document listeners over time.
+
+  useEffect(() => {
+    if (!user) return undefined;
+
+    SESSION_ACTIVITY_EVENTS.forEach((event) => {
+      document.addEventListener(event, handleUserActivity, { passive: true });
+    });
+
+    return () => {
       SESSION_ACTIVITY_EVENTS.forEach((event) => {
         document.removeEventListener(event, handleUserActivity);
       });
     };
-  }, [
-    clearAuthState,
-    hydrateUserDocument,
-    syncFirebaseUserState,
-    resetSessionTimer,
-    handleUserActivity,
-  ]);
+  }, [user, handleUserActivity]);
 
   // ── Token Refresh Listener ──────────────────────────────────────────
 
