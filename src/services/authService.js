@@ -108,6 +108,10 @@ const ERROR_MESSAGES = {
   'auth/provider-not-linked': 'Provider is not linked.',
   'auth/cannot-unlink-last-provider': 'Cannot unlink the last provider.',
   'auth/unsupported-provider': 'Provider not supported.',
+  // Codes used by the guarded `updateUserRole` below.
+  'auth/invalid-user-id': 'A valid user id is required.',
+  'auth/invalid-role': 'That role is not supported.',
+  'auth/insufficient-role': 'Administrator access is required for this action.',
 };
 
 // ── Utilities ──────────────────────────────────────────────────────────────
@@ -288,21 +292,33 @@ const reauthenticateWithPassword = async (password) => {
 const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
   const ref = doc(db, COLLECTIONS.users, user.uid);
   const existing = await getDoc(ref);
+
+  // Fields refreshed on every OAuth sign-in. `status` is intentionally NOT
+  // part of this set — it is admin-managed and must persist across sign-ins
+  // so that a suspended account stays suspended.
   const base = {
     email: user.email || null,
     displayName: user.displayName || user.email?.split('@')[0] || 'User',
     photoURL: user.photoURL || null,
-    status: 'active',
     emailVerified: Boolean(user.emailVerified),
     authProvider: providerName.toLowerCase(),
     linkedProviders: buildLinkedProviderMap(getProviderIds(user)),
     lastLogin: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
+
   if (!existing.exists()) {
-    await setDoc(ref, { ...base, role: 'user', createdAt: serverTimestamp() });
+    // New user — provision the document with the default status.
+    await setDoc(ref, {
+      ...base,
+      role: 'user',
+      status: 'active',
+      createdAt: serverTimestamp(),
+    });
     return true;
   }
+
+  // Existing user — update profile fields only. Do not touch `status`.
   await updateDoc(ref, base);
   return false;
 };
@@ -740,12 +756,57 @@ export const authService = {
     }
   },
 
+  /**
+   * Changes the `role` field of another user document.
+   *
+   * SECURITY NOTE:
+   * The authoritative authorization check for this operation MUST live in
+   * Firestore Security Rules (and/or a trusted backend). The client-side
+   * guard implemented below is defense-in-depth only — a determined attacker
+   * can bypass it by calling the Firestore SDK directly from the console.
+   *
+   * Firestore rules for `users/{uid}` must therefore enforce that only a
+   * caller whose own `users/{callerUid}` document has `role === 'admin'` may
+   * update the `role` field of a different user document.
+   */
   async updateUserRole(userId, role) {
     try {
+      // 1. Require an authenticated caller.
+      const caller = getCurrentUserOrThrow();
+
+      // 2. Reject malformed inputs before any network call.
+      if (!userId || typeof userId !== 'string') {
+        throw Object.assign(new Error('Invalid user id'), { code: 'auth/invalid-user-id' });
+      }
+      if (!ALLOWED_ROLES.has(role)) {
+        throw Object.assign(new Error(`Unsupported role: ${role}`), {
+          code: 'auth/invalid-role',
+        });
+      }
+
+      // 3. Defense-in-depth: block non-admin callers from the client SDK.
+      //    The real check lives in Firestore rules — see the docstring above.
+      const callerSnap = await getDoc(doc(db, COLLECTIONS.users, caller.uid));
+      const callerRole = callerSnap.exists() ? callerSnap.data()?.role : null;
+      if (callerRole !== 'admin') {
+        throw Object.assign(new Error('Admin access required'), {
+          code: 'auth/insufficient-role',
+        });
+      }
+
+      // 4. Perform the write. Firestore rules are expected to reject this
+      //    if the caller is not actually an admin.
       await updateDoc(doc(db, COLLECTIONS.users, userId), {
-        role: ALLOWED_ROLES.has(role) ? role : 'user',
+        role,
         updatedAt: serverTimestamp(),
       });
+
+      safeTrackEvent('role_changed', {
+        targetUserId: userId,
+        newRole: role,
+        changedBy: caller.uid,
+      });
+
       return { success: true };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
