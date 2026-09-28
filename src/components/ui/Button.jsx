@@ -60,6 +60,11 @@ const Button = forwardRef(
       className = '',
       disabled,
       size = 'md',
+      // Optional override that controls only the icon glyph's dimensions,
+      // independent of the button shell's `size`. Used by `IconButton`, where
+      // the shell must stay compact but the caller still needs to pick the
+      // glyph size. When unset, falls back to `size` (previous behaviour).
+      iconSize,
       fullWidth = false,
       rounded = false,
       loadingText,
@@ -90,7 +95,7 @@ const Button = forwardRef(
       className
     );
 
-    const iconClass = ICON_SIZES[size] || ICON_SIZES.md;
+    const iconClass = ICON_SIZES[iconSize || size] || ICON_SIZES.md;
 
     const isLink = !!href;
     const Component = isLink ? motion.a : motion.button;
@@ -168,10 +173,17 @@ export const IconButton = forwardRef(
     { icon, label, variant = 'ghost', size = 'md', loading = false, className = '', ...props },
     ref
   ) => (
+    // The shell stays the compact `icon` shape for every IconButton so
+    // padding, rounding, and hit-target stay consistent across the app.
+    // The caller's `size` is forwarded as `iconSize`, which controls the
+    // glyph's dimensions only — that is the part a caller actually needs
+    // to change (a large close button in a modal, a small inline action
+    // in a table row, etc.).
     <Button
       ref={ref}
       variant={variant}
       size="icon"
+      iconSize={size}
       loading={loading}
       className={className}
       aria-label={label}

@@ -45,7 +45,6 @@ const GoogleAuthButton = ({
   showIcon = true,
   label = null,
   redirectOnMobile = false,
-  linkToExisting = false,
   disabled = false,
   scopes = ['profile', 'email'],
 }) => {
@@ -90,9 +89,18 @@ const GoogleAuthButton = ({
   }, []);
 
   // ── Successful Authentication Handler ───────────────────────────────────
-  // Memoized so the redirect-result effect below does not re-run on every
-  // render. Only depends on the values it actually reads: `mode` and
-  // `onSuccess`.
+  // Feedback contract:
+  //   The button delegates the post-sign-in user feedback to the caller via
+  //   `onSuccess`. If the caller passes `onSuccess`, this component does NOT
+  //   emit a success toast — the caller's handler is the single feedback
+  //   surface and does its own redirect + toast. The local toast only fires
+  //   when the caller does not provide `onSuccess`, so that consumers who
+  //   mount the button in isolation still see a confirmation.
+  //
+  //   Removing the previous unconditional toasts here was necessary because
+  //   both real callers (`LoginForm.handleGoogleSuccess` /
+  //   `SignUpForm.handleGoogleSuccess`) already toast and redirect, producing
+  //   two stacked success toasts per Google sign-in / sign-up.
 
   const handleSuccessfulAuth = useCallback(
     async (user, isNewUser = false) => {
@@ -124,12 +132,6 @@ const GoogleAuthButton = ({
           };
 
           await setDoc(userDocRef, userData);
-
-          toast.success('Account created successfully! Welcome!', {
-            icon: '🎉',
-            duration: 3000,
-            id: 'google-auth-success',
-          });
         } else {
           // Update existing user document
           const updateData = {
@@ -146,29 +148,32 @@ const GoogleAuthButton = ({
           }
 
           await updateDoc(userDocRef, updateData);
-
-          // Only show welcome back for signin mode
-          if (mode === 'signin' && !isNewUser) {
-            toast.success('Welcome back! Signed in with Google', {
-              icon: '👋',
-              duration: 2000,
-              id: 'google-auth-success',
-            });
-          }
         }
 
-        onSuccess?.(user);
+        // Feedback is delegated to the caller when `onSuccess` is provided.
+        if (onSuccess) {
+          onSuccess(user);
+        } else {
+          toast.success(isNewUser ? 'Account created successfully!' : 'Signed in with Google!', {
+            icon: isNewUser ? '🎉' : '👋',
+            duration: 2000,
+            id: 'google-auth-success',
+          });
+        }
       } catch (error) {
         console.error('Firestore update failed:', error);
 
-        // Auth succeeded, Firestore failed - still call success
-        toast.success('Signed in successfully!', {
-          icon: '✅',
-          duration: 2000,
-          id: 'google-auth-success',
-        });
-
-        onSuccess?.(user);
+        // Auth succeeded even though Firestore did not. Still call
+        // `onSuccess` so the caller can proceed; the Firestore failure is a
+        // soft error and should not block the sign-in.
+        if (onSuccess) {
+          onSuccess(user);
+        } else {
+          toast.success('Signed in with Google!', {
+            duration: 2000,
+            id: 'google-auth-success',
+          });
+        }
       }
     },
     [mode, onSuccess]
@@ -262,8 +267,8 @@ const GoogleAuthButton = ({
   // Runs on mount to pick up the result of a `signInWithRedirect` flow.
   // The `redirectProcessed` guard makes the effect a no-op after the first
   // successful (or timed-out) run. Dependencies are complete so that
-  // changes to `handleSuccessfulAuth` (which reads `mode` and `onSuccess`)
-  // do not use stale closures.
+  // changes to `handleSuccessfulAuth` (which reads `onSuccess`) do not use
+  // stale closures.
 
   useEffect(() => {
     if (redirectProcessed) return;
@@ -401,6 +406,8 @@ const GoogleAuthButton = ({
         setPendingCredential(null);
         setPendingEmail(null);
 
+        // Kept: this toast is specific to the linking action and is not
+        // duplicated by the caller's sign-in feedback ("Welcome back!").
         toast.success('Google account linked successfully!', {
           id: 'link-success',
         });
@@ -623,7 +630,6 @@ const GoogleAuthButton = ({
 // ── Google One Tap Component ────────────────────────────────────────────────
 
 export const GoogleOneTap = ({ onSuccess, onError, context = 'signin' }) => {
-  const containerRef = useRef(null);
   const scriptLoadedRef = useRef(false);
   const initializedRef = useRef(false);
 

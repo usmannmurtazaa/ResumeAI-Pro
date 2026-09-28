@@ -15,7 +15,6 @@ import {
   FiArrowDown,
   FiMic,
 } from 'react-icons/fi';
-import { useAuth } from '../../contexts/AuthContext';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const MAX_RESULTS = 8;
@@ -194,16 +193,30 @@ const useDebounce = (value, delay = DEBOUNCE_DELAY) => {
 
 const SearchBar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const inputRef = useRef(null);
   const resultsRef = useRef(null);
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isListening, setIsListening] = useState(false);
+  const [isListening] = useState(false);
   const { recent, addRecent, clearRecent } = useRecentSearches();
 
   const debouncedQuery = useDebounce(query);
+
+  // Refs that hold the latest versions of `handleSelect` and `onClose` for
+  // the keyboard-navigation effect below. The effect re-attaches a keydown
+  // listener whenever `isOpen` or the derived search results change; it must
+  // NOT re-attach on every keystroke (that would be one attach per typed
+  // character). `handleSelect` depends on `query`, so its identity changes
+  // on every keystroke; `onClose` is a fresh function on every parent render
+  // in the current caller (Navbar passes an inline arrow). Referencing both
+  // through refs keeps the effect's dependency array free of unstable values
+  // while still calling the freshest available closure.
+  //
+  // `handleSelectRef` starts as `null` because `handleSelect` is declared
+  // later in the file; the sync effect below assigns it after the render.
+  const handleSelectRef = useRef(null);
+  const onCloseRef = useRef(onClose);
 
   // ── Focus Management ──────────────────────────────────────────────────
 
@@ -270,14 +283,14 @@ const SearchBar = ({ isOpen, onClose }) => {
         case 'Enter':
           e.preventDefault();
           if (results[selectedIndex]) {
-            handleSelect(results[selectedIndex]);
+            handleSelectRef.current?.(results[selectedIndex]);
           } else if (showRecent && recent[selectedIndex]) {
             setQuery(recent[selectedIndex]);
           }
           break;
         case 'Escape':
           e.preventDefault();
-          onClose();
+          onCloseRef.current?.();
           break;
         default:
           break;
@@ -327,6 +340,16 @@ const SearchBar = ({ isOpen, onClose }) => {
     setQuery(searchQuery);
     inputRef.current?.focus();
   }, []);
+
+  // ── Keep Callback Refs Fresh ──────────────────────────────────────────
+  // Runs after every render (no dependency array) so the next keydown event
+  // always sees the latest `handleSelect` and `onClose`. This is the
+  // standard React pattern for "stable listener, latest callback".
+
+  useEffect(() => {
+    handleSelectRef.current = handleSelect;
+    onCloseRef.current = onClose;
+  });
 
   // ── Render ─────────────────────────────────────────────────────────────
 

@@ -113,7 +113,7 @@ const Template3 = ({ data, className = '' }) => {
   );
 
   // Skill card component
-  const SkillCard = ({ skill, proficiency, years, index }) => {
+  const SkillCard = ({ skill, proficiency, years }) => {
     const getProficiencyStars = (level) => {
       const levels = { beginner: 1, intermediate: 2, advanced: 3, expert: 4 };
       const count = levels[level] || 2;
@@ -383,7 +383,7 @@ const Template3 = ({ data, className = '' }) => {
                                   <span className="text-purple-400 mt-1.5 print:text-gray-500">
                                     •
                                   </span>
-                                  <span>{line.trim().replace(/^[•\-]\s*/, '')}</span>
+                                  <span>{line.trim().replace(/^[•-]\s*/, '')}</span>
                                 </p>
                               )
                           )}

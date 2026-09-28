@@ -1,12 +1,5 @@
 import { useEffect, useRef } from 'react';
 
-// ── SSR-Safe Helper ──────────────────────────────────────────────────────
-
-const getDocument = () => {
-  if (typeof document === 'undefined') return null;
-  return document;
-};
-
 // ── useOnClickOutside ────────────────────────────────────────────────────
 
 /**

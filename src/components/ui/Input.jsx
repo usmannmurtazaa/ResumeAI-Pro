@@ -28,6 +28,16 @@ const VARIANTS = {
 const BASE_INPUT =
   'w-full outline-none bg-transparent text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed read-only:bg-gray-50 dark:read-only:bg-gray-900';
 
+// Focus-ring classes for the Textarea. Applied on top of the active variant
+// so every standard variant shows a visible focus indicator.
+//
+// Do NOT rewrite this as `VARIANTS[variant] || VARIANTS.default + ' focus:...'`
+// — the `+` operator binds tighter than `||`, so the focus classes would only
+// be applied in the fallback branch (i.e. for an unknown variant name), and
+// every known variant would lose its focus ring. This is the bug that was
+// fixed in `Textarea.jsx` and is fixed here in the same way.
+const FOCUS_CLASSES = 'focus:ring-2 focus:ring-primary-500 focus:border-transparent';
+
 // ── Input Component ──────────────────────────────────────────────────────
 
 const Input = forwardRef(
@@ -297,9 +307,7 @@ export const Textarea = forwardRef(
                 ? '!border-red-500 focus:!ring-red-500'
                 : success
                   ? '!border-green-500 focus:!ring-green-500'
-                  : VARIANTS[variant] ||
-                    VARIANTS.default +
-                      ' focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+                  : `${VARIANTS[variant] || VARIANTS.default} ${FOCUS_CLASSES}`,
               autoResize && 'resize-none overflow-hidden',
               className
             )}
@@ -379,6 +387,12 @@ InputGroup.displayName = 'InputGroup';
 
 export const SearchInput = forwardRef(
   ({ placeholder = 'Search...', onSearch, className = '', ...props }, ref) => (
+    // `onSearch` is forwarded so that the native `search` event from the
+    // <input type="search"> below reaches the caller. Browsers fire that
+    // event when the user presses Enter inside the field — the standard
+    // "user submitted the query" signal — and when the user clicks the
+    // native clear button. Wiring it here restores the prop's contract:
+    // without this, callers had to reimplement Enter handling themselves.
     <Input
       ref={ref}
       type="search"
@@ -386,6 +400,7 @@ export const SearchInput = forwardRef(
       icon={<FiSearch className="w-5 h-5" />}
       clearable
       className={className}
+      onSearch={onSearch}
       {...props}
     />
   )

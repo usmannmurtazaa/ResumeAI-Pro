@@ -17,12 +17,13 @@ import toast from 'react-hot-toast';
 
 const RouteErrorFallback = ({
   error,
-  errorInfo,
   errorId,
   reset,
   reload,
   title = 'Something went wrong on this page',
   message = 'An unexpected error occurred while loading this page.',
+  showHomeButton = true,
+  showReloadButton = true,
 }) => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
@@ -119,14 +120,23 @@ const RouteErrorFallback = ({
               {isRecovering ? 'Recovering...' : 'Try Again'}
             </Button>
 
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={handleGoHome} icon={<FiHome />}>
-                Go Home
-              </Button>
-              <Button variant="outline" onClick={handleGoBack} icon={<FiChevronLeft />}>
-                Go Back
-              </Button>
-            </div>
+            {(showHomeButton || true) && (
+              <div className="grid grid-cols-2 gap-2">
+                {showHomeButton && (
+                  <Button variant="outline" onClick={handleGoHome} icon={<FiHome />}>
+                    Go Home
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={handleGoBack}
+                  icon={<FiChevronLeft />}
+                  className={showHomeButton ? '' : 'col-span-2'}
+                >
+                  Go Back
+                </Button>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button
@@ -138,15 +148,17 @@ const RouteErrorFallback = ({
               >
                 {copied ? 'Copied!' : 'Copy Error Info'}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleReload}
-                icon={<FiRefreshCw />}
-                className="flex-1"
-              >
-                Reload Page
-              </Button>
+              {showReloadButton && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReload}
+                  icon={<FiRefreshCw />}
+                  className="flex-1"
+                >
+                  Reload Page
+                </Button>
+              )}
             </div>
           </div>
 
@@ -200,7 +212,13 @@ const RouteErrorBoundary = ({
       onReset={onReset}
       maxRecoveryAttempts={2}
       fallback={(errorProps) => (
-        <RouteErrorFallback {...errorProps} title={title} message={message} />
+        <RouteErrorFallback
+          {...errorProps}
+          title={title}
+          message={message}
+          showHomeButton={showHomeButton}
+          showReloadButton={showReloadButton}
+        />
       )}
     >
       {children}

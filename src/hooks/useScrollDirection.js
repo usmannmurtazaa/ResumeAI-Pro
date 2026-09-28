@@ -1,12 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// ── SSR-Safe Helpers ────────────────────────────────────────────────────
-
-const getWindow = () => {
-  if (typeof window === 'undefined') return null;
-  return window;
-};
-
 // ── useScrollDirection ──────────────────────────────────────────────────
 
 /**

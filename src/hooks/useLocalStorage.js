@@ -7,30 +7,6 @@ const getStorage = () => {
   return window.localStorage;
 };
 
-const safeGetItem = (key, fallback = null) => {
-  try {
-    const storage = getStorage();
-    if (!storage) return fallback;
-    const item = storage.getItem(key);
-    return item !== null ? JSON.parse(item) : fallback;
-  } catch (error) {
-    console.warn(`Error reading localStorage key "${key}":`, error);
-    return fallback;
-  }
-};
-
-const safeSetItem = (key, value) => {
-  try {
-    const storage = getStorage();
-    if (!storage) return false;
-    storage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch (error) {
-    console.warn(`Error writing localStorage key "${key}":`, error);
-    return false;
-  }
-};
-
 const safeRemoveItem = (key) => {
   try {
     const storage = getStorage();

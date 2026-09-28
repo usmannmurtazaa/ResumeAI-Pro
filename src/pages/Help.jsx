@@ -37,8 +37,6 @@ import toast from 'react-hot-toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const cn = (...classes) => classes.filter(Boolean).join(' ');
-
 const HELP_CATEGORIES = [
   {
     icon: FiUser,
@@ -177,7 +175,6 @@ const Help = () => {
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [contactForm, setContactForm] = useState(INITIAL_CONTACT);
   const [submitting, setSubmitting] = useState(false);
-  const [showLiveChat, setShowLiveChat] = useState(false);
   const [recentSearches, setRecentSearches] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('helpRecentSearches') || '[]');

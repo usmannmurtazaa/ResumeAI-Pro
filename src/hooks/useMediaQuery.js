@@ -41,14 +41,11 @@ const getMatchMedia = (query) => {
 export const useMediaQuery = (query, options = {}) => {
   const { defaultValue = false, enabled = true } = options;
 
-  // FIXED: Use a ref for the initial value, don't put matches in deps
   const [matches, setMatches] = useState(() => {
     if (typeof window === 'undefined') return defaultValue;
     const media = getMatchMedia(query);
     return media ? media.matches : defaultValue;
   });
-
-  // ── FIXED: No `matches` in dependency array ─────────────────────────
 
   useEffect(() => {
     // SSR guard
@@ -57,10 +54,16 @@ export const useMediaQuery = (query, options = {}) => {
     const media = getMatchMedia(query);
     if (!media) return;
 
-    // Sync state if it differs from the media query result
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
+    // Sync state with the media query's current value. The functional
+    // updater form is used deliberately: reading `matches` from the closure
+    // would (a) require the ESLint `react-hooks/exhaustive-deps` warning to
+    // be suppressed, and (b) create an infinite-loop hazard the moment
+    // someone "fixes" the warning by adding `matches` to the dependency
+    // array — the effect would re-run on every state update it itself
+    // produces. Passing a function to `setMatches` receives the latest
+    // state as its argument and React bails out of the re-render when the
+    // value is unchanged.
+    setMatches((prev) => (prev === media.matches ? prev : media.matches));
 
     // Handler for changes
     const handleChange = (event) => {
@@ -81,7 +84,7 @@ export const useMediaQuery = (query, options = {}) => {
       // Very old browsers - no cleanup possible
       return undefined;
     }
-  }, [query, enabled]); // FIXED: Only depends on query and enabled
+  }, [query, enabled]);
 
   return matches;
 };

@@ -1,5 +1,5 @@
 import React, { forwardRef, useId } from 'react';
-import { FiChevronDown, FiAlertCircle } from 'react-icons/fi';
+import { FiChevronDown, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ── Utility ───────────────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ const Select = forwardRef(
               exit={{ opacity: 0, y: -5 }}
               className="text-xs text-green-500 dark:text-green-400 flex items-center gap-1 ml-1"
             >
-              <FiAlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <FiCheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
               {success}
             </motion.p>
           )}
@@ -221,7 +221,17 @@ export const MultiSelect = forwardRef(
         )}
 
         <div className="relative">
+          {/*
+            The forwarded ref attaches to the trigger button. That button is
+            the control's focusable element — the same target a caller would
+            expect from a select-like component: focus(), measure(), or
+            scrollIntoView() on the ref reaches the interactive surface, not
+            the surrounding wrapper. The wrapper carries the internal
+            `containerRef` used for the outside-click handler and is
+            intentionally not exposed.
+          */}
           <button
+            ref={ref}
             type="button"
             onClick={() => !disabled && setIsOpen(!isOpen)}
             disabled={disabled}

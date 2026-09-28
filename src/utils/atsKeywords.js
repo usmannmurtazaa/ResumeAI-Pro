@@ -394,10 +394,16 @@ export const passivePhrases = [
 ];
 
 // ── Memoized Helpers ──────────────────────────────────────────────────────
+// These two flat arrays are computed once at module load and reused by the
+// public helpers below.
+//   - ALL_KEYWORDS is consumed by `suggestKeywords` when a job description
+//     is provided.
+//   - ALL_VERBS is consumed by `calculateATSScore` and `detectWeakVerbs`.
+// The `passivePhrases` array above is consumed directly (by `atsScoring.js`),
+// so no local alias is needed for it.
 
 const ALL_KEYWORDS = Object.values(industryKeywords).flat();
 const ALL_VERBS = Object.values(actionVerbs).flat();
-const ALL_PASSIVE = passivePhrases;
 
 // ── Keyword Categories ────────────────────────────────────────────────────
 
@@ -817,7 +823,14 @@ export const detectWeakVerbs = (text) => {
   };
 };
 
-export default {
+/**
+ * Named aggregate of the module's public surface. Declared as a named
+ * constant (rather than inline in `export default`) so stack traces,
+ * DevTools, and editor auto-import show the symbol as `atsKeywordsApi`
+ * instead of `<anonymous>`. Consumers can import either the default export
+ * or the named export — both refer to the same object.
+ */
+const atsKeywordsApi = {
   industryKeywords,
   actionVerbs,
   passivePhrases,
@@ -831,3 +844,6 @@ export default {
   calculateDetailedMetrics,
   detectWeakVerbs,
 };
+
+export { atsKeywordsApi };
+export default atsKeywordsApi;

@@ -46,6 +46,21 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
+// NOTE ON TOASTS IN THIS FILE:
+// The service layer is now silent for every operation whose callers provide
+// their own user-facing feedback. That covers: signUp, signIn,
+// signInWithProvider, signInWithPhone, confirmPhoneSignIn, signOut,
+// updateUserEmail, updateUserPassword, linkProvider, unlinkProvider,
+// deleteUserAccount, resetPassword, confirmPasswordReset, and
+// sendVerificationEmail.
+//
+// The remaining `toast.success(...)` calls are for operations where the
+// service is currently the ONLY feedback surface in the codebase:
+//   • `verifyEmail` — no caller in the current tree invokes this method;
+//     `VerifyEmail.jsx` uses `applyActionCode` directly.
+//   • `uploadProfileImage` / `deleteProfileImage` — no visible caller.
+//   • `revokeSession` / `revokeAllOtherSessions` — no visible caller.
+// Before removing any of these, wire the caller with its own toast.
 import toast from 'react-hot-toast';
 import { auth, db, storage, logAnalyticsEvent } from './firebase';
 
@@ -60,7 +75,7 @@ const COLLECTIONS = {
   sessions: 'sessions',
 };
 
-const SESSION_STORAGE_KEY = 'maniestacareeros.current-session-id';
+const SESSION_STORAGE_KEY = 'resumeaixpro.current-session-id';
 const BATCH_CHUNK_SIZE = 400;
 const MAX_SESSIONS_DISPLAY = 25;
 
@@ -164,8 +179,8 @@ const sanitizeProfileData = (data = {}) =>
  * at roughly 2 KB; larger values, and values that are not `http(s)` URLs
  * (notably the `data:image/...;base64,...` strings produced by
  * `FileReader.readAsDataURL`), are rejected by the server with HTTP 400.
- * Anything that fails this check should be skipped on the Auth side and -
- * if appropriate - handled through Firebase Storage instead.
+ * Anything that fails this check should be skipped on the Auth side and —
+ * if appropriate — handled through Firebase Storage instead.
  */
 const isSafeAuthPhotoURL = (value) => {
   if (typeof value !== 'string') return false;
@@ -217,7 +232,7 @@ const createProvider = (name) => {
     }
     case 'microsoft': {
       const p = new OAuthProvider('microsoft.com');
-      p.addScope('User.Read');
+      p.addScope('User.read');
       p.addScope('email');
       p.setCustomParameters({ prompt: 'select_account' });
       return p;
@@ -314,7 +329,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
   const existing = await getDoc(ref);
 
   // Fields refreshed on every OAuth sign-in. `status` is intentionally NOT
-  // part of this set - it is admin-managed and must persist across sign-ins
+  // part of this set — it is admin-managed and must persist across sign-ins
   // so that a suspended account stays suspended.
   const base = {
     email: user.email || null,
@@ -328,7 +343,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
   };
 
   if (!existing.exists()) {
-    // New user - provision the document with the default status.
+    // New user — provision the document with the default status.
     await setDoc(ref, {
       ...base,
       role: 'user',
@@ -338,7 +353,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
     return true;
   }
 
-  // Existing user - update profile fields only. Do not touch `status`.
+  // Existing user — update profile fields only. Do not touch `status`.
   await updateDoc(ref, base);
   return false;
 };
@@ -391,7 +406,6 @@ export const authService = {
       });
       await createSessionRecord(user.uid);
       safeTrackEvent('sign_up', { method: 'email', userId: user.uid });
-      toast.success('Account created! Please verify your email.');
       return { success: true, user };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -408,7 +422,6 @@ export const authService = {
       });
       await createSessionRecord(cred.user.uid);
       safeTrackEvent('login', { method: 'email', userId: cred.user.uid });
-      toast.success('Welcome back!');
       return { success: true, user: cred.user };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -425,7 +438,6 @@ export const authService = {
         method: name.toLowerCase(),
         userId: result.user.uid,
       });
-      toast.success(isNew ? 'Account created! Welcome!' : `Signed in with ${name}!`);
       return { success: true, user: result.user, isNewUser: isNew };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -437,7 +449,6 @@ export const authService = {
       if (!recaptcha)
         throw Object.assign(new Error('Recaptcha required'), { code: 'auth/missing-recaptcha' });
       const confirmation = await signInWithPhoneNumber(auth, phone.trim(), recaptcha);
-      toast.success('Verification code sent!');
       return { success: true, confirmationResult: confirmation };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -474,7 +485,6 @@ export const authService = {
       }
       await createSessionRecord(user.uid);
       safeTrackEvent(isNew ? 'sign_up' : 'login', { method: 'phone', userId: user.uid });
-      toast.success(isNew ? 'Account created!' : 'Phone verified!');
       return { success: true, user, isNewUser: isNew };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -493,13 +503,17 @@ export const authService = {
       }
       await firebaseSignOut(auth);
       clearStoredSessionId();
-      toast.success('Logged out');
       return { success: true };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
     }
   },
 
+  // User-facing feedback for this method is provided by the caller:
+  //   • ForgotPassword.onSubmit
+  //   • ForgotPassword.handleResend
+  // They toast once the request completes. Emitting a toast here would
+  // produce two stacked toasts for a single submission.
   async resetPassword(email) {
     try {
       await sendPasswordResetEmail(auth, normalizeEmail(email), {
@@ -507,54 +521,91 @@ export const authService = {
         handleCodeInApp: false,
       });
     } catch {}
-    toast.success('If an account exists, a reset email has been sent.');
     return { success: true };
   },
 
+  // User-facing feedback for this method is provided by the caller:
+  //   • ForgotPassword.ResetPasswordHandler.handleReset
   async confirmPasswordReset(oobCode, newPassword) {
     try {
       await firebaseConfirmPasswordReset(auth, oobCode, newPassword);
-      toast.success('Password reset! You can now sign in.');
       return { success: true };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
     }
   },
 
+  // User-facing feedback for this method is provided by the callers:
+  //   • VerifyEmail.handleResendVerification
+  //   • PrivateRoute.handleResendVerification
   async sendVerificationEmail() {
     try {
       await sendEmailVerification(getCurrentUserOrThrow(), {
         url: buildActionUrl('/verify-email'),
         handleCodeInApp: true,
       });
-      toast.success('Verification email sent!');
       return { success: true };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
     }
   },
 
+  // ── verifyEmail ────────────────────────────────────────────────────────
+  //
+  // Firebase Auth accepts the action code and flips its own `emailVerified`
+  // flag on `applyActionCode`. The matching Firestore document must be
+  // updated separately, but the `users/{userId}` rules are isSelf-scoped:
+  //
+  //     allow read, update: if isSelf(userId) || isPrivilegedAdmin();
+  //
+  // A `where('email', '==', …)` query cannot be statically proven to return
+  // only the caller's own document, so Firestore rejects it with
+  // `Missing or insufficient permissions`. The correct approach is to write
+  // directly to the caller's own uid when it is available. When it is not
+  // (link opened in a different browser), the Firestore write is skipped —
+  // the Auth-side flag is already set, and `hydrateUserDocument` will sync
+  // the Firestore document on the next sign-in.
+  //
+  // NOTE: `VerifyEmail.jsx` currently bypasses this method and calls
+  // `applyActionCode` directly. If that changes, the Firestore-side
+  // `emailVerified` write here becomes live and the toast below should be
+  // reviewed against whichever page calls this — it is currently the sole
+  // feedback surface for the method.
   async verifyEmail(oobCode) {
     try {
       const info = await checkActionCode(auth, oobCode);
       await applyActionCode(auth, oobCode);
-      const email = info?.data?.email;
-      if (email) {
-        const q = query(collection(db, COLLECTIONS.users), where('email', '==', email));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const batch = writeBatch(db);
-          snap.docs.forEach((d) =>
-            batch.update(d.ref, { emailVerified: true, updatedAt: serverTimestamp() })
+
+      const verifiedEmail = info?.data?.email || null;
+      const currentUser = auth.currentUser;
+
+      if (currentUser?.uid) {
+        const emailMatches =
+          !verifiedEmail || (currentUser.email || '').toLowerCase() === verifiedEmail.toLowerCase();
+
+        if (emailMatches) {
+          try {
+            await updateDoc(doc(db, COLLECTIONS.users, currentUser.uid), {
+              emailVerified: true,
+              updatedAt: serverTimestamp(),
+            });
+          } catch (error) {
+            // A Firestore failure here does not invalidate the Auth-side
+            // verification. Surface it in development without failing the
+            // whole call — the caller's toast and redirect should still fire.
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Unable to update Firestore emailVerified flag', error);
+            }
+          }
+        } else if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'verifyEmail: signed-in email does not match verified email; skipping Firestore update'
           );
-          await batch.commit();
         }
-      } else if (auth.currentUser) {
-        await updateDoc(doc(db, COLLECTIONS.users, auth.currentUser.uid), {
-          emailVerified: true,
-          updatedAt: serverTimestamp(),
-        });
+      } else if (process.env.NODE_ENV === 'development') {
+        console.info('verifyEmail: no signed-in user; Firestore flag will sync on next sign-in');
       }
+
       toast.success('Email verified!');
       return { success: true };
     } catch (e) {
@@ -575,7 +626,7 @@ export const authService = {
         // Only forward `photoURL` to Firebase Auth when it is an actual
         // `http(s)` URL that fits within the field's size limit. Data URLs
         // (from `FileReader.readAsDataURL`) and other non-URL values are
-        // skipped here - Firebase Auth responds with HTTP 400 for them, which
+        // skipped here — Firebase Auth responds with HTTP 400 for them, which
         // would otherwise abort the entire profile save. The value still
         // flows through to the Firestore write below so the app's own avatar
         // display keeps working.
@@ -613,7 +664,6 @@ export const authService = {
         emailVerified: false,
         updatedAt: serverTimestamp(),
       });
-      toast.success('Email updated! Verify your new email.');
       return { success: true };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -623,7 +673,6 @@ export const authService = {
   async updateUserPassword(currentPassword, newPassword) {
     try {
       await updatePassword(await reauthenticateWithPassword(currentPassword), newPassword);
-      toast.success('Password updated');
       return { success: true };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -659,6 +708,7 @@ export const authService = {
       );
       const url = await getDownloadURL(task.snapshot.ref);
       await this.updateUserProfile(userId, { photoURL: url });
+      // No visible caller; this is the only success feedback.
       toast.success('Profile picture updated!');
       return { success: true, url };
     } catch (e) {
@@ -675,6 +725,7 @@ export const authService = {
         } catch {}
       }
       await this.updateUserProfile(userId, { photoURL: null });
+      // No visible caller; this is the only success feedback.
       toast.success('Profile picture removed');
       return { success: true };
     } catch (e) {
@@ -686,7 +737,6 @@ export const authService = {
     try {
       const result = await linkWithPopup(getCurrentUserOrThrow(), createProvider(name));
       await updateLinkedProvidersInFirestore(result.user);
-      toast.success(`${name} linked!`);
       return { success: true, user: result.user };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -705,7 +755,6 @@ export const authService = {
         });
       const updated = await unlink(user, providerId);
       await updateLinkedProvidersInFirestore(updated);
-      toast.success('Unlinked');
       return { success: true, user: updated };
     } catch (e) {
       return { success: false, error: getErrorMessage(e), code: e.code };
@@ -726,8 +775,8 @@ export const authService = {
    *      sessions, settings, subscriptions) in one pass. The user document is
    *      deleted LAST so that a subsequent retry can detect a partial
    *      completion and skip the cleanup step.
-   *   3. Attempt the Firebase Auth deletion. If it fails - most commonly with
-   *      `auth/requires-recent-login` for OAuth-only accounts - return
+   *   3. Attempt the Firebase Auth deletion. If it fails — most commonly with
+   *      `auth/requires-recent-login` for OAuth-only accounts — return
    *      `{ success: false, partial: true }` so the caller can offer a retry.
    *      On retry, `users/{uid}` is missing, so the cleanup is skipped and
    *      only the Auth deletion is attempted.
@@ -738,7 +787,7 @@ export const authService = {
    *   Firestore data after the token is gone. A user who abandons the retry
    *   after step 2 leaves their Auth account behind while their Firestore
    *   data is permanently gone. This is the best achievable on Spark; the
-   *   alternative - deleting Auth first - makes the Firestore data orphaned
+   *   alternative — deleting Auth first — makes the Firestore data orphaned
    *   and unrecoverable to anyone except an admin. The current order keeps
    *   the user's identity, at the cost of the data, which is the safer
    *   default for the account-holder's recovery options (they can sign in
@@ -749,7 +798,7 @@ export const authService = {
       const user = getCurrentUserOrThrow();
 
       // Pre-flight: password users re-authenticate with their password.
-      // OAuth-only users get a fresh ID token (best-effort) - this does not
+      // OAuth-only users get a fresh ID token (best-effort) — this does not
       // override `requires-recent-login` but does surface other stale-session
       // issues before any destructive work.
       if (hasPasswordProvider(user)) {
@@ -758,7 +807,7 @@ export const authService = {
         try {
           await user.getIdToken(true);
         } catch {
-          // Ignore - the Auth deletion step below will surface a hard error
+          // Ignore — the Auth deletion step below will surface a hard error
           // if the session truly cannot be refreshed.
         }
       }
@@ -776,7 +825,7 @@ export const authService = {
           getDocs(collection(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions)),
         ]);
 
-        // Audit record - written before the destructive step so it survives
+        // Audit record — written before the destructive step so it survives
         // the Firestore cleanup. On a retry this block is skipped, so the
         // original deletion timestamp is preserved.
         try {
@@ -804,17 +853,16 @@ export const authService = {
           await deleteDoc(userRef);
         } catch {
           // Best-effort. If this fails, a retry will still attempt the
-          // cleanup - the dependent documents are already gone, so the
+          // cleanup — the dependent documents are already gone, so the
           // second cleanup pass is a no-op.
         }
       }
-      // Else: retry after a partial failure - nothing left to clean up in
+      // Else: retry after a partial failure — nothing left to clean up in
       // Firestore, proceed directly to the Auth deletion.
 
       safeTrackEvent('account_deleted', { userId: user.uid });
       clearStoredSessionId();
       await firebaseDeleteUser(user);
-      toast.success('Account deleted');
       return { success: true };
     } catch (e) {
       const code = e?.code;
@@ -876,7 +924,7 @@ export const authService = {
    * SECURITY NOTE:
    * The authoritative authorization check for this operation MUST live in
    * Firestore Security Rules (and/or a trusted backend). The client-side
-   * guard implemented below is defense-in-depth only - a determined attacker
+   * guard implemented below is defense-in-depth only — a determined attacker
    * can bypass it by calling the Firestore SDK directly from the console.
    *
    * Firestore rules for `users/{uid}` must therefore enforce that only a
@@ -899,7 +947,7 @@ export const authService = {
       }
 
       // 3. Defense-in-depth: block non-admin callers from the client SDK.
-      //    The real check lives in Firestore rules - see the docstring above.
+      //    The real check lives in Firestore rules — see the docstring above.
       const callerSnap = await getDoc(doc(db, COLLECTIONS.users, caller.uid));
       const callerRole = callerSnap.exists() ? callerSnap.data()?.role : null;
       if (callerRole !== 'admin') {
@@ -979,6 +1027,7 @@ export const authService = {
       const user = getCurrentUserOrThrow();
       await deleteDoc(doc(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions, sessionId));
       if (sessionId === getStoredSessionId()) clearStoredSessionId();
+      // No visible caller; this is the only success feedback.
       toast.success('Session revoked');
       return { success: true };
     } catch (e) {
@@ -995,6 +1044,7 @@ export const authService = {
           .filter((s) => s.id !== currentId)
           .map((s) => doc(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions, s.id))
       );
+      // No visible caller; this is the only success feedback.
       toast.success('All other sessions signed out');
       return { success: true };
     } catch (e) {

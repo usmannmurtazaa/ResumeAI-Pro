@@ -32,7 +32,6 @@ import ATSScoreMeter from './ATSScoreMeter';
 const ACCEPTED_TYPES = {
   'application/pdf': ['.pdf'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-  'application/msword': ['.doc'],
   'text/plain': ['.txt'],
 };
 
@@ -159,8 +158,7 @@ const ATSScanner = ({ onDataExtracted, onError }) => {
     const errors = [];
     const ext = file.name.split('.').pop()?.toLowerCase();
     const isValidType =
-      Object.keys(ACCEPTED_TYPES).includes(file.type) ||
-      ['pdf', 'docx', 'doc', 'txt'].includes(ext);
+      Object.keys(ACCEPTED_TYPES).includes(file.type) || ['pdf', 'docx', 'txt'].includes(ext);
     if (!isValidType) errors.push('Unsupported format. Upload PDF, DOCX, or TXT.');
     if (file.size > MAX_FILE_SIZE) errors.push('File too large (max 10MB).');
     if (file.size === 0) errors.push('File is empty.');
@@ -331,7 +329,7 @@ const ATSScanner = ({ onDataExtracted, onError }) => {
             <Button variant="primary" className="mx-auto">
               Choose File
             </Button>
-            <p className="text-xs text-gray-400 mt-4">PDF, DOCX, DOC, TXT (Max 10MB)</p>
+            <p className="text-xs text-gray-400 mt-4">PDF, DOCX, TXT (Max 10MB)</p>
           </div>
 
           {/* Optional Job Role Input */}

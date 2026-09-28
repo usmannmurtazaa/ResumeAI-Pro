@@ -8,28 +8,13 @@ import React, {
   useRef,
 } from 'react';
 import {
-  EmailAuthProvider,
-  FacebookAuthProvider,
   getIdTokenResult,
-  GithubAuthProvider,
-  GoogleAuthProvider,
-  OAuthProvider,
   onAuthStateChanged,
   onIdTokenChanged,
-  reauthenticateWithCredential,
   reload,
   signOut,
-  TwitterAuthProvider,
 } from 'firebase/auth';
-import {
-  doc,
-  getDoc,
-  onSnapshot,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  writeBatch,
-} from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { auth, db, logAnalyticsEvent } from '../services/firebase';
 import { authService } from '../services/authService';
@@ -44,21 +29,6 @@ const COLLECTIONS = Object.freeze({
   subscriptions: 'subscriptions',
   settings: 'settings',
 });
-
-const RESTRICTED_PROFILE_FIELDS = new Set([
-  'role',
-  'status',
-  'emailVerified',
-  'authProvider',
-  'createdAt',
-  'updatedAt',
-  'lastLogin',
-  'lastLogout',
-  'metadata',
-  'subscription',
-  'uid',
-  'userId',
-]);
 
 const ERROR_MESSAGES = {
   'auth/email-already-in-use': 'This email is already registered.',
@@ -107,81 +77,14 @@ const safeTrackEvent = (eventName, payload = {}) => {
   }
 };
 
-const filterUndefined = (object = {}) =>
-  Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
-
-const sanitizeProfileUpdates = (profileData = {}) =>
-  Object.fromEntries(
-    Object.entries(filterUndefined(profileData)).filter(
-      ([key]) => !RESTRICTED_PROFILE_FIELDS.has(key)
-    )
-  );
-
 const getPrimaryProviderId = (firebaseUser) =>
   firebaseUser?.providerData?.[0]?.providerId || 'password';
 
 const getLinkedProviderIds = (firebaseUser) =>
   firebaseUser?.providerData?.map((provider) => provider.providerId).filter(Boolean) || [];
 
-const hasPasswordProvider = (firebaseUser) =>
-  getLinkedProviderIds(firebaseUser).includes('password');
-
 const getDisplayName = (firebaseUser) =>
   firebaseUser?.displayName?.trim() || firebaseUser?.email?.split('@')[0] || 'User';
-
-const createProvider = (providerName) => {
-  switch (providerName) {
-    case 'google': {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      provider.addScope('profile');
-      provider.addScope('email');
-      return provider;
-    }
-    case 'github': {
-      const provider = new GithubAuthProvider();
-      provider.addScope('user:email');
-      return provider;
-    }
-    case 'facebook': {
-      const provider = new FacebookAuthProvider();
-      provider.addScope('email');
-      provider.addScope('public_profile');
-      return provider;
-    }
-    case 'microsoft': {
-      const provider = new OAuthProvider('microsoft.com');
-      provider.addScope('User.Read');
-      provider.addScope('email');
-      return provider;
-    }
-    case 'twitter':
-      return new TwitterAuthProvider();
-    case 'apple': {
-      const provider = new OAuthProvider('apple.com');
-      provider.addScope('email');
-      provider.addScope('name');
-      return provider;
-    }
-    default: {
-      const error = new Error(`Unsupported provider: ${providerName}`);
-      error.code = 'auth/unsupported-provider';
-      throw error;
-    }
-  }
-};
-
-const deleteDocumentRefsInBatches = async (refs) => {
-  const uniqueRefs = Array.from(
-    new Map(refs.filter(Boolean).map((ref) => [ref.path, ref])).values()
-  );
-  const chunkSize = 400;
-  for (let index = 0; index < uniqueRefs.length; index += chunkSize) {
-    const batch = writeBatch(db);
-    uniqueRefs.slice(index, index + chunkSize).forEach((ref) => batch.delete(ref));
-    await batch.commit();
-  }
-};
 
 // ── Context ───────────────────────────────────────────────────────────────
 
@@ -269,26 +172,6 @@ export const AuthProvider = ({ children }) => {
     return currentUser;
   }, []);
 
-  const reauthenticateWithPassword = useCallback(
-    async (password) => {
-      const currentUser = requireAuthenticatedUser();
-      if (!currentUser.email || !hasPasswordProvider(currentUser)) {
-        const error = new Error('Password reauthentication is not available for this account.');
-        error.code = 'auth/no-password-provider';
-        throw error;
-      }
-      if (!password) {
-        const error = new Error('Password is required.');
-        error.code = 'auth/missing-password';
-        throw error;
-      }
-      const credential = EmailAuthProvider.credential(currentUser.email, password);
-      await reauthenticateWithCredential(currentUser, credential);
-      return currentUser;
-    },
-    [requireAuthenticatedUser]
-  );
-
   const refreshUserData = useCallback(async () => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -330,7 +213,7 @@ export const AuthProvider = ({ children }) => {
   // Fields that DO change across a session (displayName, photoURL,
   // emailVerified, email) are written by their own dedicated service
   // methods (`updateUserProfile`, `verifyEmail`, `updateUserEmail`,
-  // `sendVerificationEmail`), which target Firestore explicitly - so
+  // `sendVerificationEmail`), which target Firestore explicitly — so
   // skipping the write here does not leave them stale.
   const hydrateUserDocument = useCallback(async (firebaseUser) => {
     const isNewSignIn = lastHydratedUidRef.current !== firebaseUser.uid;
@@ -511,7 +394,10 @@ export const AuthProvider = ({ children }) => {
             userId: firebaseUser.uid,
             method: getPrimaryProviderId(firebaseUser),
           });
-          toast.success('Welcome to Maniesta Career OS!');
+          // No toast here — provider-layer success feedback is delegated to
+          // the caller. The `toast.success('Welcome to Resume Ai Pro!')`
+          // that used to live here fired on top of the caller's own welcome
+          // toast.
         }
         resetSessionTimer();
       } catch (error) {
@@ -593,6 +479,18 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   // ── Auth Methods (Delegated to authService) ─────────────────────────
+  //
+  // Toast contract (see audit N3-19):
+  //   The provider layer updates state and propagates errors by throwing.
+  //   It does NOT emit `toast.*` for operations whose callers already
+  //   provide their own toasts. Exceptions:
+  //     • `logout` — the context is the single feedback surface; callers
+  //       (Navbar, Settings, SessionTimeout) do not toast on success.
+  //     • `deleteAccount` — the modal closes on success, so the context
+  //       is the single feedback surface; the error toast is already
+  //       suppressed on partial failures.
+  //   Any future method added here should follow the same rule: toast
+  //   only when the provider is the sole feedback surface.
 
   const signup = useCallback(async (email, password, displayName, options = {}) => {
     try {
@@ -606,7 +504,6 @@ export const AuthProvider = ({ children }) => {
       return result.user;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -622,11 +519,9 @@ export const AuthProvider = ({ children }) => {
           throw error;
         }
         resetSessionTimer();
-        toast.success(`Welcome back, ${result.user.displayName?.split(' ')[0] || 'User'}!`);
         return result.user;
       } catch (error) {
         setAuthError(error);
-        toast.error(getErrorMessage(error.code));
         throw error;
       }
     },
@@ -644,15 +539,9 @@ export const AuthProvider = ({ children }) => {
           throw error;
         }
         resetSessionTimer();
-        toast.success(
-          result.isNewUser
-            ? 'Account created successfully. Welcome aboard.'
-            : `Signed in with ${providerName}.`
-        );
         return result.user;
       } catch (error) {
         setAuthError(error);
-        toast.error(getErrorMessage(error.code));
         throw error;
       }
     },
@@ -671,7 +560,6 @@ export const AuthProvider = ({ children }) => {
       return result.confirmationResult;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -687,11 +575,9 @@ export const AuthProvider = ({ children }) => {
           throw error;
         }
         resetSessionTimer();
-        toast.success('Phone verified successfully.');
         return result.user;
       } catch (error) {
         setAuthError(error);
-        toast.error(getErrorMessage(error.code));
         throw error;
       }
     },
@@ -708,6 +594,9 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
       clearAuthState();
+      // Provider-layer toast — see the toast contract above. Callers do not
+      // consistently toast on logout success, so the provider is the single
+      // feedback surface for this action.
       toast.success('Logged out successfully.');
     } catch (error) {
       setAuthError(error);
@@ -727,7 +616,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -744,7 +632,6 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -761,7 +648,6 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -782,7 +668,6 @@ export const AuthProvider = ({ children }) => {
       } catch (error) {
         console.error('Verify email error:', error);
         setAuthError(error);
-        toast.error(getErrorMessage(error.code));
         throw error;
       }
     },
@@ -802,11 +687,9 @@ export const AuthProvider = ({ children }) => {
         }
         setUserData((prev) => (prev ? { ...prev, ...profileData } : prev));
         syncFirebaseUserState(auth.currentUser || currentUser);
-        toast.success('Profile updated successfully.');
         return true;
       } catch (error) {
         setAuthError(error);
-        toast.error('Failed to update profile.');
         throw error;
       }
     },
@@ -824,11 +707,9 @@ export const AuthProvider = ({ children }) => {
       }
       setIsEmailVerified(false);
       setUserData((prev) => (prev ? { ...prev, email: newEmail, emailVerified: false } : prev));
-      toast.success('Email updated. Please verify your new email.');
       return true;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -842,11 +723,9 @@ export const AuthProvider = ({ children }) => {
         error.code = result.code || 'auth/unknown';
         throw error;
       }
-      toast.success('Password updated successfully.');
       return true;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -863,7 +742,6 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -879,7 +757,7 @@ export const AuthProvider = ({ children }) => {
    * Firestore cleanup succeeded but the Firebase Auth deletion failed. That
    * flag is preserved on the thrown `Error` so callers can offer a
    * retry-specific UI. The generic error toast is suppressed on partial
-   * failures for the same reason - the caller knows the user-facing message
+   * failures for the same reason — the caller knows the user-facing message
    * better than this layer does.
    */
   const deleteAccount = useCallback(
@@ -899,11 +777,13 @@ export const AuthProvider = ({ children }) => {
           throw error;
         }
         clearAuthState();
+        // Provider-layer toast — the delete modal closes on success, so
+        // the provider is the single feedback surface for this action.
         toast.success('Account deleted successfully.');
         return true;
       } catch (error) {
         setAuthError(error);
-        // Skip the generic toast on partial failures - the caller will
+        // Skip the generic toast on partial failures — the caller will
         // present a specific, actionable message (typically with a retry
         // button). A generic toast here would compete with it and confuse
         // the user about what actually happened.
@@ -926,11 +806,9 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
       setLinkedProviders(getLinkedProviderIds(result.user));
-      toast.success(`${providerName} account linked successfully.`);
       return result.user;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);
@@ -945,11 +823,9 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
       setLinkedProviders(getLinkedProviderIds(result.user));
-      toast.success('Account unlinked successfully.');
       return result.user;
     } catch (error) {
       setAuthError(error);
-      toast.error(getErrorMessage(error.code));
       throw error;
     }
   }, []);

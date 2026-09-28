@@ -441,7 +441,7 @@ const Template4 = ({ data, className = '' }) => {
                                   <span className="text-blue-400 mt-1.5 print:text-gray-500">
                                     •
                                   </span>
-                                  <span>{line.trim().replace(/^[•\-]\s*/, '')}</span>
+                                  <span>{line.trim().replace(/^[•-]\s*/, '')}</span>
                                 </p>
                               )
                           )}

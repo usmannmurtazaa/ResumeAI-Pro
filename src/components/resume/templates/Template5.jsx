@@ -63,12 +63,6 @@ const Template5 = ({ data, className = '' }) => {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
   };
 
-  // Get skill proficiency
-  const getSkillProficiency = (skill) => {
-    const details = skills.skillDetails?.[skill];
-    return details?.proficiency || 'intermediate';
-  };
-
   // Get top skills for display
   const topTechnicalSkills = useMemo(() => {
     const technical = skills.technical || [];
@@ -122,7 +116,7 @@ const Template5 = ({ data, className = '' }) => {
     >
       <div className="relative">
         {/* Dark Header Background */}
-        <div className="absolute top-0 left-0 right-0 h-56 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 dark:from-slate-900 dark:via-slate-950 dark:to-black print:h-auto print:bg-slate-800 print:relative print:static">
+        <div className="absolute top-0 left-0 right-0 h-56 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 dark:from-slate-900 dark:via-slate-950 dark:to-black print:h-auto print:bg-slate-800 print:static">
           <div className="absolute inset-0 opacity-10 print:hidden">
             <div className="absolute top-10 right-10 w-64 h-64 bg-blue-500 rounded-full blur-3xl"></div>
             <div className="absolute bottom-0 left-10 w-48 h-48 bg-purple-500 rounded-full blur-3xl"></div>
@@ -266,7 +260,6 @@ const Template5 = ({ data, className = '' }) => {
                   <LightSectionTitle title="Technical Skills" icon={FiCode} />
                   <div className="flex flex-wrap gap-2 print:gap-1">
                     {topTechnicalSkills.map((skill, index) => {
-                      const proficiency = getSkillProficiency(skill);
                       const years = skills.skillDetails?.[skill]?.yearsOfExperience;
 
                       return (
@@ -454,7 +447,7 @@ const Template5 = ({ data, className = '' }) => {
                                     <span className="text-slate-400 mt-1.5 print:text-gray-500">
                                       •
                                     </span>
-                                    <span>{line.trim().replace(/^[•\-]\s*/, '')}</span>
+                                    <span>{line.trim().replace(/^[•-]\s*/, '')}</span>
                                   </p>
                                 )
                             )}

@@ -80,12 +80,7 @@ const useScrollDirection = () => {
 const isTypingTarget = (target) => {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
-  return (
-    tag === 'INPUT' ||
-    tag === 'TEXTAREA' ||
-    tag === 'SELECT' ||
-    target.isContentEditable
-  );
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
 };
 
 const useKeyboardShortcut = (key, callback, options = {}) => {
@@ -343,8 +338,6 @@ const Navbar = () => {
   const prevMobileMenuOpenRef = useRef(false);
   const suppressNextMobileFocusRestoreRef = useRef(false);
 
-  const isPremium = userRole === 'premium' || userRole === 'admin';
-
   // ── Navigation arrays ──────────────────────────────────────────────────
 
   const navLinks = useMemo(
@@ -476,16 +469,6 @@ const Navbar = () => {
       toast.error('Failed to log out');
     }
   }, [logout, navigate]);
-
-  const handleNavigate = useCallback(
-    (path) => {
-      navigate(path);
-      suppressNextMobileFocusRestoreRef.current = true;
-      setIsMenuOpen(false);
-      setIsProfileOpen(false);
-    },
-    [navigate]
-  );
 
   const isActive = useCallback(
     (path, exact = false) => {
@@ -808,10 +791,7 @@ const Navbar = () => {
               // of the child motion.div - putting it on the child is a
               // no-op and produces a React warning.
               const active = document.activeElement;
-              if (
-                active instanceof HTMLElement &&
-                mobileNavPanelRef.current?.contains(active)
-              ) {
+              if (active instanceof HTMLElement && mobileNavPanelRef.current?.contains(active)) {
                 active.blur();
               }
             }}

@@ -69,8 +69,11 @@ const FORMATTING_ISSUES = [
   'sidebar',
 ];
 
+// The two verb lists are consumed independently by `detectActionVerbStrength`
+// (which iterates each one to count strong vs. weak matches). No aggregate
+// list is needed; an earlier `ALL_ACTION_VERBS` constant was declared but
+// never referenced and has been removed.
 const STRONG_ACTION_VERBS = Object.values(actionVerbs).flat();
-const ALL_ACTION_VERBS = [...STRONG_ACTION_VERBS, ...WEAK_ACTION_VERBS];
 
 // ── Utility Functions ────────────────────────────────────────────────────
 
@@ -596,12 +599,14 @@ const scoreProjects = (data) => {
 
   let hasTech = 0;
   let hasLink = 0;
-  let hasDescription = 0;
 
   projects.forEach((proj) => {
     if (proj.technologies?.trim()) hasTech++;
     if (proj.link || proj.github) hasLink++;
-    if (proj.description?.trim()) hasDescription++;
+    // `hasDescription` was previously counted here but never read — the score
+    // uses only `techRatio` and `hasLink`. If project description presence
+    // should influence the score in future, add it deliberately and update
+    // the thresholds.
   });
 
   const techRatio = hasTech / projects.length;
@@ -701,7 +706,13 @@ const scoreFormatting = (data) => {
   };
 };
 
-const scoreKeywords = (data, industry = 'general', jobRole = '') => {
+// `_jobRole` is accepted for API symmetry with the caller
+// (`calculateDetailedScore` forwards its own `jobRole` argument here) but is
+// not currently used by this scorer. The underscore prefix signals to the
+// reader and to the project's ESLint configuration (`argsIgnorePattern: '^_'`)
+// that the value is intentionally discarded. Wire it into the scoring
+// algorithm if role-specific keyword weighting becomes necessary.
+const scoreKeywords = (data, industry = 'general', _jobRole = '') => {
   const text = JSON.stringify(data);
   const keywords = industryKeywords[industry] || industryKeywords.general;
   const gapAnalysis = getKeywordGaps(text, keywords);
@@ -1109,7 +1120,14 @@ const generateRecommendations = (categories, data, industry) => {
 
 // ── Export ────────────────────────────────────────────────────────────────
 
-export default {
+/**
+ * Aggregate object exported as the module's default. Declared as a named
+ * constant (rather than inline in `export default { ... }`) so stack traces,
+ * DevTools, and editor auto-import show the symbol as `atsScoring` instead
+ * of `<anonymous>`. Consumers can import either the default export or the
+ * named export — both refer to the same object.
+ */
+const atsScoring = {
   calculateDetailedScore,
   detectActionVerbStrength,
   detectPassiveVoice,
@@ -1121,3 +1139,6 @@ export default {
   countQuantifiableAchievements,
   hasQuantifiableAchievement,
 };
+
+export { atsScoring };
+export default atsScoring;

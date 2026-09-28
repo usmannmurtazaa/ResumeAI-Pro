@@ -217,7 +217,7 @@ const defaultSettings = generateDefaultSettings();
 
 export const SettingsProvider = ({ children }) => {
   const { user } = useAuth();
-  const { toggleTheme, setThemeMode } = useTheme();
+  const { setThemeMode } = useTheme();
   const isOnline = useOnlineStatus();
 
   const [settings, setSettings] = useState(defaultSettings);

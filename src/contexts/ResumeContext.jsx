@@ -20,7 +20,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
-import { useNotifications } from './NotificationContext';
 import { resumeService } from '../services/resumeService';
 import { calculateDetailedScore } from '../utils/atsScoring';
 import toast from 'react-hot-toast';
@@ -70,7 +69,6 @@ export const useResumeContext = useResume;
 
 export const ResumeProvider = ({ children }) => {
   const { user, isPremium, getToken } = useAuth();
-  const { notify } = useNotifications();
 
   const [resumes, setResumes] = useState([]);
   const [currentResume, setCurrentResume] = useState(null);
@@ -132,9 +130,7 @@ export const ResumeProvider = ({ children }) => {
 
     try {
       const [totalSnap, completedSnap, archivedSnap] = await Promise.all([
-        getCountFromServer(
-          query(collection(db, 'resumes'), where('userId', '==', user.uid))
-        ),
+        getCountFromServer(query(collection(db, 'resumes'), where('userId', '==', user.uid))),
         getCountFromServer(
           query(
             collection(db, 'resumes'),

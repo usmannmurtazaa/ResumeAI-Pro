@@ -538,7 +538,6 @@ const ResumeList = ({
           onEdit={onEdit}
           onPreview={onPreview}
           onDownload={onDownload}
-          onDuplicate={onDuplicate}
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
@@ -657,7 +656,6 @@ const ListView = React.memo(
     onEdit,
     onPreview,
     onDownload,
-    onDuplicate,
     currentPage,
     totalPages,
     onPageChange,

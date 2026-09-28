@@ -126,7 +126,7 @@ const AdminResumes = () => {
     };
   }, []);
 
-  // ── FIXED: Real-time subscription with pagination ────────────────────
+  // ── Real-time subscription with pagination ───────────────────────────
 
   useEffect(() => {
     setLoading(true);
@@ -152,8 +152,7 @@ const AdminResumes = () => {
         setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
         setHasMore(snapshot.docs.length === RESUMES_PER_PAGE);
 
-        // Calculate stats from all resumes (this is a separate light query or derived)
-        const total = snapshot.size; // Note: this is only the current page
+        // Calculate stats from the currently loaded page.
         const scores = resumeData.map((r) => r.atsScore || 0).filter((s) => s > 0);
         const avgScore = scores.length
           ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
@@ -175,6 +174,47 @@ const AdminResumes = () => {
 
     return () => unsubscribe();
   }, []);
+
+  // ── Memoized derived data ────────────────────────────────────────────
+  // Declared above the callbacks that consume them so the source order
+  // matches the data-flow order. `filteredResumes` in particular is read by
+  // `handleExport`, and having it defined first removes any ambiguity about
+  // which value the callback closes over.
+
+  const templates = useMemo(() => {
+    const unique = new Set(resumes.map((r) => r.template).filter(Boolean));
+    return ['all', ...Array.from(unique)];
+  }, [resumes]);
+
+  const filteredResumes = useMemo(() => {
+    let filtered = resumes;
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.name?.toLowerCase().includes(term) ||
+          r.data?.personal?.fullName?.toLowerCase().includes(term) ||
+          r.userId?.toLowerCase().includes(term)
+      );
+    }
+
+    if (filterTemplate !== 'all') {
+      filtered = filtered.filter((r) => r.template === filterTemplate);
+    }
+
+    if (filterScore !== 'all') {
+      filtered = filtered.filter((r) => {
+        const score = r.atsScore || 0;
+        if (filterScore === 'high') return score >= 80;
+        if (filterScore === 'medium') return score >= 60 && score < 80;
+        if (filterScore === 'low') return score < 60;
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [resumes, searchTerm, filterTemplate, filterScore]);
 
   // ── Load More ────────────────────────────────────────────────────────
 
@@ -227,7 +267,10 @@ const AdminResumes = () => {
   }, [selectedResume]);
 
   const handleExport = useCallback(() => {
-    // FIXED: Proper CSV escaping
+    // `filteredResumes` is memoized from `resumes`, `searchTerm`,
+    // `filterTemplate`, and `filterScore`. It is now declared above this
+    // callback, so the closure captures a value that already exists in the
+    // render scope.
     const headers = ['Name', 'User ID', 'Template', 'ATS Score', 'Downloads', 'Updated'];
     const rows = filteredResumes.map((r) => [
       escapeCSV(r.name || 'Untitled'),
@@ -248,44 +291,7 @@ const AdminResumes = () => {
     a.click();
     URL.revokeObjectURL(url);
     toast.success(`Exported ${rows.length} resumes!`);
-  }, [resumes, searchTerm, filterTemplate, filterScore]);
-
-  // ── FIXED: Memoized derived data ────────────────────────────────────
-
-  const templates = useMemo(() => {
-    const unique = new Set(resumes.map((r) => r.template).filter(Boolean));
-    return ['all', ...Array.from(unique)];
-  }, [resumes]);
-
-  const filteredResumes = useMemo(() => {
-    let filtered = resumes;
-
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (r) =>
-          r.name?.toLowerCase().includes(term) ||
-          r.data?.personal?.fullName?.toLowerCase().includes(term) ||
-          r.userId?.toLowerCase().includes(term)
-      );
-    }
-
-    if (filterTemplate !== 'all') {
-      filtered = filtered.filter((r) => r.template === filterTemplate);
-    }
-
-    if (filterScore !== 'all') {
-      filtered = filtered.filter((r) => {
-        const score = r.atsScore || 0;
-        if (filterScore === 'high') return score >= 80;
-        if (filterScore === 'medium') return score >= 60 && score < 80;
-        if (filterScore === 'low') return score < 60;
-        return true;
-      });
-    }
-
-    return filtered;
-  }, [resumes, searchTerm, filterTemplate, filterScore]);
+  }, [filteredResumes]);
 
   return (
     <AdminLayout title="Resume Management" description="Manage all platform resumes">

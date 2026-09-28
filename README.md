@@ -7,7 +7,7 @@
 
 **Built by [Usman Murtaza](https://usmanmurtaza.netlify.app)** - Full Stack Developer
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-maniestacareeros.netlify.app-8b5cf6?style=for-the-badge)](https://maniestacareeros.netlify.app)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-maniestacareeros.netlify.app-8b5cf6?style=for-the-badge)](https://maniestacareer.netlify.app)
 [![Portfolio](https://img.shields.io/badge/Portfolio-usmanmurtaza.netlify.app-6366f1?style=for-the-badge)](https://usmanmurtaza.netlify.app)
 
 <p>
@@ -63,7 +63,7 @@ The project was designed and built end-to-end by **[Usman Murtaza](https://usman
 
 ## 🎬 Live Demo
 
-**[maniestacareeros.netlify.app](https://maniestacareeros.netlify.app)**
+**[maniestacareeros.netlify.app](https://maniestacareer.netlify.app)**
 
 The live demo is connected to a Firebase project and supports real sign-up. You can create a free account to explore the resume builder end to end.
 
@@ -151,7 +151,7 @@ REACT_APP_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
 REACT_APP_FIREBASE_VAPID_KEY=your_vapid_key
 
 # Site URL (for canonical URLs and analytics)
-REACT_APP_SITE_URL=https://maniestacareeros.netlify.app
+REACT_APP_SITE_URL=https://maniestacareer.netlify.app
 ```
 
 > **Server-side secrets (OpenAI API key, Stripe keys, etc.) go in Netlify's environment variables**, not in this file. See `netlify/functions/` for how those are consumed. Refer to `.env.example` for the full list.

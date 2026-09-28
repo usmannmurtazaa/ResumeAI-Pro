@@ -271,10 +271,7 @@ const Blog = () => {
                 <Card className="overflow-hidden hover:shadow-xl transition-shadow">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="bg-gradient-to-br from-primary-500 to-accent-500 p-8 flex items-center justify-center">
-                      <FeaturedCoverIcon
-                        className="w-24 h-24 text-white/90"
-                        aria-hidden="true"
-                      />
+                      <FeaturedCoverIcon className="w-24 h-24 text-white/90" aria-hidden="true" />
                     </div>
                     <div className="p-6 md:p-8">
                       <Badge variant="warning" className="mb-3">
@@ -309,7 +306,7 @@ const Blog = () => {
           {/* Blog Posts Grid */}
           {gridPosts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {gridPosts.map((post, index) => (
+              {gridPosts.map((post) => (
                 <BlogCard key={post.id} post={post} />
               ))}
             </div>

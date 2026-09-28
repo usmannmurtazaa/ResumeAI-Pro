@@ -23,6 +23,14 @@ const VARIANTS = {
 const BASE_TEXTAREA =
   'w-full outline-none transition-all duration-200 resize-y text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed read-only:bg-gray-50 dark:read-only:bg-gray-900';
 
+// Focus-ring classes are applied on top of the active variant, so every
+// standard variant shows a visible focus indicator. Do NOT rewrite this as
+// `VARIANTS[variant] || VARIANTS.default + ' focus:...'` — the `+` operator
+// binds tighter than `||`, so the focus classes would only be applied in
+// the fallback branch (i.e. for an unknown variant name), and every known
+// variant would lose its focus ring.
+const FOCUS_CLASSES = 'focus:ring-2 focus:ring-primary-500 focus:border-transparent';
+
 // ── Textarea Component ────────────────────────────────────────────────────
 
 const Textarea = forwardRef(
@@ -104,9 +112,7 @@ const Textarea = forwardRef(
                 ? '!border-red-500 focus:!ring-red-500'
                 : success
                   ? '!border-green-500 focus:!ring-green-500'
-                  : VARIANTS[variant] ||
-                    VARIANTS.default +
-                      ' focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+                  : `${VARIANTS[variant] || VARIANTS.default} ${FOCUS_CLASSES}`,
               className
             )}
             aria-invalid={!!error}

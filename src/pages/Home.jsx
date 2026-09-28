@@ -335,9 +335,9 @@ const Home = () => {
             <div className="max-w-3xl mx-auto">
               <Card className="p-8 md:p-10 text-center">
                 <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                  Maniesta Career OS is a new product. As soon as we have real user stories to share,
-                  they will be featured here - with names, photos, and permission. Want to be among
-                  the first?
+                  Maniesta Career OS is a new product. As soon as we have real user stories to
+                  share, they will be featured here - with names, photos, and permission. Want to be
+                  among the first?
                 </p>
                 <Button
                   size="lg"

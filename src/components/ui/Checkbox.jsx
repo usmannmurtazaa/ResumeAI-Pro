@@ -42,26 +42,22 @@ const Checkbox = forwardRef(
       onChange?.(e);
     };
 
-    const handleKeyDown = (e) => {
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        const el = combinedRef.current || innerRef.current;
-        if (el && !disabled) {
-          el.click();
-        }
-      }
-    };
-
     return (
       <div className="space-y-1">
+        {/*
+          The outer <label> is intentionally NOT focusable and has NO keydown
+          handler. The <input> below is the sole keyboard entry point; the
+          browser natively toggles a focused checkbox on Space and fires the
+          change event. Any manual toggle handler on the label would double
+          up with that native behaviour — the two toggles cancel each other
+          out, and the checkbox appears to ignore the user's keypress.
+        */}
         <label
           className={cn(
             'inline-flex items-center gap-3 select-none',
             disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
             className
           )}
-          onKeyDown={handleKeyDown}
-          tabIndex={disabled ? -1 : 0}
         >
           <div className="relative flex-shrink-0">
             <input

@@ -133,7 +133,7 @@ const getStatusInfo = (resume) => {
 
 // ── Compact View ───────────────────────────────────────────────────────────
 
-const CompactResumeCard = ({ resume, selected, onSelect, onEdit, onDownload, onPreview }) => {
+const CompactResumeCard = ({ resume, selected, onSelect, onEdit, onDownload }) => {
   const [isHovered, setIsHovered] = useState(false);
   const score = resume?.atsScore || 0;
   const completion = useMemo(() => calculateCompletion(resume), [resume]);

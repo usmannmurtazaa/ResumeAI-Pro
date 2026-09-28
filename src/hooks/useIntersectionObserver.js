@@ -132,7 +132,6 @@ export const useInView = (options = {}) => {
  */
 export const useLazyLoad = (options = {}) => {
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
-  const onIntersectRef = useRef(null);
 
   const handleIntersect = useCallback(
     (entry, isIntersecting) => {
@@ -183,12 +182,11 @@ export const useStaggerAnimation = (index = 0, staggerDelay = 100, options = {})
  *
  * @param {string[]} sectionIds - Array of section element IDs to track
  * @param {Object} options - Configuration
- * @param {number} options.offset - Offset from top (default: 0)
  * @param {string} options.rootMargin - Root margin for observer
  * @returns {string|null} Currently visible section ID
  */
 export const useScrollSpy = (sectionIds = [], options = {}) => {
-  const { offset = 0, rootMargin = '-10% 0px -60% 0px' } = options;
+  const { rootMargin = '-10% 0px -60% 0px' } = options;
   const [activeId, setActiveId] = useState(null);
   const observersRef = useRef([]);
 

@@ -242,7 +242,7 @@ WelcomeCard.displayName = 'WelcomeCard';
 
 // ── Main Component ────────────────────────────────────────────────────────
 
-const DashboardLayout = ({ children, title, description, showWelcome = true }) => {
+const DashboardLayout = ({ children, showWelcome = true }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getStoredSidebarCollapsed);
   const [showQuickActions, setShowQuickActions] = useState(false);

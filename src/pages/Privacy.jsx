@@ -258,9 +258,9 @@ const Privacy = () => {
               <Card className="p-6 md:p-8">
                 <div className="prose dark:prose-invert max-w-none mb-8">
                   <p className="lead text-gray-600 dark:text-gray-400">
-                    At Maniesta Career OS, we take your privacy seriously. This Privacy Policy explains
-                    how we collect, use, disclose, and safeguard your information when you use our
-                    resume builder platform. Please read this policy carefully.
+                    At Maniesta Career OS, we take your privacy seriously. This Privacy Policy
+                    explains how we collect, use, disclose, and safeguard your information when you
+                    use our resume builder platform. Please read this policy carefully.
                   </p>
                 </div>
 
@@ -318,7 +318,9 @@ const Privacy = () => {
                         className="w-3.5 h-3.5 text-primary-500 flex-shrink-0 mt-0.5"
                         aria-hidden="true"
                       />
-                      <span>Mail: Maniesta Career OS, 123 Market Street, Karachi, Sindh | PK 94105</span>
+                      <span>
+                        Mail: Maniesta Career OS, 123 Market Street, Karachi, Sindh | PK 94105
+                      </span>
                     </p>
                   </div>
                 </div>

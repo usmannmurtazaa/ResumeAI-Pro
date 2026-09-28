@@ -187,8 +187,9 @@ const About = () => {
                     project grew into a platform used by job seekers around the world.
                   </p>
                   <p>
-                    Today, Maniesta Career OS combines AI technology with professional design to ensure
-                    your resume not only passes ATS filters but also impresses hiring managers.
+                    Today, Maniesta Career OS combines AI technology with professional design to
+                    ensure your resume not only passes ATS filters but also impresses hiring
+                    managers.
                   </p>
                 </div>
               </motion.div>

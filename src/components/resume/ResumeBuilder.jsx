@@ -111,7 +111,6 @@ const ResumeBuilder = ({
   onChange,
   onTemplateChange,
   onFullscreenPreviewChange,
-  showTemplateSelector = false,
 }) => {
   const [currentSection, setCurrentSection] = useState(0);
   const [sectionErrors, setSectionErrors] = useState({});

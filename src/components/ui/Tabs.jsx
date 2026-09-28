@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, createContext, useContext } from 'react';
+import React, { useState, useCallback, useRef, createContext, useContext, useId } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 // ── Utility ───────────────────────────────────────────────────────────────
@@ -71,6 +71,13 @@ const Tabs = ({
   const activeIndex = isControlled ? controlledTab : internalTab;
   const tabListRef = useRef(null);
   const prefersReducedMotion = useReducedMotion();
+
+  // `layoutId` is a globally unique identifier in Framer Motion — two
+  // simultaneously-mounted Tabs instances that share the same string will
+  // animate their indicators into each other. Compose a per-instance value
+  // so each Tabs gets its own layout namespace.
+  const uid = useId();
+  const underlineLayoutId = `tab-indicator-${uid}`;
 
   const handleTabChange = useCallback(
     (index) => {
@@ -173,7 +180,7 @@ const Tabs = ({
                 )}
                 {variant === 'underline' && isActive && (
                   <motion.div
-                    layoutId={prefersReducedMotion ? undefined : 'tab-indicator'}
+                    layoutId={prefersReducedMotion ? undefined : underlineLayoutId}
                     className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500"
                     transition={
                       prefersReducedMotion

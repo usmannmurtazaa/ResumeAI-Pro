@@ -156,10 +156,20 @@ export const getDefaultRedirect = (userRole) => (userRole === 'admin' ? '/admin'
 
 export const prefetchRouteHints = ['/dashboard', '/builder', '/templates'];
 
-export default {
+/**
+ * Named aggregate of the exported route data. Declared as a named constant
+ * (rather than inline in `export default`) so stack traces, DevTools, and
+ * editor auto-import show the symbol as `routesConfig` instead of
+ * `<anonymous>`. Consumers can import either the default export or the
+ * named export — both refer to the same object.
+ */
+const routesConfig = {
   PUBLIC_PATHS,
   AUTH_PATHS,
   PROTECTED_PATHS,
   ADMIN_CHILD_PATHS,
   routeDefinitions,
 };
+
+export { routesConfig };
+export default routesConfig;

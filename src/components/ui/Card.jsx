@@ -112,7 +112,27 @@ const Card = forwardRef(
         }
       : {};
 
-    const Tag = animate ? motion.div : 'div';
+    // Honour the caller's `as` prop so `<Card as="section">` renders a
+    // <section> (motion-wrapped) and `<Card as="article" animate={false}>`
+    // renders a plain <article>. The previous implementation was hard-coded
+    // to motion.div / 'div', which silently ignored `as`.
+    //
+    // • animate=true  + string tag  → motion[tag] (pre-built Framer Motion
+    //                                 component; identity is stable, so
+    //                                 React never remounts the node)
+    // • animate=true  + custom comp → motion.div (fallback; matches prior
+    //                                 behaviour). We deliberately do NOT use
+    //                                 motion.create(Component) here — that
+    //                                 would instantiate a new wrapper on
+    //                                 every render and remount the DOM
+    //                                 node along with any state inside it.
+    // • animate=false              → Component (no motion wrapper needed;
+    //                                 motionProps is {} in this branch)
+    const Tag = animate
+      ? typeof Component === 'string'
+        ? motion[Component] || motion.div
+        : motion.div
+      : Component;
 
     return (
       <Tag

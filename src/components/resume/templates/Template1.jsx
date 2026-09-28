@@ -18,7 +18,7 @@ import {
   FiClock,
 } from 'react-icons/fi';
 
-const Template1 = ({ data, className = '', showAllSections = true }) => {
+const Template1 = ({ data, className = '' }) => {
   const {
     personal = {},
     education = [],
@@ -56,12 +56,6 @@ const Template1 = ({ data, className = '', showAllSections = true }) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-  };
-
-  // Get skill level indicator
-  const getSkillLevel = (skill) => {
-    const details = skills.skillDetails?.[skill];
-    return details?.proficiency || 'intermediate';
   };
 
   // Check if section has content
@@ -295,7 +289,7 @@ const Template1 = ({ data, className = '', showAllSections = true }) => {
                                   <span className="text-primary-400 mt-1.5 print:text-gray-500">
                                     •
                                   </span>
-                                  <span>{line.trim().replace(/^[•\-]\s*/, '')}</span>
+                                  <span>{line.trim().replace(/^[•-]\s*/, '')}</span>
                                 </p>
                               )
                           )}

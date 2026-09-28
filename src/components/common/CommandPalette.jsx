@@ -16,7 +16,7 @@ export const useCommandPalette = () => {
 
 // ── CommandPalette Component ─────────────────────────────────────────────
 
-const CommandPalette = ({ isOpen, onClose, onToggle, commands = [] }) => {
+const CommandPalette = ({ isOpen, onClose, commands = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const inputRef = useRef(null);
 

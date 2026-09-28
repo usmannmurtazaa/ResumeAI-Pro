@@ -1,5 +1,5 @@
 # robots.txt - Maniesta Career OS
-# https://maniestacareeros.netlify.app
+# https://maniestacareer.netlify.app
 
 User-agent: *
 Allow: /
@@ -25,4 +25,4 @@ Disallow: /signup
 Disallow: /forgot-password
 Disallow: /verify-email
 
-Sitemap: https://maniestacareeros.netlify.app/sitemap.xml
+Sitemap: https://maniestacareer.netlify.app/sitemap.xml

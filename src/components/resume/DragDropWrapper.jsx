@@ -18,6 +18,16 @@ import toast from 'react-hot-toast';
 
 const ItemTypes = { SECTION: 'section' };
 
+// Returns true when the keydown target is a form field or contenteditable
+// element. The container's own Ctrl+Z/Y undo/redo must not fire while the
+// user is typing in one of these, otherwise it preempts the browser's
+// native undo and prevents the user from undoing their own edits.
+const isTypingTarget = (target) => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+};
+
 // ── DraggableSection ─────────────────────────────────────────────────────
 
 export const DraggableSection = ({
@@ -37,7 +47,6 @@ export const DraggableSection = ({
 }) => {
   const ref = useRef(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
 
   // ── FIXED: Properly combined drag and drop refs ──────────────────────
 
@@ -100,7 +109,6 @@ export const DraggableSection = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
-        setShowMenu(false);
       }}
       onKeyDown={handleKeyDown}
       tabIndex={disabled ? -1 : 0}
@@ -280,10 +288,14 @@ export const DragDropContainer = ({
     }
   }, [historyIndex, history, onReorder]);
 
-  // ── FIXED: Only listen for undo/redo when container is focused ────
+  // ── Undo/Redo Keyboard Shortcut ─────────────────────────────────────
+  // Global listener, but skips form-field targets so the browser's native
+  // undo/redo keeps working while the user is typing in an input, textarea,
+  // select, or contenteditable element.
 
   useEffect(() => {
     const handler = (e) => {
+      if (isTypingTarget(e.target)) return;
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();

@@ -6,7 +6,6 @@ import {
   where,
   deleteDoc,
   doc,
-  updateDoc,
   onSnapshot,
   writeBatch,
 } from 'firebase/firestore';
@@ -160,57 +159,11 @@ const UserDashboard = () => {
 
   const mountedRef = useRef(true);
 
-  // ── Real-time Subscription ─────────────────────────────────────────────
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const q = query(collection(db, 'resumes'), where('userId', '==', user.uid));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        if (!mountedRef.current) return;
-
-        const resumesData = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: normalizeTimestamp(data.createdAt),
-            updatedAt: normalizeTimestamp(data.updatedAt),
-          };
-        });
-
-        setResumes(resumesData);
-        setStats(calculateStats(resumesData));
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Error fetching resumes:', err);
-        if (mountedRef.current) {
-          setError('Failed to load resumes. Please try refreshing.');
-          setLoading(false);
-          toast.error('Failed to load resumes');
-        }
-      }
-    );
-
-    return () => {
-      mountedRef.current = false;
-      unsubscribe();
-    };
-  }, [user]);
-
   // ── Calculate Stats (Pure Function) ───────────────────────────────────
+  // Declared before the subscription effect that calls it. The identity is
+  // stable (its own useCallback dependencies are `[]`), so the subscription
+  // effect below will not re-subscribe on every render even though
+  // `calculateStats` appears in its dependency array.
 
   const calculateStats = useCallback((resumesData) => {
     const completed = resumesData.filter(
@@ -272,6 +225,59 @@ const UserDashboard = () => {
       scoreTrend,
     };
   }, []);
+
+  // ── Real-time Subscription ─────────────────────────────────────────────
+  // `calculateStats` is declared above and its identity is stable, so
+  // including it in the dependency array is required by the linter and safe
+  // for the runtime: the effect only re-subscribes when `user` changes.
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const q = query(collection(db, 'resumes'), where('userId', '==', user.uid));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!mountedRef.current) return;
+
+        const resumesData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: normalizeTimestamp(data.createdAt),
+            updatedAt: normalizeTimestamp(data.updatedAt),
+          };
+        });
+
+        setResumes(resumesData);
+        setStats(calculateStats(resumesData));
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error fetching resumes:', err);
+        if (mountedRef.current) {
+          setError('Failed to load resumes. Please try refreshing.');
+          setLoading(false);
+          toast.error('Failed to load resumes');
+        }
+      }
+    );
+
+    return () => {
+      mountedRef.current = false;
+      unsubscribe();
+    };
+  }, [user, calculateStats]);
 
   // ── Filtered Resumes (Memoized) ───────────────────────────────────────
 
@@ -361,9 +367,7 @@ const UserDashboard = () => {
         await batch.commit();
       }
 
-      toast.success(
-        `Deleted ${resumeIds.length} resume${resumeIds.length === 1 ? '' : 's'}`
-      );
+      toast.success(`Deleted ${resumeIds.length} resume${resumeIds.length === 1 ? '' : 's'}`);
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
       setSelectedResumes(new Set());

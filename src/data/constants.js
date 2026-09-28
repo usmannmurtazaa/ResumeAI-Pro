@@ -15,7 +15,7 @@ import {
 export const APP_NAME = 'Maniesta Career OS';
 export const APP_VERSION = '2.5.0';
 export const APP_DESCRIPTION = 'AI-powered ATS resume builder';
-export const APP_URL = 'https://maniestacareeros.netlify.app';
+export const APP_URL = 'https://maniestacareer.netlify.app';
 export const SUPPORT_EMAIL = 'usmanmurtazaportfolio@gmail.com';
 export const PRIVACY_EMAIL = 'usmanmurtazaportfolio@gmail.com';
 export const LEGAL_EMAIL = 'usmanmurtazaportfolio@gmail.com';
@@ -461,7 +461,14 @@ export const QUICK_TIPS = [
   },
 ];
 
-export default {
+/**
+ * Named aggregate of every public constant in this module. Declared as a
+ * named constant (rather than inline in `export default`) so stack traces,
+ * DevTools, and editor auto-import show the symbol as `constants` instead of
+ * `<anonymous>`. Consumers can import either the default export or the named
+ * export — both refer to the same object.
+ */
+const constants = {
   APP_NAME,
   APP_VERSION,
   APP_DESCRIPTION,
@@ -515,3 +522,6 @@ export default {
   TOAST_DURATIONS,
   STANDARD_BREAKPOINTS,
 };
+
+export { constants };
+export default constants;

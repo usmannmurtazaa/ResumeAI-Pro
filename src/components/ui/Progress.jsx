@@ -292,7 +292,12 @@ export const ProgressWithStatus = ({
   max = 100,
   status,
   size = 'md',
-  color = 'primary',
+  // No default. The caller's color, when provided, overrides the semantic
+  // color derived from `value` / `status`. Removing the previous
+  // `= 'primary'` default is what allows the fallback below to be
+  // meaningful — with the default in place, `color` was always truthy and
+  // the caller could never tell the component to use the semantic color.
+  color,
   className = '',
 }) => {
   const getStatusConfig = () => {
@@ -324,7 +329,12 @@ export const ProgressWithStatus = ({
         </div>
         <span className="text-sm text-gray-500">{Math.round((value / max) * 100)}%</span>
       </div>
-      <Progress value={value} max={max} size={size} color={config.color} />
+      {/*
+        The caller's `color`, when provided, overrides the semantic color
+        derived from the current value / status. When omitted, the semantic
+        color is used — the same behavior as before this fix.
+      */}
+      <Progress value={value} max={max} size={size} color={color || config.color} />
     </div>
   );
 };

@@ -11,11 +11,10 @@ const MIN_TEXT_LENGTH = 50;
 const ALLOWED_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/msword',
   'text/plain',
 ];
 
-const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'doc', 'txt'];
+const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'txt'];
 
 // ── Lazy-Loaded Dependencies ──────────────────────────────────────────────
 
@@ -109,7 +108,7 @@ export const parseResumeFile = async (file, onProgress) => {
 
     if (ext === 'pdf') {
       text = await extractTextFromPDF(file);
-    } else if (ext === 'docx' || ext === 'doc') {
+    } else if (ext === 'docx') {
       text = await extractTextFromDOCX(file);
     } else if (ext === 'txt') {
       text = await extractTextFromTXT(file);
@@ -166,7 +165,7 @@ const extractResumeData = (text) => {
   if (emailMatch) data.personal.email = emailMatch[0];
 
   // ── Phone ───────────────────────────────────────────────────────────
-  const phoneMatch = text.match(/[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}/);
+  const phoneMatch = text.match(/[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}/);
   if (phoneMatch) data.personal.phone = phoneMatch[0];
 
   // ── Location ────────────────────────────────────────────────────────
@@ -269,7 +268,14 @@ export const calculateResumeScore = (data) => {
   return Math.min(score, 100);
 };
 
-export default {
+/**
+ * Named aggregate of the exported resume-parser helpers. Declared as a
+ * named constant (rather than inline in `export default`) so stack traces,
+ * DevTools, and editor auto-import show the symbol as `resumeParser`
+ * instead of `<anonymous>`. Consumers can import either the default export
+ * or the named export — both refer to the same object.
+ */
+const resumeParser = {
   parseResume,
   parseResumeFile,
   validateFileType,
@@ -280,3 +286,6 @@ export default {
   extractTextFromTXT,
   calculateResumeScore,
 };
+
+export { resumeParser };
+export default resumeParser;

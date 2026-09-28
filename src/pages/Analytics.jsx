@@ -129,7 +129,7 @@ const AnalyticsSkeleton = () => (
 const Analytics = () => {
   useDocumentTitle('Analytics | Maniesta Career OS');
 
-  const { resumes = [], stats: resumeStats, loading: resumesLoading } = useResumeContext();
+  const { resumes = [], loading: resumesLoading } = useResumeContext();
   const [dateRange, setDateRange] = useState('30days');
   const [loading, setLoading] = useState(false);
   const mountedRef = useRef(true);

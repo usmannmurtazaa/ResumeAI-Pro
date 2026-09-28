@@ -19,6 +19,7 @@ import Avatar from '../../components/ui/Avatar';
 import {
   collection,
   getDocs,
+  getCountFromServer,
   updateDoc,
   doc,
   query,
@@ -107,6 +108,22 @@ const AdminUsers = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Server-side aggregate counts for the stat cards. Unlike `users.length`,
+  // these reflect the entire collection, not just the loaded page. Billed
+  // as ~1 read per 1 000 matching docs each, so the cost is negligible.
+  const [collectionStats, setCollectionStats] = useState({
+    total: 0,
+    suspended: 0,
+    premium: 0,
+    admin: 0,
+  });
+
+  // Per-user resume counts fetched via `getCountFromServer`. Keyed by uid.
+  const [resumeCountsByUser, setResumeCountsByUser] = useState({});
+  // Tracks which user IDs we have already fetched a resume count for, so
+  // Load More only fetches counts for newly-loaded users.
+  const fetchedResumeCountIdsRef = useRef(new Set());
+
   const mountedRef = useRef(true);
 
   // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -118,7 +135,41 @@ const AdminUsers = () => {
     };
   }, []);
 
-  // ── FIXED: Real-time subscription with pagination ────────────────────
+  // ── Server-side Aggregate Stats ───────────────────────────────────────
+  // Four parallel count queries. `active` is derived as `total - suspended`
+  // so users whose `status` field is unset are counted as active.
+  //
+  // Refreshed on mount and after every mutation that can change the totals
+  // (role change, suspend / activate, delete). It is NOT called from the
+  // real-time subscription - that fires on every write and would be
+  // wasteful.
+
+  const refreshCollectionStats = useCallback(async () => {
+    try {
+      const [totalSnap, suspendedSnap, premiumSnap, adminSnap] = await Promise.all([
+        getCountFromServer(collection(db, 'users')),
+        getCountFromServer(query(collection(db, 'users'), where('status', '==', 'suspended'))),
+        getCountFromServer(query(collection(db, 'users'), where('role', '==', 'premium'))),
+        getCountFromServer(query(collection(db, 'users'), where('role', '==', 'admin'))),
+      ]);
+      if (mountedRef.current) {
+        setCollectionStats({
+          total: totalSnap.data().count || 0,
+          suspended: suspendedSnap.data().count || 0,
+          premium: premiumSnap.data().count || 0,
+          admin: adminSnap.data().count || 0,
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching collection stats:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshCollectionStats();
+  }, [refreshCollectionStats]);
+
+  // ── Real-time Subscription ────────────────────────────────────────────
 
   useEffect(() => {
     setLoading(true);
@@ -154,6 +205,50 @@ const AdminUsers = () => {
     return () => unsubscribe();
   }, []);
 
+  // ── Per-user resume counts ────────────────────────────────────────────
+
+  const fetchResumeCountsForUsers = useCallback(async (userIds) => {
+    const toFetch = userIds.filter((id) => !fetchedResumeCountIdsRef.current.has(id));
+    if (toFetch.length === 0) return;
+
+    toFetch.forEach((id) => fetchedResumeCountIdsRef.current.add(id));
+
+    try {
+      const entries = await Promise.all(
+        toFetch.map(async (uid) => {
+          const snap = await getCountFromServer(
+            query(collection(db, 'resumes'), where('userId', '==', uid))
+          );
+          return [uid, snap.data().count || 0];
+        })
+      );
+      if (mountedRef.current) {
+        setResumeCountsByUser((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+      }
+    } catch (err) {
+      console.error('Error fetching per-user resume counts:', err);
+      // Roll back the "fetched" markers so a future render can retry.
+      toFetch.forEach((id) => fetchedResumeCountIdsRef.current.delete(id));
+    }
+  }, []);
+
+  // Stable key derived from the currently loaded user IDs. Changes only
+  // when a user is added to or removed from the loaded slice - not on
+  // role or status updates, which reuse the same ID set.
+  const loadedUserIdsKey = useMemo(
+    () =>
+      users
+        .map((u) => u.id)
+        .sort()
+        .join('|'),
+    [users]
+  );
+
+  useEffect(() => {
+    if (!loadedUserIdsKey) return;
+    fetchResumeCountsForUsers(loadedUserIdsKey.split('|'));
+  }, [loadedUserIdsKey, fetchResumeCountsForUsers]);
+
   // ── Load More ────────────────────────────────────────────────────────
 
   const loadMore = useCallback(async () => {
@@ -188,47 +283,56 @@ const AdminUsers = () => {
 
   // ── Handlers ─────────────────────────────────────────────────────────
 
-  const handleUpdateRole = useCallback(async (userId, newRole) => {
-    setProcessing(true);
-    try {
-      await updateDoc(doc(db, 'users', userId), {
-        role: newRole,
-        updatedAt: new Date().toISOString(),
-      });
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
-      toast.success('User role updated');
-      setShowUserModal(false);
-    } catch {
-      toast.error('Failed to update role');
-    } finally {
-      if (mountedRef.current) setProcessing(false);
-    }
-  }, []);
+  const handleUpdateRole = useCallback(
+    async (userId, newRole) => {
+      setProcessing(true);
+      try {
+        await updateDoc(doc(db, 'users', userId), {
+          role: newRole,
+          updatedAt: new Date().toISOString(),
+        });
+        setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+        toast.success('User role updated');
+        setShowUserModal(false);
+        refreshCollectionStats();
+      } catch {
+        toast.error('Failed to update role');
+      } finally {
+        if (mountedRef.current) setProcessing(false);
+      }
+    },
+    [refreshCollectionStats]
+  );
 
-  const handleToggleStatus = useCallback(async (user) => {
-    setProcessing(true);
-    const newStatus = user.status === 'active' ? 'suspended' : 'active';
-    try {
-      await updateDoc(doc(db, 'users', user.id), {
-        status: newStatus,
-        updatedAt: new Date().toISOString(),
-      });
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
-      toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
-      setShowSuspendModal(false);
-    } catch {
-      toast.error('Failed to update status');
-    } finally {
-      if (mountedRef.current) setProcessing(false);
-    }
-  }, []);
+  const handleToggleStatus = useCallback(
+    async (user) => {
+      setProcessing(true);
+      const newStatus = user.status === 'active' ? 'suspended' : 'active';
+      try {
+        await updateDoc(doc(db, 'users', user.id), {
+          status: newStatus,
+          updatedAt: new Date().toISOString(),
+        });
+        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
+        toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
+        setShowSuspendModal(false);
+        refreshCollectionStats();
+      } catch {
+        toast.error('Failed to update status');
+      } finally {
+        if (mountedRef.current) setProcessing(false);
+      }
+    },
+    [refreshCollectionStats]
+  );
 
-  // FIXED: Delete user AND their resumes
+  // Deletes the user and all of their resumes in a single batch. Also
+  // purges the user's cached resume count so a future re-creation with the
+  // same ID would trigger a fresh count.
   const handleDeleteUser = useCallback(async () => {
     if (!selectedUser) return;
     setProcessing(true);
     try {
-      // First, delete all user's resumes
       const resumesQuery = query(collection(db, 'resumes'), where('userId', '==', selectedUser.id));
       const resumesSnapshot = await getDocs(resumesQuery);
 
@@ -238,15 +342,23 @@ const AdminUsers = () => {
       await batch.commit();
 
       setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+      setResumeCountsByUser((prev) => {
+        const next = { ...prev };
+        delete next[selectedUser.id];
+        return next;
+      });
+      fetchedResumeCountIdsRef.current.delete(selectedUser.id);
+
       toast.success('User and associated data deleted');
       setShowDeleteModal(false);
       setSelectedUser(null);
+      refreshCollectionStats();
     } catch {
       toast.error('Failed to delete user');
     } finally {
       if (mountedRef.current) setProcessing(false);
     }
-  }, [selectedUser]);
+  }, [selectedUser, refreshCollectionStats]);
 
   const handleExport = useCallback(() => {
     const headers = ['Name', 'Email', 'Role', 'Status', 'Created', 'Resumes'];
@@ -256,7 +368,7 @@ const AdminUsers = () => {
       escapeCSV(u.role || 'user'),
       escapeCSV(u.status || 'active'),
       escapeCSV(formatDate(u.createdAt)),
-      u.resumeCount || 0,
+      resumeCountsByUser[u.id] ?? 0,
     ]);
 
     const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -269,9 +381,9 @@ const AdminUsers = () => {
     a.click();
     URL.revokeObjectURL(url);
     toast.success(`Exported ${rows.length} users!`);
-  }, [users]);
+  }, [users, resumeCountsByUser]);
 
-  // ── FIXED: Memoized derived data ────────────────────────────────────
+  // ── Memoized derived data ────────────────────────────────────────────
 
   const filteredUsers = useMemo(() => {
     let filtered = users;
@@ -296,13 +408,13 @@ const AdminUsers = () => {
 
   const stats = useMemo(
     () => ({
-      total: users.length,
-      active: users.filter((u) => u.status !== 'suspended').length,
-      suspended: users.filter((u) => u.status === 'suspended').length,
-      premium: users.filter((u) => u.role === 'premium').length,
-      admin: users.filter((u) => u.role === 'admin').length,
+      total: collectionStats.total,
+      active: Math.max(0, collectionStats.total - collectionStats.suspended),
+      suspended: collectionStats.suspended,
+      premium: collectionStats.premium,
+      admin: collectionStats.admin,
     }),
-    [users]
+    [collectionStats]
   );
 
   return (
@@ -442,7 +554,7 @@ const AdminUsers = () => {
                           {user.status || 'active'}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-sm">{user.resumeCount || 0}</td>
+                      <td className="py-3 px-4 text-sm">{resumeCountsByUser[user.id] ?? 0}</td>
                       <td className="py-3 px-4 text-sm text-gray-500">
                         {formatDate(user.createdAt)}
                       </td>
@@ -527,7 +639,7 @@ const AdminUsers = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-gray-500">User ID</label>
-                <p className="text-sm font-mono text-xs break-all">{selectedUser.id}</p>
+                <p className="text-xs font-mono break-all">{selectedUser.id}</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500">Auth Provider</label>
@@ -541,13 +653,13 @@ const AdminUsers = () => {
               </div>
               <div>
                 <label className="text-xs text-gray-500">Resumes</label>
-                <p className="text-sm">{selectedUser.resumeCount || 0}</p>
+                <p className="text-sm">{resumeCountsByUser[selectedUser.id] ?? 0}</p>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Role</label>
               <select
-                defaultValue={selectedUser.role || 'user'}
+                value={selectedUser.role || 'user'}
                 onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value })}
                 className="input-field"
               >

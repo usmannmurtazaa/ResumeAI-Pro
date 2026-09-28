@@ -57,13 +57,6 @@ const LANGUAGES = [
   { value: 'fr', label: 'Français' },
 ];
 
-const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern Time' },
-  { value: 'America/Chicago', label: 'Central Time' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time' },
-  { value: 'Europe/London', label: 'London' },
-];
-
 const DATE_FORMATS = [
   { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
   { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
@@ -75,12 +68,6 @@ const TEMPLATES = [
   { value: 'classic', label: 'Classic Executive' },
   { value: 'creative', label: 'Creative Portfolio' },
   { value: 'minimal', label: 'Minimalist' },
-];
-
-const AUTO_SAVE_INTERVALS = [
-  { value: '10', label: '10 seconds' },
-  { value: '30', label: '30 seconds' },
-  { value: '60', label: '60 seconds' },
 ];
 
 // ── Sub-Components ────────────────────────────────────────────────────────
@@ -123,7 +110,7 @@ SettingSelect.displayName = 'SettingSelect';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, logout, updateUserPassword, updateUserProfile, deleteAccount } = useAuth();
+  const { user, updateUserPassword, deleteAccount } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   usePageTitle({
@@ -203,9 +190,7 @@ const Settings = () => {
   // Whether the signed-in user has a password provider. Used to decide
   // whether the delete-account modal must collect a password - OAuth-only
   // accounts do not have one and cannot reauthenticate with it.
-  const userHasPassword = Boolean(
-    user?.providerData?.some((p) => p.providerId === 'password')
-  );
+  const userHasPassword = Boolean(user?.providerData?.some((p) => p.providerId === 'password'));
 
   // ── Handlers ─────────────────────────────────────────────────────────
 
@@ -654,8 +639,8 @@ const Settings = () => {
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
                     Your resume data has been removed, but we couldn&apos;t finish closing your
-                    account. Click Retry to complete the deletion. If the retry keeps failing,
-                    sign out and sign in again to refresh your session, then retry.
+                    account. Click Retry to complete the deletion. If the retry keeps failing, sign
+                    out and sign in again to refresh your session, then retry.
                   </p>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 
@@ -38,6 +38,77 @@ const ARROW_DIRECTIONS = {
   'right-end': 'left',
 };
 
+// Visual gap between trigger and tooltip, matching the mb-2 / mt-2 / mr-2 /
+// ml-2 utility classes used by the non-portal path. When the tooltip is
+// portaled we set its position via inline style, so the pixel value is used
+// directly instead of a Tailwind class.
+const PORTAL_GAP = 8;
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Computes the pixel position of a portaled tooltip relative to the
+ * viewport. Returns `{ top, left }` for use with `position: fixed`.
+ *
+ * `position` uses the same tokens as the non-portal path so behaviour is
+ * identical between the two modes.
+ */
+const computePortalPosition = (triggerRect, tooltipRect, position) => {
+  const [side, modifier] = position.split('-');
+  const align = modifier === 'end' ? 'end' : modifier === 'start' ? 'start' : 'center';
+
+  let top = 0;
+  let left = 0;
+
+  switch (side) {
+    case 'top':
+      top = triggerRect.top - tooltipRect.height - PORTAL_GAP;
+      left =
+        align === 'start'
+          ? triggerRect.left
+          : align === 'end'
+            ? triggerRect.right - tooltipRect.width
+            : triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
+      break;
+
+    case 'bottom':
+      top = triggerRect.bottom + PORTAL_GAP;
+      left =
+        align === 'start'
+          ? triggerRect.left
+          : align === 'end'
+            ? triggerRect.right - tooltipRect.width
+            : triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
+      break;
+
+    case 'left':
+      left = triggerRect.left - tooltipRect.width - PORTAL_GAP;
+      top =
+        align === 'start'
+          ? triggerRect.top
+          : align === 'end'
+            ? triggerRect.bottom - tooltipRect.height
+            : triggerRect.top + triggerRect.height / 2 - tooltipRect.height / 2;
+      break;
+
+    case 'right':
+      left = triggerRect.right + PORTAL_GAP;
+      top =
+        align === 'start'
+          ? triggerRect.top
+          : align === 'end'
+            ? triggerRect.bottom - tooltipRect.height
+            : triggerRect.top + triggerRect.height / 2 - tooltipRect.height / 2;
+      break;
+
+    default:
+      top = triggerRect.top - tooltipRect.height - PORTAL_GAP;
+      left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
+  }
+
+  return { top, left };
+};
+
 // ── Tooltip Component ─────────────────────────────────────────────────────
 
 const Tooltip = ({
@@ -55,6 +126,7 @@ const Tooltip = ({
   portal = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [portalPos, setPortalPos] = useState({ top: 0, left: 0 });
   const triggerRef = useRef(null);
   const tooltipRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -99,6 +171,24 @@ const Tooltip = ({
     return () => window.removeEventListener('scroll', handler, { capture: true });
   }, [isVisible, interactive, hide]);
 
+  // When the tooltip is portaled, it lives in document.body and the
+  // Tailwind `absolute` + POSITIONS classes have no anchor to work against.
+  // Measure the trigger and the tooltip and set explicit viewport
+  // coordinates via inline style. The measurement runs synchronously before
+  // paint, so the user only ever sees the tooltip at its final position.
+  useLayoutEffect(() => {
+    if (!portal || !isVisible) return;
+    const triggerEl = triggerRef.current;
+    const tooltipEl = tooltipRef.current;
+    if (!triggerEl || !tooltipEl) return;
+
+    const triggerRect = triggerEl.getBoundingClientRect();
+    const tooltipRect = tooltipEl.getBoundingClientRect();
+
+    const next = computePortalPosition(triggerRect, tooltipRect, position);
+    setPortalPos((prev) => (prev.top === next.top && prev.left === next.left ? prev : next));
+  }, [portal, isVisible, position]);
+
   const getTriggerProps = () => {
     const props = { ref: triggerRef };
 
@@ -142,17 +232,23 @@ const Tooltip = ({
       exit={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.15 }}
       className={cn(
-        'absolute z-[9999]',
-        POSITIONS[position] || POSITIONS.top,
-        position.startsWith('top')
-          ? 'mb-2'
-          : position.startsWith('bottom')
-            ? 'mt-2'
-            : position.startsWith('left')
-              ? 'mr-2'
-              : 'ml-2',
+        'z-[9999]',
+        portal
+          ? 'fixed'
+          : cn(
+              'absolute',
+              POSITIONS[position] || POSITIONS.top,
+              position.startsWith('top')
+                ? 'mb-2'
+                : position.startsWith('bottom')
+                  ? 'mt-2'
+                  : position.startsWith('left')
+                    ? 'mr-2'
+                    : 'ml-2'
+            ),
         tooltipClassName
       )}
+      style={portal ? { top: portalPos.top, left: portalPos.left } : undefined}
       onMouseEnter={interactive ? show : undefined}
       onMouseLeave={interactive ? hide : undefined}
       role="tooltip"
@@ -203,16 +299,27 @@ export const Popover = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef(null);
+
+  // Ref to hold the latest `close` callback so the outside-click / Escape
+  // effect below does not need `close` in its dependency array. `close`
+  // depends on the `onClose` prop, which parents commonly pass as an inline
+  // arrow function — that makes its identity change on every parent
+  // render. Listing it directly would re-attach the document listeners on
+  // every render, which risks dropping an outside click in the gap between
+  // removeEventListener and addEventListener. Referencing it through a ref
+  // keeps the effect stable while still calling the freshest closure.
+  const closeRef = useRef(null);
+
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        close();
+        closeRef.current?.();
       }
     };
     const handleEscape = (e) => {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') closeRef.current?.();
     };
 
     if (isOpen) {
@@ -238,6 +345,14 @@ export const Popover = ({
     setIsOpen(false);
     onClose?.();
   }, [onClose]);
+
+  // Keep `closeRef` in sync with the latest `close`. No dependency array,
+  // so it runs after every render — the next `isOpen` transition will
+  // therefore always install listeners whose handler reads the current
+  // `close`, not a stale one.
+  useEffect(() => {
+    closeRef.current = close;
+  });
 
   const positionClasses = {
     bottom: 'top-full left-0 mt-2',

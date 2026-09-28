@@ -55,6 +55,15 @@ rl.question('\nEnter choice (1-3): ', (choice) => {
         console.log('\n📝 Deploying to Firebase...');
         execSync('firebase deploy', { stdio: 'inherit' });
         break;
+
+      default:
+        // Unreachable while `deployOptions` and this switch stay in sync —
+        // the `!selected` guard above already rejects any choice outside the
+        // three known values. The case is still required so that a future
+        // addition to `deployOptions` that forgets to add a matching case
+        // here fails loudly instead of falling through to the success
+        // message below without deploying anything.
+        throw new Error(`Unknown deployment target: ${selected.value}`);
     }
 
     console.log(`\n✅ Deployment successful!\n`);

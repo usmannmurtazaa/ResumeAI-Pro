@@ -48,8 +48,6 @@ const ThemeCustomizer = () => {
   const {
     theme: currentTheme,
     setTheme,
-    isDark,
-    toggleTheme,
     appearance = 'system',
     setAppearance,
   } = useTheme?.() || {};

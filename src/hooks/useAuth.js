@@ -308,7 +308,7 @@ export const useAuthActions = () => {
 // ── Subscription hook ────────────────────────────────────────────────────
 
 export const useSubscription = () => {
-  const { subscription, isPremium, user } = useAuth();
+  const { subscription, isPremium } = useAuth();
 
   const isTrialing = useMemo(() => subscription?.status === 'trialing', [subscription?.status]);
   const isActive = useMemo(
@@ -345,7 +345,7 @@ export const useSubscription = () => {
 // ── Session hook ─────────────────────────────────────────────────────────
 
 export const useSession = () => {
-  const { user, getToken, getTokenResult, loading } = useAuth();
+  const { user, getTokenResult, loading } = useAuth();
   const [token, setToken] = useState(null);
   const [claims, setClaims] = useState(null);
   const mountedRef = useRef(true);

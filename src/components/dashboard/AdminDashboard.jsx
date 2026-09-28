@@ -45,7 +45,6 @@ import {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const ITEMS_PER_PAGE = 10;
-const DATE_RANGES = { '7days': 7, '30days': 30, '90days': 90 };
 
 // The admin dashboard subscribes to the `users` and `resumes` collections.
 // Without a cap, Firestore streams every document on mount and re-reads any
@@ -121,7 +120,7 @@ const DashboardSkeleton = () => (
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { user, userRole } = useAuth();
+  const { userRole } = useAuth();
 
   // Permission check
   const isAdmin = userRole === 'admin';
@@ -157,11 +156,8 @@ const AdminDashboard = () => {
   const [sortField, setSortField] = useState('createdAt');
   const [sortDirection, setSortDirection] = useState('desc');
   const [selectedUsers, setSelectedUsers] = useState(new Set());
-  const [dateRange, setDateRange] = useState('7days');
 
   // Modals
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [showUserModal, setShowUserModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
 
@@ -698,10 +694,12 @@ const AdminDashboard = () => {
                     <td className="py-3 px-2">
                       <div className="flex gap-1">
                         <button
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setShowUserModal(true);
-                          }}
+                          onClick={() =>
+                            toast(`${user.displayName || 'User'} — ${user.email || 'no email'}`, {
+                              icon: 'ℹ️',
+                              duration: 4000,
+                            })
+                          }
                           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                           aria-label="View user"
                         >

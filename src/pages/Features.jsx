@@ -20,8 +20,6 @@ import Badge from '../components/ui/Badge';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const cn = (...classes) => classes.filter(Boolean).join(' ');
-
 const FEATURES = [
   {
     id: 'ats-optimization',
@@ -233,8 +231,8 @@ const Features = () => {
               Everything You Need to <span className="gradient-text">Land the Job</span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              From AI-powered writing to ATS optimization, Maniesta Career OS gives you all the tools to
-              create a standout resume.
+              From AI-powered writing to ATS optimization, Maniesta Career OS gives you all the
+              tools to create a standout resume.
             </p>
           </motion.div>
 

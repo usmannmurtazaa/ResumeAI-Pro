@@ -174,7 +174,6 @@ const AdminRoute = ({
   children,
   redirectTo = '/dashboard',
   requireVerified = true,
-  allowImpersonation = false, // For support staff to view as admin
   sessionTimeout = ADMIN_SESSION_TIMEOUT,
 }) => {
   const { user, userRole, loading, isEmailVerified, logout } = useAuth();

@@ -43,17 +43,27 @@ const Dropdown = ({
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
 
+  // Ref to hold the latest `close` callback so the outside-click / Escape
+  // effect below does not need `close` in its dependency array. `close`
+  // depends on the `onClose` prop, which parents commonly pass as an inline
+  // arrow function — that makes its identity change on every parent
+  // render. Listing it directly would re-attach the document listeners on
+  // every render, which risks dropping an outside click in the gap between
+  // removeEventListener and addEventListener. Referencing it through a ref
+  // keeps the effect stable while still calling the freshest closure.
+  const closeRef = useRef(null);
+
   useEffect(() => {
     if (!isOpen) return;
 
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        close();
+        closeRef.current?.();
       }
     };
 
     const handleEscape = (event) => {
-      if (event.key === 'Escape') close();
+      if (event.key === 'Escape') closeRef.current?.();
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -135,10 +145,25 @@ const Dropdown = ({
           e.preventDefault();
           close();
           break;
+        default:
+          // Unrecognised keys (Tab, Shift+Tab, printable characters, etc.)
+          // are intentionally not handled here. Falling through with no
+          // action lets the browser's native key handling proceed, so
+          // focus can still move out of the menu via Tab and the user's
+          // text input (if any) is not preempted.
+          break;
       }
     },
     [close]
   );
+
+  // Keep `closeRef` in sync with the latest `close`. No dependency array,
+  // so it runs after every render — the next `isOpen` transition will
+  // therefore always install listeners whose handler reads the current
+  // `close`, not a stale one.
+  useEffect(() => {
+    closeRef.current = close;
+  });
 
   const contextValue = {
     isOpen,

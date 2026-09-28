@@ -124,7 +124,6 @@ const PrivateRoute = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [showAccessDenied, setShowAccessDenied] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [tokenExpired] = useState(false);

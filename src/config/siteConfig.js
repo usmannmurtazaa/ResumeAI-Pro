@@ -19,7 +19,7 @@ export const siteConfig = {
     'job search',
   ],
 
-  url: process.env.REACT_APP_SITE_URL || 'https://maniestacareeros.netlify.app',
+  url: process.env.REACT_APP_SITE_URL || 'https://maniestacareer.netlify.app',
   // apiUrl removed - the app uses the Firebase SDK directly, not a REST API.
   // Any code reading siteConfig.apiUrl will receive an empty string.
   apiUrl: '',
@@ -197,8 +197,8 @@ export const siteConfig = {
   // and <meta name="robots"> for the current route.
   seo: {
     siteName: 'Maniesta Career OS',
-    siteUrl: 'https://maniestacareeros.netlify.app',
-    defaultImage: 'https://maniestacareeros.netlify.app/og-image.png',
+    siteUrl: 'https://maniestacareer.netlify.app',
+    defaultImage: 'https://maniestacareer.netlify.app/og-image.png',
     defaultImageAlt: 'Maniesta Career OS - AI-Powered ATS Resume Builder',
     twitterHandle: '@usmann_murtazaa',
     twitterCreator: '@usmann_murtazaa',

@@ -297,6 +297,10 @@ const PhoneAuth = ({
       setResendTimer(RESEND_COOLDOWN);
       recordSmsSent();
 
+      // Kept: this toast is the sole confirmation that the SMS was
+      // dispatched. It fires before any sign-in completes, so no caller
+      // duplicates it, and removing it would leave the user without any
+      // signal that the code was sent.
       toast.success('Verification code sent!', {
         icon: <FiSmartphone className="w-5 h-5 text-primary-500" />,
         duration: 3000,
@@ -455,6 +459,20 @@ const PhoneAuth = ({
   };
 
   // ── Handle Successful Authentication ────────────────────────────────────
+  // Feedback contract (mirrors GoogleAuthButton):
+  //   The component delegates post-sign-in user feedback to the caller via
+  //   `onSuccess`. If the caller provides `onSuccess`, this component does
+  //   NOT emit a success toast — the caller's handler is the single
+  //   feedback surface and does its own redirect + toast. The local toast
+  //   only fires when the caller did not provide `onSuccess`, so that a
+  //   hypothetical consumer who mounts the modal in isolation still gets a
+  //   confirmation.
+  //
+  //   Removing the previous unconditional toasts here was necessary because
+  //   both real callers (`LoginForm.handlePhoneSuccess` /
+  //   `SignUpForm.handlePhoneSuccess`) already toast after `onSuccess`
+  //   fires, producing two stacked success toasts per phone sign-in /
+  //   sign-up.
 
   const handleSuccessfulAuth = async (user) => {
     try {
@@ -486,7 +504,9 @@ const PhoneAuth = ({
         // FIXED: Use setDoc with merge to prevent race conditions
         await setDoc(userDocRef, userData, { merge: false });
 
-        if (mode === 'signup') {
+        if (onSuccess) {
+          onSuccess(user);
+        } else if (mode === 'signup') {
           toast.success('Account created successfully! Welcome!', {
             icon: <FiCheckCircle className="w-5 h-5 text-green-500" />,
             duration: 3000,
@@ -501,24 +521,32 @@ const PhoneAuth = ({
           ...(user.phoneNumber && { phoneNumber: user.phoneNumber }),
         });
 
-        toast.success('Phone verified successfully!', {
+        if (onSuccess) {
+          onSuccess(user);
+        } else {
+          toast.success('Phone verified successfully!', {
+            icon: <FiCheckCircle className="w-5 h-5 text-green-500" />,
+            duration: 2000,
+          });
+        }
+      }
+
+      handleClose();
+    } catch (error) {
+      console.error('Firestore update failed:', error);
+
+      // Still succeed - authentication worked even if Firestore failed.
+      // Delegate to the caller when it is present; otherwise fall back to
+      // a local toast.
+      if (onSuccess) {
+        onSuccess(user);
+      } else {
+        toast.success('Verified! Redirecting...', {
           icon: <FiCheckCircle className="w-5 h-5 text-green-500" />,
           duration: 2000,
         });
       }
 
-      onSuccess?.(user);
-      handleClose();
-    } catch (error) {
-      console.error('Firestore update failed:', error);
-
-      // Still succeed - authentication worked even if Firestore failed
-      toast.success('Verified! Redirecting...', {
-        icon: <FiCheckCircle className="w-5 h-5 text-green-500" />,
-        duration: 2000,
-      });
-
-      onSuccess?.(user);
       handleClose();
     }
   };
