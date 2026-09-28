@@ -10,8 +10,34 @@ if (!admin.apps.length) {
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const db = admin.firestore();
 
+// ── Trusted site URL ─────────────────────────────────────────────────────
+// The billing portal's `return_url` is passed to Stripe and used to redirect
+// the customer after they finish managing their subscription - and, depending
+// on Stripe's account configuration, to generate links in receipt and invoice
+// emails. It must therefore come from a trusted, server-controlled value.
+//
+// `event.headers.origin` is client-supplied and MUST NOT be used as a
+// fallback here: doing so would let any HTTP client influence where Stripe
+// sends the customer. The correct fallback for non-production environments
+// is `DEPLOY_PRIME_URL`, which Netlify sets automatically for branch deploys
+// and deploy previews.
+//
+// If neither env var is set, the handler fails closed with a 500 instead of
+// silently trusting a request header.
+const SITE_URL = (process.env.URL || process.env.DEPLOY_PRIME_URL || '').replace(/\/+$/, '');
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+
+  // Fail closed on deploy-time misconfiguration. Do not fall back to any
+  // client-controlled value.
+  if (!SITE_URL) {
+    console.error('create-portal-session: neither process.env.URL nor DEPLOY_PRIME_URL is set');
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Server is not configured' }),
+    };
+  }
 
   const authHeader = event.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -28,12 +54,18 @@ exports.handler = async (event) => {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: sub.stripeCustomerId,
-      return_url: `${process.env.URL || event.headers.origin}/billing`,
+      return_url: `${SITE_URL}/billing`,
     });
 
     return { statusCode: 200, body: JSON.stringify({ url: session.url }) };
   } catch (error) {
     console.error('Create portal session error:', error);
-    return { statusCode: 400, body: JSON.stringify({ message: error.message }) };
+    // Return a generic message to the client. Stripe SDK errors can include
+    // request IDs, customer IDs, and other internal details that should not
+    // be echoed back to the browser. Full details are logged above.
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Failed to create billing portal session' }),
+    };
   }
 };

@@ -127,7 +127,20 @@ export const resumeService = {
       const original = await this.getResume(resumeId);
       if (!original) throw new Error('Original resume not found');
 
-      const { id, createdAt, updatedAt, downloadCount, viewCount, ...rest } = original;
+      // Destructure-to-exclude: the `_`-prefixed bindings below are declared
+      // only so their keys are stripped from `rest`. `createResume` will
+      // regenerate all five on the duplicated document. The underscore prefix
+      // is required by the ESLint `varsIgnorePattern: '^_'` rule - do not
+      // remove these bindings, they are load-bearing.
+      const {
+        id: _id,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        downloadCount: _downloadCount,
+        viewCount: _viewCount,
+        ...rest
+      } = original;
+
       const duplicated = await this.createResume(userId, {
         ...rest,
         name: `${rest.name || 'Untitled'} (Copy)`,

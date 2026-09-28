@@ -66,9 +66,9 @@ rl.question('\nEnter choice (1-3): ', (choice) => {
         throw new Error(`Unknown deployment target: ${selected.value}`);
     }
 
-    console.log(`\n✅ Deployment successful!\n`);
+    console.log(`\n Deployment successful!\n`);
   } catch (error) {
-    console.error(`\n❌ Deployment failed:`, error.message);
+    console.error(`\n Deployment failed:`, error.message);
   }
 
   rl.close();

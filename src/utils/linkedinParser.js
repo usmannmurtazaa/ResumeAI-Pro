@@ -8,10 +8,6 @@
  * download their data archive from LinkedIn (Settings → Data Privacy → Get a copy of your data).
  */
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const SUPPORTED_JSON_FORMATS = ['linkedin_export', 'generic'];
-
 // ── Utilities ──────────────────────────────────────────────────────────────
 
 const isBrowser = typeof window !== 'undefined' && typeof DOMParser !== 'undefined';

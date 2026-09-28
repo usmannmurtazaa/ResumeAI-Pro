@@ -18,7 +18,7 @@ const downloadBlob = (blob, filename) => {
 };
 
 const sanitizeFilename = (name) => {
-  return name.replace(/[^a-zA-Z0-9_\-\.]/g, '_').slice(0, 100) || 'document';
+  return name.replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 100) || 'document';
 };
 
 // ── PDF Export ────────────────────────────────────────────────────────────
@@ -47,7 +47,6 @@ const exportAsPDF = async (element, filename = 'resume.pdf') => {
       windowHeight: element.scrollHeight,
     });
 
-    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' });
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -265,7 +264,7 @@ const exportAsDOCX = (data, filename = 'resume.docx') => {
           const bullets = exp.description
             .split('\n')
             .filter(Boolean)
-            .map((b) => `<li>${b.replace(/^[•\-]\s*/, '')}</li>`);
+            .map((b) => `<li>${b.replace(/^[•-]\s*/, '')}</li>`);
           lines.push(`<ul>${bullets.join('')}</ul>`);
         }
       });

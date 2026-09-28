@@ -323,8 +323,14 @@ const reauthenticateWithPassword = async (password) => {
 };
 
 // ── User Doc Sync ──────────────────────────────────────────────────────────
+//
+// New-vs-existing is determined from the Firestore document, not from a
+// caller-supplied flag. The Auth SDK's `isNewUser` signal and the Firestore
+// document's existence can diverge (e.g. after a partial failure), and the
+// Firestore document is the authoritative source of truth for whether the
+// user record already exists in this app.
 
-const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
+const syncUserDocAfterProviderAuth = async (user, providerName) => {
   const ref = doc(db, COLLECTIONS.users, user.uid);
   const existing = await getDoc(ref);
 
@@ -432,7 +438,7 @@ export const authService = {
     try {
       const result = await signInWithPopup(auth, createProvider(name));
       const isNew = Boolean(getAdditionalUserInfo(result)?.isNewUser);
-      await syncUserDocAfterProviderAuth(result.user, name.toLowerCase(), isNew);
+      await syncUserDocAfterProviderAuth(result.user, name.toLowerCase());
       await createSessionRecord(result.user.uid);
       safeTrackEvent(isNew ? 'sign_up' : 'login', {
         method: name.toLowerCase(),

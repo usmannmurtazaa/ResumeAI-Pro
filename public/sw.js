@@ -24,16 +24,29 @@ const CONFIG = {
   // Time before stale resources are revalidated (ms)
   STALE_TIMEOUT: 30 * 60 * 1000, // 30 minutes
 
-  // Precache list - only files that actually exist in /public.
-  // (Removed /offline.html - that file does not exist in public/.)
-  PRECACHE_URLS: ['/', '/index.html', '/manifest.json', '/favicon.ico'],
+  // Precache list - only files that actually exist in /public and are
+  // intended to be served by this SW.
+  //
+  //   • /manifest.json is intentionally NOT precached. EXCLUDE_PATTERNS
+  //     below excludes every URL containing `.json`, so the fetch handler
+  //     would never serve a cached manifest — the install-time fetch would
+  //     be a wasted request. The browser fetches the manifest directly on
+  //     page load; leaving it to the browser's own HTTP cache is correct.
+  //   • /offline.html is not precached - that file does not exist in
+  //     public/.
+  PRECACHE_URLS: ['/', '/index.html', '/favicon.ico'],
 
-  // Cache strategies per resource type.
+  // Cache strategies per resource type. The keys here must match the strings
+  // returned by `getResourceType` below — `getResourceType` returns 'PAGES'
+  // for navigations, 'FONTS' for fonts, 'IMAGES' for images, and 'DYNAMIC'
+  // for everything else. There is no separate 'NAVIGATION' key; navigations
+  // are handled by the 'PAGES' entry.
+  //
   // Note: STATIC_ASSETS (JS/CSS bundles) are intentionally bypassed in the
   // fetch handler below - webpack chunks change on every deploy and must
   // not be served stale from the SW cache.
   STRATEGIES: {
-    NAVIGATION: 'network-first',
+    PAGES: 'network-first',
     FONTS: 'cache-first',
     IMAGES: 'stale-while-revalidate',
   },
@@ -176,7 +189,10 @@ const staleWhileRevalidate = async (request, cacheName) => {
   const fetchPromise = updateCache(request, cacheName);
 
   if (cachedResponse) {
-    void fetchPromise;
+    // Fire-and-forget, but consume any rejection so it does not surface as
+    // an unhandled promise rejection in the SW console (which happens when
+    // the network request is aborted, e.g. the user closes the tab).
+    fetchPromise.catch(() => {});
     return cachedResponse;
   }
 
@@ -281,15 +297,21 @@ self.addEventListener('activate', (event) => {
           (name) => `${name}-v${CONFIG.CACHE_VERSION}`
         );
 
-        // Delete old caches
-        const deletePromises = cacheNames.map((cacheName) => {
-          if (!currentCaches.includes(cacheName)) {
+        // Delete old caches. Selection and deletion are split so that the
+        // `map` callback returns a promise on every branch — otherwise the
+        // linter's `array-callback-return` rule flags the implicit
+        // `return undefined` path even though `filter(Boolean)` would have
+        // removed it below.
+        const staleCacheNames = cacheNames.filter(
+          (cacheName) => !currentCaches.includes(cacheName)
+        );
+
+        await Promise.all(
+          staleCacheNames.map((cacheName) => {
             console.log('🗑️ Deleting old cache:', cacheName);
             return caches.delete(cacheName);
-          }
-        });
-
-        await Promise.all(deletePromises.filter(Boolean));
+          })
+        );
         console.log('✅ Old caches cleaned');
 
         // Take control of all clients immediately
@@ -516,7 +538,17 @@ self.addEventListener('notificationclick', (event) => {
         });
 
         for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
+          // Exact-origin comparison, matching the fetch handler. clients.matchAll()
+          // is already origin-scoped, so this is a consistency fix rather than a
+          // behaviour change — but if that ever changes, the exact check is correct.
+          let clientOrigin;
+          try {
+            clientOrigin = new URL(client.url).origin;
+          } catch {
+            continue;
+          }
+
+          if (clientOrigin === self.location.origin && 'focus' in client) {
             await client.focus();
             client.postMessage({
               type: 'NOTIFICATION_CLICKED',

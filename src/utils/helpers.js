@@ -133,7 +133,7 @@ const isValidEmail = (email) => {
 const isValidPhone = (phone) => {
   if (!phone) return false;
   // Accepts various international formats
-  return /^[\+]?[\d\s\(\)\-\.]{7,20}$/.test(phone.replace(/\s/g, ''));
+  return /^\+?[\d\s().-]{7,20}$/.test(phone.replace(/\s/g, ''));
 };
 
 const isValidURL = (url) => {

@@ -302,19 +302,17 @@ textarea::placeholder {
   animation: gradient 3s ease infinite;
 }
 
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
+/*
+ * NOTE: `@keyframes float` and the `.animate-float` utility are owned by
+ * `tailwind.config.js` (theme.extend.keyframes.float / theme.extend.animation.float).
+ * Tailwind emits both at 6s. Do NOT re-declare them here - a local copy
+ * would duplicate the emitted CSS and, if the duration ever drifted, would
+ * make the applied animation depend on CSS bundle order.
+ *
+ * The `.animate-float` selector is still listed in the reduced-motion block
+ * below; that override applies to the Tailwind-emitted class and must be
+ * kept in sync with any class name changes in the Tailwind config.
+ */
 
 @keyframes pulse-glow {
   0%,

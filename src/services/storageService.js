@@ -25,7 +25,7 @@ const generateFileName = (originalName, prefix = '') => {
   const ext = originalName.includes('.')
     ? originalName.substring(originalName.lastIndexOf('.'))
     : '';
-  const sanitized = originalName.replace(/[^a-zA-Z0-9_\-\.]/g, '_').slice(0, 50);
+  const sanitized = originalName.replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 50);
   return `${prefix}${Date.now()}_${sanitized}${ext}`;
 };
 

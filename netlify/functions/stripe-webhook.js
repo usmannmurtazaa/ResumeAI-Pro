@@ -63,10 +63,22 @@ exports.handler = async (event) => {
   if (stripeEvent.type === 'customer.subscription.deleted') {
     const userId = subscription.metadata?.firebaseUserId;
     if (userId) {
+      // The subscription has fully ended. `cancel_at_period_end` is a flag
+      // that means "will cancel at the end of the current period" - it is
+      // inapplicable once the subscription is gone. Setting it to `true`
+      // here would tell the app that the subscription is still active with
+      // a scheduled cancellation, which is the opposite of reality and
+      // renders a misleading "Cancels at period end" badge plus a
+      // "Resume Subscription" button in `Billing.jsx`.
+      //
+      // Do NOT copy the value from the `customer.subscription.updated`
+      // handler above - that branch reflects Stripe's live
+      // `subscription.cancel_at_period_end`, which is meaningful only for
+      // an active subscription.
       await db.collection('subscriptions').doc(userId).set(
         {
           status: 'canceled',
-          cancelAtPeriodEnd: true,
+          cancelAtPeriodEnd: false,
           updatedAt: new Date().toISOString(),
         },
         { merge: true }

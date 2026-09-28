@@ -88,8 +88,14 @@ export const formatters = {
 
   /**
    * Format as percentage.
+   *
+   * Note: this formatter is locale-agnostic by design. The output is a plain
+   * `Number.prototype.toFixed`-based string (e.g. `"50.5%"`), matching the
+   * behaviour every existing caller relies on. A locale-aware variant using
+   * `Intl.NumberFormat(..., { style: 'percent' })` would change both the
+   * decimal separator and the value scaling, and is not implemented here.
    */
-  percentage(value, decimals = 0, locale = DEFAULT_LOCALE) {
+  percentage(value, decimals = 0) {
     if (value === null || value === undefined) return '';
     return `${Number(value).toFixed(decimals)}%`;
   },

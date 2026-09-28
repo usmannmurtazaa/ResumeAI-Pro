@@ -1,16 +1,19 @@
 /* src/styles/animations.css */
 
 /* ── Keyframes ──────────────────────────────────────────────────────────── */
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
+/*
+ * `@keyframes float` and the `.animate-float` utility are intentionally
+ * NOT defined in this file. They are owned by:
+ *   • tailwind.config.js - theme.extend.keyframes.float / animation.float
+ *                          generates both the keyframes and the 6s
+ *                          `.animate-float` utility.
+ *   • src/styles/globals.css - a 6s duplicate kept in sync with Tailwind.
+ * Both remaining sources agree on `6s`, so the applied duration is
+ * deterministic regardless of CSS bundle order. Adding a third copy here
+ * (the previous version used `3s`) made the outcome depend on load order.
+ * If a faster variant is needed, use `animate-float-fast` (4s) which is
+ * already declared in tailwind.config.js.
+ */
 
 @keyframes pulse-glow {
   0%,
@@ -108,9 +111,6 @@
 
 /* ── Animation Utility Classes ──────────────────────────────────────────── */
 
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
@@ -275,7 +275,6 @@
     transition-duration: 0.01ms !important;
   }
 
-  .animate-float,
   .animate-pulse-glow,
   .animate-spin-slow,
   .animate-shimmer {

@@ -60,9 +60,7 @@ export const validators = {
     if (isEmpty(value)) return 'Phone number is required';
     if (!isString(value)) return 'Invalid phone number';
     // Accepts a wide range of international formats
-    return /^[\+]?[\d\s\(\)\-\.]{7,20}$/.test(value.replace(/\s/g, ''))
-      ? true
-      : 'Invalid phone number';
+    return /^\+?[\d\s().-]{7,20}$/.test(value.replace(/\s/g, '')) ? true : 'Invalid phone number';
   },
 
   url(value) {
