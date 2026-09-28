@@ -457,7 +457,7 @@ export const SettingsProvider = ({ children }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `resumeai-settings-${Date.now()}.json`;
+    a.download = `maniesta-careeros-settings-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Settings exported');

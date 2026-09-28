@@ -337,7 +337,7 @@ const ForgotPassword = () => {
 
   const handleContactSupport = useCallback(() => {
     // Try to open email client first
-    const mailtoLink = `mailto:support@resumeai.com?subject=Password%20Reset%20Help&body=I%20need%20help%20resetting%20my%20password%20for%20${encodeURIComponent(sentEmail || 'my account')}.`;
+    const mailtoLink = `mailto:support@maniesta-careeros.com?subject=Password%20Reset%20Help&body=I%20need%20help%20resetting%20my%20password%20for%20${encodeURIComponent(sentEmail || 'my account')}.`;
 
     try {
       window.open(mailtoLink, '_blank');
@@ -462,7 +462,7 @@ const ForgotPassword = () => {
                   <li className="flex items-start gap-2">
                     <span className="text-blue-400 mt-1">•</span>
                     <span>
-                      Add <strong>noreply@resumeai.com</strong> to your contacts
+                      Add <strong>noreply@maniesta-careeros.com</strong> to your contacts
                     </span>
                   </li>
                   <li className="flex items-start gap-2">

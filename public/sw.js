@@ -6,11 +6,11 @@ const CONFIG = {
 
   // Cache names
   CACHE_NAMES: {
-    STATIC: 'resumeai-static',
-    DYNAMIC: 'resumeai-dynamic',
-    FONTS: 'resumeai-fonts',
-    IMAGES: 'resumeai-images',
-    PAGES: 'resumeai-pages',
+    STATIC: 'maniesta-careeros-static',
+    DYNAMIC: 'maniesta-careeros-dynamic',
+    FONTS: 'maniesta-careeros-fonts',
+    IMAGES: 'maniesta-careeros-images',
+    PAGES: 'maniesta-careeros-pages',
   },
 
   // Cache limits (max items)

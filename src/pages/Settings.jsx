@@ -318,7 +318,7 @@ const Settings = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `resumeai-export-${Date.now()}.json`;
+    a.download = `maniesta-careeros-export-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Data exported!');

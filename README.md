@@ -116,8 +116,8 @@ The live demo is connected to a Firebase project and supports real sign-up. You 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Usmannmurtazaa/ResumeAI-Pro.git
-cd ResumeAI-Pro
+git clone https://github.com/Usmannmurtazaa/maniesta-careeros.git
+cd Maniesta-careeros
 
 # 2. Install dependencies
 npm install
@@ -175,7 +175,7 @@ netlify deploy --prod
 ## 📁 Project Structure
 
 ```
-ResumeAI-Pro/
+Maniesta-careeros/
 ├── public/               # Static assets and index.html
 ├── netlify/
 │   └── functions/        # Serverless functions (Stripe, AI proxy, resume helpers)
