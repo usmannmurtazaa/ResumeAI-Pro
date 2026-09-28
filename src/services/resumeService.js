@@ -234,7 +234,7 @@ export const resumeService = {
   // ── Update ──────────────────────────────────────────────────────────────
 
   async updateResume(resumeId, resumeData) {
-    // Argument validation — fail fast with a clear message rather than
+    // Argument validation - fail fast with a clear message rather than
     // sending a malformed payload to Firestore.
     if (!resumeId || typeof resumeId !== 'string') {
       throw new Error('A valid resumeId is required');
@@ -281,8 +281,8 @@ export const resumeService = {
         status = atsScore >= 80 ? 'completed' : 'draft';
       }
 
-      // 4. Build the final payload. `updatedAt` is added here — after the
-      //    whitelist — so it is always included and never accidentally
+      // 4. Build the final payload. `updatedAt` is added here - after the
+      //    whitelist - so it is always included and never accidentally
       //    dropped by the field filter.
       const updates = {
         ...safeUpdates,

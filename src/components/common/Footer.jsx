@@ -336,12 +336,12 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4" aria-label="Resume Ai Pro Home">
+            <Link to="/" className="flex items-center gap-2 mb-4" aria-label="Maniesta Career OS Home">
               <div
                 className="w-8 h-8 bg-gradient-to-r from-primary-500 to-accent-500 rounded-lg shadow-md"
                 aria-hidden="true"
               />
-              <span className="text-xl font-bold gradient-text">Resume Ai Pro</span>
+              <span className="text-xl font-bold gradient-text">Maniesta Career OS</span>
             </Link>
             <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
               AI-powered resume builder that helps you create ATS-optimized resumes, pass applicant
@@ -434,7 +434,7 @@ const Footer = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-gray-600 dark:text-gray-400 text-sm flex items-center gap-1 flex-wrap justify-center">
-              <span>© {CURRENT_YEAR} Resume Ai Pro. All rights reserved.</span>
+              <span>© {CURRENT_YEAR} Maniesta Career OS. All rights reserved.</span>
               <span className="hidden sm:inline mx-2" aria-hidden="true">
                 •
               </span>

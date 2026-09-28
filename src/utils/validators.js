@@ -15,7 +15,28 @@ const COMMON_PASSWORDS = new Set([
   'password123!',
 ]);
 
-const isCommonPassword = (pwd) => COMMON_PASSWORDS.has(pwd.toLowerCase());
+/**
+ * Normalises a password for the common-password lookup. Both the reference
+ * set and the user-supplied value must go through this function, otherwise
+ * entries like `Password1` (present in the set as mixed-case) never match an
+ * input like `Password1`, because the input is lowercased but the stored
+ * value is not.
+ */
+const normalizePasswordForCommonCheck = (value) =>
+  typeof value === 'string' ? value.trim().toLowerCase() : '';
+
+/**
+ * Lowercase form of every entry in COMMON_PASSWORDS. Built once at module
+ * load so the runtime check is a single `Set.has` lookup on already-normalised
+ * values. Any future addition to COMMON_PASSWORDS is automatically picked up
+ * in its normalised form - no separate lowercase duplicate is needed.
+ */
+const NORMALIZED_COMMON_PASSWORDS = new Set(
+  Array.from(COMMON_PASSWORDS, normalizePasswordForCommonCheck)
+);
+
+const isCommonPassword = (pwd) =>
+  NORMALIZED_COMMON_PASSWORDS.has(normalizePasswordForCommonCheck(pwd));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

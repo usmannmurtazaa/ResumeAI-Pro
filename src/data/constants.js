@@ -12,10 +12,10 @@ import {
 
 // ── Application Constants ────────────────────────────────────────────────
 
-export const APP_NAME = 'Resume Ai Pro';
+export const APP_NAME = 'Maniesta Career OS';
 export const APP_VERSION = '2.5.0';
 export const APP_DESCRIPTION = 'AI-powered ATS resume builder';
-export const APP_URL = 'https://resumeaixpro.netlify.app';
+export const APP_URL = 'https://maniestacareeros.netlify.app';
 export const SUPPORT_EMAIL = 'usmanmurtazaportfolio@gmail.com';
 export const PRIVACY_EMAIL = 'usmanmurtazaportfolio@gmail.com';
 export const LEGAL_EMAIL = 'usmanmurtazaportfolio@gmail.com';
@@ -283,7 +283,7 @@ export const LOCAL_STORAGE_KEYS = {
   COOKIE_CONSENT: 'cookieConsent',
   NOTIFICATION_SOUND: 'notification_sound',
   REMEMBERED_EMAIL: 'remembered_email',
-  SESSION_ID: 'resumeaixpro.current-session-id',
+  SESSION_ID: 'maniestacareeros.current-session-id',
 };
 
 // ==========================================================================
@@ -408,8 +408,18 @@ export const ROUTES = {
 // ==========================================================================
 // Common Password List (for validation)
 // ==========================================================================
+//
+// The reference list mixes case conventions and is consumed by callers that
+// lowercase the user-supplied value before comparison:
+//
+//   COMMON_PASSWORDS.includes(password.toLowerCase())
+//
+// To make that comparison correct for every entry - including the mixed-case
+// 'Password1' entry, which would otherwise never match - the exported array
+// is normalised to lowercase at module load and deduplicated. The raw list is
+// kept separately so the original values remain visible in the source.
 
-export const COMMON_PASSWORDS = [
+const COMMON_PASSWORDS_RAW = [
   'password',
   'password1',
   'password123',
@@ -421,6 +431,10 @@ export const COMMON_PASSWORDS = [
   'abc123456',
   'Password1',
 ];
+
+export const COMMON_PASSWORDS = Array.from(
+  new Set(COMMON_PASSWORDS_RAW.map((p) => p.toLowerCase()))
+);
 
 // ==========================================================================
 // Quick Tips (Dashboard)

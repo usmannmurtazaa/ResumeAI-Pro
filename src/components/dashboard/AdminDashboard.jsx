@@ -56,6 +56,20 @@ const DATE_RANGES = { '7days': 7, '30days': 30, '90days': 90 };
 const ADMIN_USERS_LIMIT = 100;
 const ADMIN_RESUMES_LIMIT = 200;
 
+// ── Timestamp normalisation ─────────────────────────────────────────────
+// Firestore returns Timestamp objects for `createdAt` / `updatedAt`. Those
+// objects have no `valueOf` / `Symbol.toPrimitive`, so `new Date(timestamp)`
+// yields `Invalid Date` and comparing a Timestamp to an ISO string is a
+// lexicographic object-vs-string comparison that evaluates to a meaningless
+// result (in practice, always false). Normalising once at ingestion keeps
+// every downstream consumer working with plain Date objects.
+const normalizeTimestamp = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') return value.toDate();
+  if (value instanceof Date) return new Date(value.getTime());
+  return value;
+};
+
 // ── StatCard Component (Outside Main Component) ────────────────────────────
 
 const StatCard = React.memo(({ title, value, icon: Icon, color, trend, subtitle }) => (
@@ -204,7 +218,15 @@ const AdminDashboard = () => {
       usersQuery,
       (snapshot) => {
         if (!mountedRef.current) return;
-        const usersData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const usersData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: normalizeTimestamp(data.createdAt),
+            updatedAt: normalizeTimestamp(data.updatedAt),
+          };
+        });
         setUsers(usersData);
       },
       (err) => {
@@ -220,7 +242,15 @@ const AdminDashboard = () => {
       resumesQuery,
       (snapshot) => {
         if (!mountedRef.current) return;
-        const resumesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const resumesData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: normalizeTimestamp(data.createdAt),
+            updatedAt: normalizeTimestamp(data.updatedAt),
+          };
+        });
         setResumes(resumesData);
       },
       (err) => {
@@ -249,15 +279,25 @@ const AdminDashboard = () => {
   // Total users / total resumes use the accurate server-side counts. The
   // remaining metrics are computed from the bounded loaded window, which is
   // the most recent ADMIN_USERS_LIMIT / ADMIN_RESUMES_LIMIT documents.
+  //
+  // `today` is a Date (not an ISO string). Comparing a Date to a Date is a
+  // numerically correct comparison; comparing a Timestamp to an ISO string
+  // would fall back to a meaningless object-vs-string comparison and
+  // effectively always return false, which is why the "today" counters were
+  // always zero.
 
   useEffect(() => {
-    const today = startOfDay(new Date()).toISOString();
+    const today = startOfDay(new Date());
 
     const activeCount = users.filter((u) => u.status === 'active').length;
     const premiumCount = users.filter((u) => u.role === 'premium' || u.role === 'admin').length;
     const suspendedCount = users.filter((u) => u.status === 'suspended').length;
-    const newUsersToday = users.filter((u) => u.createdAt >= today).length;
-    const newResumesToday = resumes.filter((r) => r.createdAt >= today).length;
+    const newUsersToday = users.filter(
+      (u) => u.createdAt instanceof Date && u.createdAt >= today
+    ).length;
+    const newResumesToday = resumes.filter(
+      (r) => r.createdAt instanceof Date && r.createdAt >= today
+    ).length;
     const conversionRate = activeCount > 0 ? ((premiumCount / activeCount) * 100).toFixed(1) : 0;
 
     setStats({
@@ -297,8 +337,8 @@ const AdminDashboard = () => {
       let bVal = b[sortField];
 
       if (sortField === 'createdAt') {
-        aVal = aVal ? new Date(aVal).getTime() : 0;
-        bVal = bVal ? new Date(bVal).getTime() : 0;
+        aVal = aVal instanceof Date ? aVal.getTime() : 0;
+        bVal = bVal instanceof Date ? bVal.getTime() : 0;
       }
 
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -651,7 +691,9 @@ const AdminDashboard = () => {
                       {userResumeCount}
                     </td>
                     <td className="py-3 px-2 text-sm text-gray-500">
-                      {user.createdAt ? format(new Date(user.createdAt), 'MMM dd, yyyy') : 'N/A'}
+                      {user.createdAt instanceof Date
+                        ? format(user.createdAt, 'MMM dd, yyyy')
+                        : 'N/A'}
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex gap-1">

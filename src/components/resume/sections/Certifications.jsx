@@ -108,7 +108,7 @@ const getCategorySuggestions = (category) => {
 };
 
 // Returns the SVG icon component for a given category id, defaulting to
-// the FiAward icon when no match is found. Never returns an emoji — this
+// the FiAward icon when no match is found. Never returns an emoji - this
 // project uses SVG icons throughout.
 const getCategoryIcon = (categoryId) =>
   CERTIFICATION_CATEGORIES.find((c) => c.id === categoryId)?.icon || FiAward;
@@ -342,12 +342,24 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
 
   // ── Drag and Drop ──────────────────────────────────────────────────────
 
+  // `react-beautiful-dnd` reports indices relative to the rendered list,
+  // not to the underlying field array. When a filter or search is active,
+  // the rendered list is a subset of the field array and the two do not
+  // match. Translate the positions back to original indices before calling
+  // `move()` so the correct document is reordered.
   const onDragEnd = useCallback(
     (result) => {
       if (!result.destination) return;
-      move(result.source.index, result.destination.index);
+      const { source, destination } = result;
+      if (source.index === destination.index) return;
+
+      const sourceEntry = filteredCertifications[source.index];
+      const destEntry = filteredCertifications[destination.index];
+      if (!sourceEntry || !destEntry) return;
+
+      move(sourceEntry.originalIndex, destEntry.originalIndex);
     },
-    [move]
+    [move, filteredCertifications]
   );
 
   // ── Animation ─────────────────────────────────────────────────────────
@@ -470,7 +482,7 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
           {(provided) => (
             <div className="space-y-4" ref={provided.innerRef} {...provided.droppableProps}>
               <AnimatePresence mode="popLayout">
-                {filteredCertifications.map(({ cert, originalIndex }) => {
+                {filteredCertifications.map(({ cert, originalIndex }, positionIndex) => {
                   const expiryStatus = checkExpiryStatus(cert.expiryDate, cert.neverExpires);
                   const isExpanded = expandedItems.has(originalIndex) || viewMode === 'detailed';
                   const CategoryIcon = getCategoryIcon(cert.category);
@@ -479,7 +491,7 @@ const Certifications = ({ data = [], onChange, onValidationChange }) => {
                     <Draggable
                       key={fields[originalIndex]?.id || originalIndex}
                       draggableId={fields[originalIndex]?.id || String(originalIndex)}
-                      index={originalIndex}
+                      index={positionIndex}
                     >
                       {(provided, snapshot) => (
                         <motion.div

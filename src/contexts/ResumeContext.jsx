@@ -79,7 +79,15 @@ export const ResumeProvider = ({ children }) => {
   const [lastVisible, setLastVisible] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [totalResumeCount, setTotalResumeCount] = useState(0);
+  // Aggregate counts come from `getCountFromServer` (billed at ~1 read per
+  // 1 000 matching documents) so that `total`, `completed`, `archived`, and
+  // `inProgress` are computed against the full collection and not against
+  // the paginated loaded slice.
+  const [resumeCounts, setResumeCounts] = useState({
+    total: 0,
+    completed: 0,
+    archived: 0,
+  });
   const [stats, setStats] = useState({
     total: 0,
     completed: 0,
@@ -102,59 +110,111 @@ export const ResumeProvider = ({ children }) => {
     };
   }, []);
 
-  // ── Fetch Accurate Total Count ───────────────────────────────────────
+  // ── Fetch Accurate Counts (server-side, cheap) ───────────────────────
+  // Three parallel count queries. Each is billed as roughly 1 read per
+  // 1 000 matching documents. The `where('status', '==', ...)` filters use
+  // the existing `(userId, status, updatedAt)` composite index defined in
+  // `firestore.indexes.json`, so no new index is required.
+  //
+  // This callback is invoked from three places:
+  //   1. The mount / user-change effect below.
+  //   2. After every mutation that can change the totals
+  //      (create / delete / duplicate / archive / unarchive / bulk ops).
+  // It is intentionally NOT invoked from the real-time `onSnapshot`
+  // callback - that would fire it on every resume write (including
+  // autosave), far more often than the totals can actually change.
 
-  const refreshTotalCount = useCallback(async () => {
+  const refreshCounts = useCallback(async () => {
     if (!user) {
-      setTotalResumeCount(0);
+      setResumeCounts({ total: 0, completed: 0, archived: 0 });
       return;
     }
 
     try {
-      const q = query(collection(db, 'resumes'), where('userId', '==', user.uid));
-      const countSnapshot = await getCountFromServer(q);
+      const [totalSnap, completedSnap, archivedSnap] = await Promise.all([
+        getCountFromServer(
+          query(collection(db, 'resumes'), where('userId', '==', user.uid))
+        ),
+        getCountFromServer(
+          query(
+            collection(db, 'resumes'),
+            where('userId', '==', user.uid),
+            where('status', '==', 'completed')
+          )
+        ),
+        getCountFromServer(
+          query(
+            collection(db, 'resumes'),
+            where('userId', '==', user.uid),
+            where('status', '==', 'archived')
+          )
+        ),
+      ]);
+
       if (mountedRef.current) {
-        setTotalResumeCount(countSnapshot.data().count || 0);
+        setResumeCounts({
+          total: totalSnap.data().count || 0,
+          completed: completedSnap.data().count || 0,
+          archived: archivedSnap.data().count || 0,
+        });
       }
     } catch (err) {
-      console.error('Error fetching resume count:', err);
+      console.error('Error fetching resume counts:', err);
     }
   }, [user]);
 
-  // ── Stats Calculation (from loaded resumes for non-total metrics) ────
+  // ── Sync counts on mount / sign-in ────────────────────────────────────
 
-  const calculateStats = useCallback(
-    (resumeData) => {
-      const completed = resumeData.filter(
-        (r) => r.status === 'completed' || r.atsScore >= 80
-      ).length;
-      const archived = resumeData.filter((r) => r.status === 'archived').length;
-      const scores = resumeData.map((r) => r.atsScore || 0).filter((s) => s > 0);
-      const avgScore = scores.length
-        ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-        : 0;
-      const totalDownloads = resumeData.reduce((sum, r) => sum + (r.downloadCount || 0), 0);
-      const templateDistribution = {};
-      resumeData.forEach((r) => {
-        const t = r.template || 'modern';
-        templateDistribution[t] = (templateDistribution[t] || 0) + 1;
-      });
+  useEffect(() => {
+    if (!user) {
+      setResumeCounts({ total: 0, completed: 0, archived: 0 });
+      return;
+    }
+    refreshCounts();
+  }, [user, refreshCounts]);
 
-      setStats({
-        total: totalResumeCount, // use accurate count
-        completed,
-        inProgress: totalResumeCount - completed - archived,
-        archived,
-        avgScore,
-        bestScore: scores.length ? Math.max(...scores) : 0,
-        totalDownloads,
-        templateDistribution,
-      });
-    },
-    [totalResumeCount]
-  );
+  // ── Stats Calculation ────────────────────────────────────────────────
+  // `total`, `completed`, `archived`, and `inProgress` come from the
+  // authoritative server counts. The remaining statistics (avg score,
+  // best score, downloads, template distribution) are computed from the
+  // loaded slice because they require per-document data - for accounts
+  // whose loaded slice is representative of the collection, this is a
+  // reasonable approximation.
+
+  const calculateStats = useCallback(() => {
+    const total = resumeCounts.total;
+    const completed = resumeCounts.completed;
+    const archived = resumeCounts.archived;
+    const inProgress = Math.max(0, total - completed - archived);
+
+    const loaded = resumes;
+    const scores = loaded.map((r) => r.atsScore || 0).filter((s) => s > 0);
+    const avgScore = scores.length
+      ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+      : 0;
+    const totalDownloads = loaded.reduce((sum, r) => sum + (r.downloadCount || 0), 0);
+    const templateDistribution = {};
+    loaded.forEach((r) => {
+      const t = r.template || 'modern';
+      templateDistribution[t] = (templateDistribution[t] || 0) + 1;
+    });
+
+    setStats({
+      total,
+      completed,
+      inProgress,
+      archived,
+      avgScore,
+      bestScore: scores.length ? Math.max(...scores) : 0,
+      totalDownloads,
+      templateDistribution,
+    });
+  }, [resumeCounts, resumes]);
 
   // ── Real-time Subscription ──────────────────────────────────────────
+  // The snapshot callback updates the loaded slice only. Aggregate counts
+  // are refreshed separately by `refreshCounts` - see the mount effect
+  // above and the mutation call sites below.
 
   useEffect(() => {
     if (!user) {
@@ -162,7 +222,6 @@ export const ResumeProvider = ({ children }) => {
       setCurrentResume(null);
       setLoading(false);
       setError(null);
-      setTotalResumeCount(0);
       return;
     }
 
@@ -192,9 +251,6 @@ export const ResumeProvider = ({ children }) => {
         setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
         setHasMore(snapshot.docs.length === RESUMES_PER_PAGE);
 
-        // Fetch accurate total count whenever list updates
-        refreshTotalCount();
-
         setLoading(false);
         setError(null);
       },
@@ -209,13 +265,13 @@ export const ResumeProvider = ({ children }) => {
     );
 
     return () => unsubscribe();
-  }, [user, refreshTotalCount]);
+  }, [user]);
 
-  // ── Recalculate stats when resumes or total count change ─────────────
+  // ── Recalculate stats when resumes or counts change ────────────────────
 
   useEffect(() => {
-    calculateStats(resumes);
-  }, [resumes, calculateStats]);
+    calculateStats();
+  }, [calculateStats]);
 
   // ── Load More ──────────────────────────────────────────────────────────
 
@@ -261,13 +317,13 @@ export const ResumeProvider = ({ children }) => {
   const canCreateResume = useMemo(() => {
     if (!user) return false;
     if (isPremium) return true;
-    return totalResumeCount < FREE_RESUME_LIMIT;
-  }, [user, isPremium, totalResumeCount]);
+    return resumeCounts.total < FREE_RESUME_LIMIT;
+  }, [user, isPremium, resumeCounts.total]);
 
   const freeResumesRemaining = useMemo(() => {
     if (isPremium) return Infinity;
-    return Math.max(0, FREE_RESUME_LIMIT - totalResumeCount);
-  }, [isPremium, totalResumeCount]);
+    return Math.max(0, FREE_RESUME_LIMIT - resumeCounts.total);
+  }, [isPremium, resumeCounts.total]);
 
   // ── Create Resume (through Netlify Function) ─────────────────────────
 
@@ -311,7 +367,7 @@ export const ResumeProvider = ({ children }) => {
         const newResume = await response.json();
         toast.success(`Resume "${newResume.name}" created`);
 
-        await refreshTotalCount();
+        await refreshCounts();
         return {
           id: newResume.id,
           ...newResume,
@@ -324,7 +380,7 @@ export const ResumeProvider = ({ children }) => {
         throw err;
       }
     },
-    [user, canCreateResume, getToken, refreshTotalCount]
+    [user, canCreateResume, getToken, refreshCounts]
   );
 
   // ── Update Resume (delegated to resumeService) ───────────────────────
@@ -369,7 +425,7 @@ export const ResumeProvider = ({ children }) => {
         await resumeService.deleteResume(resumeId);
         if (currentResume?.id === resumeId) setCurrentResume(null);
         toast.success('Resume deleted');
-        await refreshTotalCount();
+        await refreshCounts();
         return true;
       } catch (err) {
         console.error('Error deleting resume:', err);
@@ -377,7 +433,7 @@ export const ResumeProvider = ({ children }) => {
         throw err;
       }
     },
-    [currentResume, refreshTotalCount]
+    [currentResume, refreshCounts]
   );
 
   // ── Duplicate Resume (through Netlify Function) ─────────────────────
@@ -411,7 +467,7 @@ export const ResumeProvider = ({ children }) => {
         const duplicated = await response.json();
         toast.success(`Resume duplicated: "${duplicated.name}"`);
 
-        await refreshTotalCount();
+        await refreshCounts();
         return {
           id: duplicated.id,
           ...duplicated,
@@ -424,7 +480,7 @@ export const ResumeProvider = ({ children }) => {
         throw err;
       }
     },
-    [user, canCreateResume, getToken, refreshTotalCount]
+    [user, canCreateResume, getToken, refreshCounts]
   );
 
   // ── Archive / Unarchive (using resumeService.updateResume) ───────────
@@ -437,7 +493,7 @@ export const ResumeProvider = ({ children }) => {
           archivedAt: new Date().toISOString(),
         });
         toast.success('Resume archived');
-        await refreshTotalCount();
+        await refreshCounts();
         return true;
       } catch (err) {
         console.error('Archive error:', err);
@@ -445,7 +501,7 @@ export const ResumeProvider = ({ children }) => {
         throw err;
       }
     },
-    [refreshTotalCount]
+    [refreshCounts]
   );
 
   const unarchiveResume = useCallback(
@@ -455,7 +511,7 @@ export const ResumeProvider = ({ children }) => {
           status: RESUME_STATUS.DRAFT,
         });
         toast.success('Resume restored');
-        await refreshTotalCount();
+        await refreshCounts();
         return true;
       } catch (err) {
         console.error('Restore error:', err);
@@ -463,7 +519,7 @@ export const ResumeProvider = ({ children }) => {
         throw err;
       }
     },
-    [refreshTotalCount]
+    [refreshCounts]
   );
 
   // ── Counters (delegated to resumeService) ────────────────────────────
@@ -525,7 +581,7 @@ export const ResumeProvider = ({ children }) => {
           setCurrentResume(null);
         }
         toast.success(`Deleted ${resumeIds.length} resumes`);
-        await refreshTotalCount();
+        await refreshCounts();
         return true;
       } catch (err) {
         console.error('Bulk delete error:', err);
@@ -533,7 +589,7 @@ export const ResumeProvider = ({ children }) => {
         throw err;
       }
     },
-    [currentResume, refreshTotalCount]
+    [currentResume, refreshCounts]
   );
 
   const archiveMultipleResumes = useCallback(
@@ -549,7 +605,7 @@ export const ResumeProvider = ({ children }) => {
           )
         );
         toast.success(`Archived ${resumeIds.length} resumes`);
-        await refreshTotalCount();
+        await refreshCounts();
         return true;
       } catch (err) {
         console.error('Bulk archive error:', err);
@@ -557,7 +613,7 @@ export const ResumeProvider = ({ children }) => {
         throw err;
       }
     },
-    [refreshTotalCount]
+    [refreshCounts]
   );
 
   // ── Search & Filter (still client-side) ──────────────────────────────
@@ -627,8 +683,8 @@ export const ResumeProvider = ({ children }) => {
       FREE_RESUME_LIMIT,
       RESUME_TEMPLATES,
       RESUME_STATUS,
-      hasResumes: totalResumeCount > 0,
-      freeLimitReached: !isPremium && totalResumeCount >= FREE_RESUME_LIMIT,
+      hasResumes: resumeCounts.total > 0,
+      freeLimitReached: !isPremium && resumeCounts.total >= FREE_RESUME_LIMIT,
     }),
     [
       resumes,
@@ -659,7 +715,7 @@ export const ResumeProvider = ({ children }) => {
       filterResumesByStatus,
       filterResumesByTemplate,
       isPremium,
-      totalResumeCount,
+      resumeCounts.total,
     ]
   );
 

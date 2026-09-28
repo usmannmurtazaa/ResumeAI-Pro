@@ -102,7 +102,7 @@ const Billing = () => {
 
   usePageTitle({
     title: 'Billing & Subscription',
-    description: 'Manage your Resume Ai Pro plan, payment methods, and billing history.',
+    description: 'Manage your Maniesta Career OS plan, payment methods, and billing history.',
   });
 
   useEffect(() => {

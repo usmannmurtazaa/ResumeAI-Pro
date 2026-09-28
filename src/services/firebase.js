@@ -5,16 +5,16 @@
 // This project is designed to run on Firebase's Spark (free) plan wherever
 // technically possible.
 //
-//   • Firebase Auth        — available on Spark.
-//   • Cloud Firestore      — available on Spark.
-//   • Firebase Storage     — SDK is initialised here because both
+//   • Firebase Auth        - available on Spark.
+//   • Cloud Firestore      - available on Spark.
+//   • Firebase Storage     - SDK is initialised here because both
 //                            `authService.js` and `storageService.js`
 //                            import `{ storage }` from this module. Actual
 //                            Storage reads/writes require the Firebase
 //                            project to have Storage enabled; if it is not
 //                            enabled, the failure is a permission/quota
 //                            error at upload time, not an import-time crash.
-//   • Cloud Functions      — NOT imported here. Server-side logic lives in
+//   • Cloud Functions      - NOT imported here. Server-side logic lives in
 //                            Netlify Functions (see `netlify/functions/`).
 //
 // If you later move away from Firebase Storage, remove the `firebase/storage`
@@ -184,7 +184,7 @@ export const db = createFirestore();
 //
 // `getStorage(app)` is a synchronous SDK instance creation and performs no
 // network I/O, so this line is safe even on a project where the Storage
-// backend has not yet been provisioned — failures surface later, at the
+// backend has not yet been provisioned - failures surface later, at the
 // first upload attempt, as permission/quota errors.
 export const storage = getStorage(app);
 

@@ -11,7 +11,7 @@ import { FiRefreshCw, FiX } from 'react-icons/fi';
  * toast prompting the user to reload the page to pick up the new version.
  *
  * The new Service Worker calls skipWaiting() in its install handler, so
- * no SKIP_WAITING message is needed here — a simple page reload is enough.
+ * no SKIP_WAITING message is needed here - a simple page reload is enough.
  *
  * Note on animation: the toast body uses Framer Motion for its entrance
  * (fade + lift). Exit animation is intentionally skipped because

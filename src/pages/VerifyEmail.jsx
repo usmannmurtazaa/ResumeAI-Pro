@@ -34,7 +34,7 @@ const VerifyEmail = () => {
   // Set page title
   usePageTitle({
     title: 'Verify Your Email',
-    description: 'Verify your email address to complete your Resume Ai Pro account setup.',
+    description: 'Verify your email address to complete your Maniesta Career OS account setup.',
   });
 
   const params = new URLSearchParams(location.search);

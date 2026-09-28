@@ -28,7 +28,7 @@ const SECTIONS = [
     icon: FiCheckCircle,
     title: 'Acceptance of Terms',
     content: `
-      By accessing or using Resume Ai Pro ("the Service"), you agree to be bound by these Terms of Service.
+      By accessing or using Maniesta Career OS ("the Service"), you agree to be bound by these Terms of Service.
       
       • If you do not agree to these terms, you may not access or use the Service.
       • These terms apply to all visitors, users, and others who access the Service.
@@ -54,7 +54,7 @@ const SECTIONS = [
     icon: FiFileText,
     title: 'Content Ownership & License',
     content: `
-      You retain full ownership of all content you create using Resume Ai Pro.
+      You retain full ownership of all content you create using Maniesta Career OS.
       
       • You grant us a limited, worldwide, non-exclusive license to host, store, and display your content solely for the purpose of providing the Service.
       • We do not claim any ownership rights over your resume content, personal information, or data.
@@ -98,11 +98,11 @@ const SECTIONS = [
     icon: FiEdit3,
     title: 'Intellectual Property',
     content: `
-      Resume Ai Pro and its original content, features, and functionality are owned by us.
+      Maniesta Career OS and its original content, features, and functionality are owned by us.
       
       • Our templates, designs, logos, and software are protected by copyright and intellectual property laws.
       • You may not copy, modify, or distribute our proprietary content without permission.
-      • The "Resume Ai Pro" name, logo, and brand are our trademarks.
+      • The "Maniesta Career OS" name, logo, and brand are our trademarks.
       • User feedback and suggestions become our property and may be used without compensation.
     `,
   },
@@ -140,7 +140,7 @@ const SECTIONS = [
     content: `
       To the fullest extent permitted by law:
       
-      • Resume Ai Pro is provided "as is" and "as available" without warranties of any kind.
+      • Maniesta Career OS is provided "as is" and "as available" without warranties of any kind.
       • We are not liable for any indirect, incidental, special, or consequential damages.
       • Our total liability for any claims is limited to the amount you paid us in the last 12 months.
       • We are not responsible for hiring outcomes, interview success, or job placement.
@@ -182,7 +182,7 @@ const Terms = () => {
   usePageTitle({
     title: 'Terms of Service',
     description:
-      'Read the terms and conditions for using Resume Ai Pro. Learn about account responsibilities, subscriptions, and acceptable use.',
+      'Read the terms and conditions for using Maniesta Career OS. Learn about account responsibilities, subscriptions, and acceptable use.',
   });
 
   const [activeSection, setActiveSection] = useState(null);
@@ -249,11 +249,11 @@ const Terms = () => {
                     Contact our legal team for questions about these terms.
                   </p>
                   <a
-                    href="mailto:legal@resumeaixpro.com"
+                    href="mailto:legal@maniestacareeros.com"
                     className="flex items-center gap-2 text-sm text-primary-500 hover:text-primary-600"
                   >
                     <FiMail className="w-4 h-4" />
-                    legal@resumeaixpro.com
+                    legal@maniestacareeros.com
                   </a>
                 </Card>
               </div>
@@ -264,7 +264,7 @@ const Terms = () => {
               <Card className="p-6 md:p-8">
                 <div className="prose dark:prose-invert max-w-none mb-8">
                   <p className="lead text-gray-600 dark:text-gray-400">
-                    Welcome to Resume Ai Pro. These Terms of Service ("Terms") govern your access to
+                    Welcome to Maniesta Career OS. These Terms of Service ("Terms") govern your access to
                     and use of our resume building platform, including any associated websites,
                     applications, and services (collectively, the "Service"). Please read these
                     Terms carefully before using the Service.
@@ -312,10 +312,10 @@ const Terms = () => {
                     />
                     <span>Email:</span>{' '}
                     <a
-                      href="mailto:legal@resumeaixpro.com"
+                      href="mailto:legal@maniestacareeros.com"
                       className="text-primary-500 hover:text-primary-600"
                     >
-                      legal@resumeaixpro.com
+                      legal@maniestacareeros.com
                     </a>
                   </p>
                 </div>

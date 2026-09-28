@@ -3,15 +3,15 @@
 
 import { FiFileText, FiCpu, FiTarget, FiZap, FiEdit3, FiUsers } from 'react-icons/fi';
 
-// Shared author object — the founder of Resume Ai Pro.
+// Shared author object - the founder of Maniesta Career OS.
 // Using a single real author is stronger for SEO (E-E-A-T) than
 // inventing fake personas. When other contributors join, replace
 // this with an array and reference by key.
 const AUTHOR = {
   name: 'Usman Murtaza',
   avatar: '/author-usman.png',
-  role: 'Founder, Resume Ai Pro',
-  bio: 'Usman is a Full Stack Developer based in Karachi and the founder of Resume Ai Pro.',
+  role: 'Founder, Maniesta Career OS',
+  bio: 'Usman is a Full Stack Developer based in Karachi and the founder of Maniesta Career OS.',
 };
 
 export const BLOG_POSTS = [
@@ -43,7 +43,7 @@ export const BLOG_POSTS = [
       <p>Typos suggest a lack of attention to detail. <strong>Solution:</strong> Use spell-check tools, read your resume aloud, and have someone else review it.</p>
       
       <h2>7. Missing Keywords for ATS</h2>
-      <p>Applicant Tracking Systems scan for specific keywords. <strong>Solution:</strong> Use Resume Ai Pro's ATS Scanner to identify missing keywords from your target job description.</p>
+      <p>Applicant Tracking Systems scan for specific keywords. <strong>Solution:</strong> Use Maniesta Career OS's ATS Scanner to identify missing keywords from your target job description.</p>
       
       <h2>8. Including Personal Information</h2>
       <p>Never include your photo, age, marital status, religion, or social security number. <strong>Solution:</strong> Stick to professional contact information only.</p>
@@ -52,7 +52,7 @@ export const BLOG_POSTS = [
       <p>Word documents can lose formatting across different systems. <strong>Solution:</strong> Always submit your resume as a PDF unless otherwise specified.</p>
       
       <h2>Conclusion</h2>
-      <p>Avoiding these common mistakes will significantly improve your chances of getting past ATS filters and landing interviews. Ready to create an optimized resume? <a href="/builder">Start building with Resume Ai Pro today</a>.</p>
+      <p>Avoiding these common mistakes will significantly improve your chances of getting past ATS filters and landing interviews. Ready to create an optimized resume? <a href="/builder">Start building with Maniesta Career OS today</a>.</p>
     `,
     category: 'resume-tips',
     author: AUTHOR,
@@ -81,7 +81,7 @@ export const BLOG_POSTS = [
       <p>Stick to conventional headings like "Work Experience," "Education," and "Skills." Avoid creative alternatives like "Where I've Been" or "What I Know."</p>
       
       <h3>2. Incorporate Keywords Naturally</h3>
-      <p>Analyze the job description and incorporate relevant keywords throughout your resume. Use Resume Ai Pro's AI-powered keyword suggestions to identify the most important terms.</p>
+      <p>Analyze the job description and incorporate relevant keywords throughout your resume. Use Maniesta Career OS's AI-powered keyword suggestions to identify the most important terms.</p>
       
       <h3>3. Avoid Complex Formatting</h3>
       <p>Tables, columns, graphics, and unusual fonts can confuse ATS software. Stick to a clean, single-column layout with standard fonts like Arial, Calibri, or Times New Roman.</p>
@@ -96,7 +96,7 @@ export const BLOG_POSTS = [
       <p>While most modern ATS can read PDFs, some older systems prefer .docx files. Check the job posting for specific instructions.</p>
       
       <h2>Test Your Resume's ATS Compatibility</h2>
-      <p>Use Resume Ai Pro's free ATS Scanner to analyze your resume and get a detailed compatibility score with actionable improvement suggestions.</p>
+      <p>Use Maniesta Career OS's free ATS Scanner to analyze your resume and get a detailed compatibility score with actionable improvement suggestions.</p>
     `,
     category: 'ats-guide',
     author: AUTHOR,

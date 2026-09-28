@@ -20,7 +20,11 @@ const SIZE_CONFIG = {
     text: 'text-sm',
   },
   md: {
-    spinner: 'w-12 h-12 border-3',
+    // NOTE: `border-3` is not part of Tailwind's default border-width scale
+    // (which is 0, 1, 2, 4, 8). Using the arbitrary-value form `border-[3px]`
+    // compiles to the exact 3px width this size intended, without requiring
+    // a custom utility in tailwind.config.js.
+    spinner: 'w-12 h-12 border-[3px]',
     dot: 'w-3 h-3',
     pulse: 'w-16 h-16',
     icon: 20,

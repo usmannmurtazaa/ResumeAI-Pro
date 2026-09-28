@@ -22,7 +22,7 @@ const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
  *
  * Two paths are accepted:
  *
- *   1. Firebase Auth custom claims — `admin`, `superAdmin`, or
+ *   1. Firebase Auth custom claims - `admin`, `superAdmin`, or
  *      `role: 'admin'`. This is the "classic" path and requires a trusted
  *      backend (Cloud Function or manual Admin SDK script) to have set the
  *      claims. Kept for backward compatibility with any project that has
@@ -70,7 +70,7 @@ const verifyAdminServerSide = async (user) => {
     const hasFirestoreAdmin = userData?.role === 'admin';
     const isSuspended = userData?.status === 'suspended';
 
-    // Suspension always wins — even a claims-based admin is locked out
+    // Suspension always wins - even a claims-based admin is locked out
     // once their Firestore `status` is 'suspended'.
     if (isSuspended) {
       console.warn('Admin access denied: account is suspended');
@@ -129,7 +129,7 @@ const logAdminActivity = async (user, action, details = {}) => {
  *
  * The rate limiter is intended to protect the admin area from brute-force
  * retries of `verifyAdminServerSide`. It only counts **failed** verification
- * attempts — successful navigations between admin pages must not increment
+ * attempts - successful navigations between admin pages must not increment
  * the counter, otherwise an admin browsing the panel for a few minutes would
  * be locked out by their own legitimate activity.
  *

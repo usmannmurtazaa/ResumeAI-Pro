@@ -45,6 +45,20 @@ const renderTemplateIcon = (template, className = 'w-5 h-5') => {
   return <Icon className={className} aria-hidden="true" />;
 };
 
+// Static lookup for the grid action buttons. Tailwind 3's JIT only emits
+// classes it can see as literal substrings in the source, so a dynamic
+// template like `bg-${color}-50` produces no CSS. Every class in this map
+// appears verbatim so the stylesheet contains it.
+const ACTION_BUTTON_TONES = {
+  primary:
+    'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30',
+  purple:
+    'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30',
+  green:
+    'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30',
+  blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30',
+};
+
 const RESUME_SECTIONS = ['personal', 'education', 'experience', 'skills'];
 
 /**
@@ -412,7 +426,9 @@ const GridResumeCard = ({
                 <button
                   key={label}
                   onClick={() => onClick(resume)}
-                  className={`flex-1 p-2 bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400 rounded-lg hover:bg-${color}-100 dark:hover:bg-${color}-900/30 transition-all hover:scale-105`}
+                  className={`flex-1 p-2 rounded-lg transition-all hover:scale-105 ${
+                    ACTION_BUTTON_TONES[color] || ACTION_BUTTON_TONES.primary
+                  }`}
                   aria-label={`${label} resume`}
                 >
                   <Icon className="w-4 h-4 mx-auto" />

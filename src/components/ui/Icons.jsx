@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Inline SVG icon set — Feather-style geometry.
+ * Inline SVG icon set - Feather-style geometry.
  * No external dependency. Each icon accepts:
  *   size      → width / height (default 24)
  *   color     → stroke color (default 'currentColor')

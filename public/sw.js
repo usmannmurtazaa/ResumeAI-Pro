@@ -1,6 +1,6 @@
 // ── Service Worker Configuration ────────────────────────────────────────────
 const CONFIG = {
-  // Cache versioning — bump this number on every content-changing deploy
+  // Cache versioning - bump this number on every content-changing deploy
   // to force old caches to be deleted on activate.
   CACHE_VERSION: '2.5.1',
 
@@ -24,13 +24,13 @@ const CONFIG = {
   // Time before stale resources are revalidated (ms)
   STALE_TIMEOUT: 30 * 60 * 1000, // 30 minutes
 
-  // Precache list — only files that actually exist in /public.
-  // (Removed /offline.html — that file does not exist in public/.)
+  // Precache list - only files that actually exist in /public.
+  // (Removed /offline.html - that file does not exist in public/.)
   PRECACHE_URLS: ['/', '/index.html', '/manifest.json', '/favicon.ico'],
 
   // Cache strategies per resource type.
   // Note: STATIC_ASSETS (JS/CSS bundles) are intentionally bypassed in the
-  // fetch handler below — webpack chunks change on every deploy and must
+  // fetch handler below - webpack chunks change on every deploy and must
   // not be served stale from the SW cache.
   STRATEGIES: {
     NAVIGATION: 'network-first',
@@ -89,7 +89,7 @@ const getResourceType = (request) => {
 
 /**
  * Trims a cache to stay within its size limit.
- * Called after every cache write instead of using setInterval — SWs are
+ * Called after every cache write instead of using setInterval - SWs are
  * terminated after ~30s of idle time, so timers never fire.
  */
 const trimCache = async (cacheName, maxItems) => {
@@ -194,7 +194,7 @@ const staleWhileRevalidate = async (request, cacheName) => {
 
 /**
  * Updates cache with fresh network response.
- * Runs a trim after every write so caches stay within their size limit —
+ * Runs a trim after every write so caches stay within their size limit -
  * this replaces the previous setInterval approach which never fired because
  * service workers are terminated after ~30s of idle time.
  */
@@ -206,13 +206,13 @@ const updateCache = async (request, cacheName) => {
     if (networkResponse && networkResponse.ok) {
       await cache.put(request, networkResponse.clone());
 
-      // Trim the cache we just wrote to. Fire-and-forget — we don't await it.
+      // Trim the cache we just wrote to. Fire-and-forget - we don't await it.
       const type = Object.keys(CONFIG.CACHE_NAMES).find(
         (key) => getCacheName(key) === cacheName
       );
       if (type && CONFIG.LIMITS[type]) {
         trimCache(cacheName, CONFIG.LIMITS[type]).catch(() => {
-          // Ignore trim errors — they should not break the fetch
+          // Ignore trim errors - they should not break the fetch
         });
       }
 
@@ -323,7 +323,7 @@ self.addEventListener('fetch', (event) => {
 
   // Skip cross-origin requests (except Google Fonts).
   // Uses exact origin comparison instead of substring includes() to avoid
-  // matching attacker-controlled hostnames like resumeaixpro.netlify.app.evil.com
+  // matching attacker-controlled hostnames like maniestacareeros.netlify.app.evil.com
   const isSameOrigin = url.origin === self.location.origin;
   const isGoogleFonts =
     url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
@@ -332,7 +332,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Critical: do not intercept webpack/React chunks — prevents SW from returning
+  // Critical: do not intercept webpack/React chunks - prevents SW from returning
   // synthetic 503 Responses that show as "Failed to load resource: 503" for lazy routes.
   if (
     url.pathname.startsWith('/static/') ||
@@ -485,17 +485,17 @@ self.addEventListener('push', (event) => {
       silent: data.silent || false,
     };
 
-    event.waitUntil(self.registration.showNotification(data.title || 'Resume Ai Pro', options));
+    event.waitUntil(self.registration.showNotification(data.title || 'Maniesta Career OS', options));
   } catch (error) {
     console.error('Push notification error:', error);
 
     // Fallback: show basic notification
     const fallbackOptions = {
-      body: 'You have a new notification from Resume Ai Pro',
+      body: 'You have a new notification from Maniesta Career OS',
       icon: '/web-app-manifest-192x192.png',
     };
 
-    event.waitUntil(self.registration.showNotification('Resume Ai Pro', fallbackOptions));
+    event.waitUntil(self.registration.showNotification('Maniesta Career OS', fallbackOptions));
   }
 });
 

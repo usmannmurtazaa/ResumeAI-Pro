@@ -44,7 +44,7 @@ const SECTIONS = [
     content: `
       We use your information for the following purposes:
       
-      • Service Delivery: To provide, maintain, and improve Resume Ai Pro.
+      • Service Delivery: To provide, maintain, and improve Maniesta Career OS.
       • Account Management: To manage your account, process payments, and send service notifications.
       • Improvement: To analyze usage patterns and enhance user experience.
       • Communication: To respond to inquiries and send relevant updates (with your consent).
@@ -120,7 +120,7 @@ const SECTIONS = [
     icon: FiShield,
     title: "Children's Privacy",
     content: `
-      Resume Ai Pro is not intended for use by children under the age of 16.
+      Maniesta Career OS is not intended for use by children under the age of 16.
       
       • We do not knowingly collect personal information from children under 16.
       • If we become aware that a child under 16 has provided us with personal data, we will delete it immediately.
@@ -164,7 +164,7 @@ const SECTIONS = [
       
       • Material changes will be communicated via email or in-app notification.
       • The "Last Updated" date at the top of this page will be revised.
-      • Continued use of Resume Ai Pro after changes constitutes acceptance.
+      • Continued use of Maniesta Career OS after changes constitutes acceptance.
       
       We encourage you to review this policy periodically.
     `,
@@ -177,7 +177,7 @@ const Privacy = () => {
   usePageTitle({
     title: 'Privacy Policy',
     description:
-      'Learn how Resume Ai Pro collects, uses, and protects your personal information. We take your privacy seriously.',
+      'Learn how Maniesta Career OS collects, uses, and protects your personal information. We take your privacy seriously.',
   });
 
   const [activeSection, setActiveSection] = useState(null);
@@ -258,7 +258,7 @@ const Privacy = () => {
               <Card className="p-6 md:p-8">
                 <div className="prose dark:prose-invert max-w-none mb-8">
                   <p className="lead text-gray-600 dark:text-gray-400">
-                    At Resume Ai Pro, we take your privacy seriously. This Privacy Policy explains
+                    At Maniesta Career OS, we take your privacy seriously. This Privacy Policy explains
                     how we collect, use, disclose, and safeguard your information when you use our
                     resume builder platform. Please read this policy carefully.
                   </p>
@@ -318,7 +318,7 @@ const Privacy = () => {
                         className="w-3.5 h-3.5 text-primary-500 flex-shrink-0 mt-0.5"
                         aria-hidden="true"
                       />
-                      <span>Mail: Resume Ai Pro, 123 Market Street, Karachi, Sindh | PK 94105</span>
+                      <span>Mail: Maniesta Career OS, 123 Market Street, Karachi, Sindh | PK 94105</span>
                     </p>
                   </div>
                 </div>

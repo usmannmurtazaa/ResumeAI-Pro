@@ -14,7 +14,7 @@ const ForgotPasswordPage = () => {
   usePageTitle({
     title: 'Forgot Password',
     description:
-      "Reset your Resume Ai Pro account password. We'll send you a secure link to create a new password.",
+      "Reset your Maniesta Career OS account password. We'll send you a secure link to create a new password.",
   });
 
   // Show loader while auth is initializing

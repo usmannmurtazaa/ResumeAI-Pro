@@ -199,7 +199,7 @@ const Home = () => {
                       <p className="text-sm opacity-80 mb-6">Professional ATS-Friendly Design</p>
                       <button
                         onClick={handleGetStarted}
-                        aria-label="Get started with Resume Ai Pro"
+                        aria-label="Get started with Maniesta Career OS"
                         className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
                       >
                         <FiPlay className="w-6 h-6 text-white ml-1" />
@@ -335,7 +335,7 @@ const Home = () => {
             <div className="max-w-3xl mx-auto">
               <Card className="p-8 md:p-10 text-center">
                 <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                  Resume Ai Pro is a new product. As soon as we have real user stories to share,
+                  Maniesta Career OS is a new product. As soon as we have real user stories to share,
                   they will be featured here - with names, photos, and permission. Want to be among
                   the first?
                 </p>
@@ -344,7 +344,7 @@ const Home = () => {
                   onClick={handleGetStarted}
                   className="group bg-gradient-to-r from-primary-500 to-accent-500"
                 >
-                  Try Resume Ai Pro Free
+                  Try Maniesta Career OS Free
                   <FiArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
                 <p className="text-sm text-gray-500 dark:text-gray-500 mt-4">

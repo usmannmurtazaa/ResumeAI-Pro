@@ -1,5 +1,5 @@
-# robots.txt - Resume Ai Pro
-# https://resumeaixpro.netlify.app
+# robots.txt - Maniesta Career OS
+# https://maniestacareeros.netlify.app
 
 User-agent: *
 Allow: /
@@ -19,10 +19,10 @@ Disallow: /analytics
 Disallow: /cover-letter
 Disallow: /admin
 
-# Auth routes — no SEO value
+# Auth routes - no SEO value
 Disallow: /login
 Disallow: /signup
 Disallow: /forgot-password
 Disallow: /verify-email
 
-Sitemap: https://resumeaixpro.netlify.app/sitemap.xml
+Sitemap: https://maniestacareeros.netlify.app/sitemap.xml

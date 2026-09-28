@@ -89,40 +89,49 @@ const AuthorAvatar = ({ author, size = 'sm' }) => {
 
 // ── Blog Card Component ──────────────────────────────────────────────────
 
-const BlogCard = React.memo(({ post }) => (
-  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-    <Link to={`/blog/${post.slug}`} className="block h-full group">
-      <Card className="h-full hover:shadow-xl transition-all">
-        <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 h-48 flex items-center justify-center rounded-t-xl">
-          <span className="text-6xl group-hover:scale-110 transition-transform">
-            {post.coverImage}
-          </span>
-        </div>
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Badge variant="secondary" size="sm">
-              {CATEGORIES.find((c) => c.id === post.category)?.name || post.category}
-            </Badge>
-            <span className="text-xs text-gray-500 flex items-center gap-1">
-              <FiClock className="w-3 h-3" />
-              {post.readTime}
-            </span>
+const BlogCard = React.memo(({ post }) => {
+  // The blog data file defines `coverIcon` - a React component from
+  // `react-icons/fi`. It does not define `coverImage`. `BlogPost.jsx` reads
+  // `coverIcon` the same way; this card previously read `coverImage`, so the
+  // cover area always rendered empty.
+  const CoverIcon = post.coverIcon || FiFileText;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <Link to={`/blog/${post.slug}`} className="block h-full group">
+        <Card className="h-full hover:shadow-xl transition-all">
+          <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 h-48 flex items-center justify-center rounded-t-xl">
+            <CoverIcon
+              className="w-16 h-16 text-primary-500 group-hover:scale-110 transition-transform"
+              aria-hidden="true"
+            />
           </div>
-          <h3 className="text-xl font-bold mb-2 group-hover:text-primary-500 transition-colors line-clamp-2">
-            {post.title}
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
-            {post.excerpt}
-          </p>
-          <div className="flex items-center gap-2">
-            <AuthorAvatar author={post.author} size="sm" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">{post.author.name}</span>
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Badge variant="secondary" size="sm">
+                {CATEGORIES.find((c) => c.id === post.category)?.name || post.category}
+              </Badge>
+              <span className="text-xs text-gray-500 flex items-center gap-1">
+                <FiClock className="w-3 h-3" />
+                {post.readTime}
+              </span>
+            </div>
+            <h3 className="text-xl font-bold mb-2 group-hover:text-primary-500 transition-colors line-clamp-2">
+              {post.title}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+              {post.excerpt}
+            </p>
+            <div className="flex items-center gap-2">
+              <AuthorAvatar author={post.author} size="sm" />
+              <span className="text-sm text-gray-600 dark:text-gray-400">{post.author.name}</span>
+            </div>
           </div>
-        </div>
-      </Card>
-    </Link>
-  </motion.div>
-));
+        </Card>
+      </Link>
+    </motion.div>
+  );
+});
 
 BlogCard.displayName = 'BlogCard';
 
@@ -193,6 +202,10 @@ const Blog = () => {
     setSelectedCategory('all');
   }, []);
 
+  // Featured post cover uses the same `coverIcon` field, rendered at a
+  // larger size to fill the banner.
+  const FeaturedCoverIcon = featuredPost?.coverIcon || FiFileText;
+
   return (
     <MainLayout>
       <div className="min-h-screen pt-24 pb-12">
@@ -258,7 +271,10 @@ const Blog = () => {
                 <Card className="overflow-hidden hover:shadow-xl transition-shadow">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="bg-gradient-to-br from-primary-500 to-accent-500 p-8 flex items-center justify-center">
-                      <span className="text-8xl">{featuredPost.coverImage}</span>
+                      <FeaturedCoverIcon
+                        className="w-24 h-24 text-white/90"
+                        aria-hidden="true"
+                      />
                     </div>
                     <div className="p-6 md:p-8">
                       <Badge variant="warning" className="mb-3">

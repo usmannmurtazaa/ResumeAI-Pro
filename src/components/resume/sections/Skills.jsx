@@ -220,6 +220,7 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
   const {
     control,
     setValue,
+    getValues,
     watch,
     formState: { isDirty },
   } = useForm({
@@ -285,6 +286,26 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
     }
   }, [technicalSkills, softSkills, languages, skillDetails, isDirty, debouncedSave]);
 
+  // ── Safe skillDetails updates ─────────────────────────────────────────
+  // Writing `skillDetails.${skill}.proficiency` via setValue is unsafe for
+  // skill names that contain a dot (Node.js, Next.js, Vue.js, Express.js,
+  // …) because react-hook-form treats the dot as a path separator and
+  // writes to the wrong nested key. Instead, read the current object,
+  // merge the patch in, and write the whole object back using the
+  // literal top-level key `'skillDetails'`.
+  const mergeSkillDetails = useCallback(
+    (skill, patch) => {
+      const current = getValues('skillDetails') || {};
+      const existing = current[skill] || {};
+      setValue(
+        'skillDetails',
+        { ...current, [skill]: { ...existing, ...patch } },
+        { shouldDirty: true }
+      );
+    },
+    [getValues, setValue]
+  );
+
   // ── Skill CRUD ────────────────────────────────────────────────────────
 
   const addSkill = useCallback(
@@ -301,21 +322,17 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
       }
       setValue(category, [...skills, name], { shouldDirty: true });
       if (!skillDetails[name]) {
-        setValue(
-          `skillDetails.${name}`,
-          {
-            proficiency: category === 'languages' ? 'intermediate' : 'intermediate',
-            category,
-            yearsOfExperience: '',
-            lastUsed: '',
-          },
-          { shouldDirty: true }
-        );
+        mergeSkillDetails(name, {
+          proficiency: 'intermediate',
+          category,
+          yearsOfExperience: '',
+          lastUsed: '',
+        });
       }
       toast.success(`Added ${name}`);
       setNewSkill('');
     },
-    [newSkill, watch, setValue, skillDetails]
+    [newSkill, watch, setValue, skillDetails, mergeSkillDetails]
   );
 
   const removeSkill = useCallback(
@@ -378,9 +395,9 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
 
   const updateProficiency = useCallback(
     (skill, proficiency) => {
-      setValue(`skillDetails.${skill}.proficiency`, proficiency, { shouldDirty: true });
+      mergeSkillDetails(skill, { proficiency });
     },
-    [setValue]
+    [mergeSkillDetails]
   );
 
   // ── Suggestions ───────────────────────────────────────────────────────
@@ -400,22 +417,19 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
     (skill) => {
       if (!technicalSkills.includes(skill)) {
         setValue('technical', [...technicalSkills, skill], { shouldDirty: true });
-        if (!skillDetails[skill])
-          setValue(
-            `skillDetails.${skill}`,
-            {
-              proficiency: 'intermediate',
-              category: 'technical',
-              yearsOfExperience: '',
-              lastUsed: '',
-            },
-            { shouldDirty: true }
-          );
+        if (!skillDetails[skill]) {
+          mergeSkillDetails(skill, {
+            proficiency: 'intermediate',
+            category: 'technical',
+            yearsOfExperience: '',
+            lastUsed: '',
+          });
+        }
         setSuggestions((p) => p.filter((s) => s !== skill));
         toast.success(`Added ${skill}`);
       }
     },
-    [technicalSkills, skillDetails, setValue]
+    [technicalSkills, skillDetails, setValue, mergeSkillDetails]
   );
 
   // ── Import/Export ─────────────────────────────────────────────────────
@@ -437,22 +451,19 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
     }
     setValue(importCategory, [...current, ...newSkills], { shouldDirty: true });
     newSkills.forEach((s) => {
-      if (!skillDetails[s])
-        setValue(
-          `skillDetails.${s}`,
-          {
-            proficiency: importCategory === 'languages' ? 'intermediate' : 'intermediate',
-            category: importCategory,
-            yearsOfExperience: '',
-            lastUsed: '',
-          },
-          { shouldDirty: true }
-        );
+      if (!skillDetails[s]) {
+        mergeSkillDetails(s, {
+          proficiency: importCategory === 'languages' ? 'intermediate' : 'intermediate',
+          category: importCategory,
+          yearsOfExperience: '',
+          lastUsed: '',
+        });
+      }
     });
     toast.success(`Imported ${newSkills.length} skills`);
     setImportText('');
     setShowImportModal(false);
-  }, [importText, importCategory, watch, setValue, skillDetails]);
+  }, [importText, importCategory, watch, setValue, skillDetails, mergeSkillDetails]);
 
   const handleImportFromJobDesc = useCallback(() => {
     const mock = {
@@ -465,18 +476,20 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
       if (newSkills.length > 0) {
         setValue(cat, [...current, ...newSkills], { shouldDirty: true });
         newSkills.forEach((s) => {
-          if (!skillDetails[s])
-            setValue(
-              `skillDetails.${s}`,
-              { proficiency: 'intermediate', category: cat, yearsOfExperience: '', lastUsed: '' },
-              { shouldDirty: true }
-            );
+          if (!skillDetails[s]) {
+            mergeSkillDetails(s, {
+              proficiency: 'intermediate',
+              category: cat,
+              yearsOfExperience: '',
+              lastUsed: '',
+            });
+          }
         });
       }
     });
     toast.success('Skills imported from job description!');
     setShowImportModal(false);
-  }, [watch, setValue, skillDetails]);
+  }, [watch, setValue, skillDetails, mergeSkillDetails]);
 
   const exportSkills = useCallback(() => {
     const exportData = { technical: technicalSkills, soft: softSkills, languages, skillDetails };
@@ -775,17 +788,14 @@ const Skills = ({ data = {}, onChange, onValidationChange }) => {
                                       setValue('technical', [...technicalSkills, s], {
                                         shouldDirty: true,
                                       });
-                                      if (!skillDetails[s])
-                                        setValue(
-                                          `skillDetails.${s}`,
-                                          {
-                                            proficiency: 'intermediate',
-                                            category: 'technical',
-                                            yearsOfExperience: '',
-                                            lastUsed: '',
-                                          },
-                                          { shouldDirty: true }
-                                        );
+                                      if (!skillDetails[s]) {
+                                        mergeSkillDetails(s, {
+                                          proficiency: 'intermediate',
+                                          category: 'technical',
+                                          yearsOfExperience: '',
+                                          lastUsed: '',
+                                        });
+                                      }
                                     }
                                   }}
                                   disabled={technicalSkills.includes(s)}

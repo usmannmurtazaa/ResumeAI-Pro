@@ -6,12 +6,13 @@ import {
   where,
   deleteDoc,
   doc,
-  addDoc,
   updateDoc,
   onSnapshot,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useResume } from '../../contexts/ResumeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus,
@@ -60,6 +61,18 @@ const TEMPLATE_ICONS = {
 const renderTemplateIcon = (template, className = 'w-6 h-6') => {
   const Icon = TEMPLATE_ICONS[template?.toLowerCase()] || FiFileText;
   return <Icon className={className} aria-hidden="true" />;
+};
+
+// ── Timestamp normalisation ─────────────────────────────────────────────
+// Firestore returns Timestamp objects for `createdAt` / `updatedAt`. Those
+// objects have no `valueOf` / `Symbol.toPrimitive`, so `new Date(timestamp)`
+// yields `Invalid Date`. Normalising once at ingestion keeps every
+// downstream consumer working with plain Date objects.
+const normalizeTimestamp = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') return value.toDate();
+  if (value instanceof Date) return new Date(value.getTime());
+  return value;
 };
 
 // ── StatCard Component (Extracted) ─────────────────────────────────────────
@@ -117,6 +130,7 @@ QuickActionCard.displayName = 'QuickActionCard';
 
 const UserDashboard = () => {
   const { user } = useAuth();
+  const { duplicateResume, incrementDownloadCount } = useResume();
   const navigate = useNavigate();
 
   // State
@@ -130,7 +144,7 @@ const UserDashboard = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedResumes, setSelectedResumes] = useState(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [resumeToDelete, setResumeToDelete] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [stats, setStats] = useState({
@@ -166,10 +180,15 @@ const UserDashboard = () => {
       (snapshot) => {
         if (!mountedRef.current) return;
 
-        const resumesData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const resumesData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: normalizeTimestamp(data.createdAt),
+            updatedAt: normalizeTimestamp(data.updatedAt),
+          };
+        });
 
         setResumes(resumesData);
         setStats(calculateStats(resumesData));
@@ -207,16 +226,20 @@ const UserDashboard = () => {
     const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
     const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000;
 
+    // Use `updatedAt` (normalized to a Date at ingestion) as the reference
+    // timestamp for the trend calculation. The previous code referenced
+    // `r.lastModified`, which is not a field in the resume schema - the
+    // filter always produced an empty bucket, so the trend was always 0.
     const lastWeekScores = resumesData
-      .filter((r) => r.lastModified && new Date(r.lastModified).getTime() > weekAgo)
+      .filter((r) => r.updatedAt instanceof Date && r.updatedAt.getTime() > weekAgo)
       .map((r) => r.atsScore || 0)
       .filter((s) => s > 0);
     const prevWeekScores = resumesData
       .filter(
         (r) =>
-          r.lastModified &&
-          new Date(r.lastModified).getTime() > twoWeeksAgo &&
-          new Date(r.lastModified).getTime() < weekAgo
+          r.updatedAt instanceof Date &&
+          r.updatedAt.getTime() > twoWeeksAgo &&
+          r.updatedAt.getTime() < weekAgo
       )
       .map((r) => r.atsScore || 0)
       .filter((s) => s > 0);
@@ -232,9 +255,11 @@ const UserDashboard = () => {
     const scoreTrend =
       prevWeekAvg > 0 ? Math.round(((lastWeekAvg - prevWeekAvg) / prevWeekAvg) * 100) : 0;
 
-    const sortedByDate = [...resumesData].sort(
-      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
-    );
+    const sortedByDate = [...resumesData].sort((a, b) => {
+      const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : 0;
+      const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : 0;
+      return bTime - aTime;
+    });
 
     return {
       total: resumesData.length,
@@ -279,8 +304,8 @@ const UserDashboard = () => {
       switch (sortBy) {
         case 'updatedAt':
         case 'createdAt':
-          aVal = a[sortBy] ? new Date(a[sortBy]).getTime() : 0;
-          bVal = b[sortBy] ? new Date(b[sortBy]).getTime() : 0;
+          aVal = a[sortBy] instanceof Date ? a[sortBy].getTime() : 0;
+          bVal = b[sortBy] instanceof Date ? b[sortBy].getTime() : 0;
           break;
         case 'atsScore':
           aVal = a.atsScore || 0;
@@ -302,12 +327,13 @@ const UserDashboard = () => {
   // ── Handlers ───────────────────────────────────────────────────────────
 
   const handleDeleteResume = useCallback(async (resumeId) => {
+    if (!resumeId) return;
     setActionLoading(`delete-${resumeId}`);
     try {
       await deleteDoc(doc(db, 'resumes', resumeId));
       toast.success('Resume deleted');
       setShowDeleteConfirm(false);
-      setResumeToDelete(null);
+      setDeleteTarget(null);
       setSelectedResumes((prev) => {
         const next = new Set(prev);
         next.delete(resumeId);
@@ -321,56 +347,89 @@ const UserDashboard = () => {
     }
   }, []);
 
+  const handleBulkDelete = useCallback(async (resumeIds) => {
+    if (!Array.isArray(resumeIds) || resumeIds.length === 0) return;
+
+    setActionLoading('delete-bulk');
+    try {
+      // Firestore allows up to 500 writes per batch. Chunk conservatively.
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < resumeIds.length; i += CHUNK_SIZE) {
+        const chunk = resumeIds.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach((id) => batch.delete(doc(db, 'resumes', id)));
+        await batch.commit();
+      }
+
+      toast.success(
+        `Deleted ${resumeIds.length} resume${resumeIds.length === 1 ? '' : 's'}`
+      );
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+      setSelectedResumes(new Set());
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete resumes');
+    } finally {
+      setActionLoading(null);
+    }
+  }, []);
+
+  // Duplicate must go through the same path used by MyResumes / Templates:
+  // `ResumeContext.duplicateResume` calls the Netlify Function
+  // `/.netlify/functions/duplicate-resume`, which uses the Firebase Admin
+  // SDK. Writing directly from the client was rejected by the current
+  // Firestore rules (`allow create: if isPrivilegedAdmin();`) for every
+  // non-admin user, so the previous client-side `addDoc` always failed.
   const handleDuplicateResume = useCallback(
     async (resume) => {
       setActionLoading(`duplicate-${resume.id}`);
       try {
-        const { id, ...resumeData } = resume;
-        const newResume = {
-          ...resumeData,
-          name: `${resume.name || 'Untitled'} (Copy)`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          status: 'draft',
-          downloadCount: 0,
-        };
-
-        const docRef = await addDoc(collection(db, 'resumes'), newResume);
-        toast.success('Resume duplicated');
-        navigate(`/builder/${docRef.id}`);
+        const duplicated = await duplicateResume(resume);
+        if (duplicated?.id) {
+          navigate(`/builder/${duplicated.id}`);
+        }
       } catch (error) {
-        console.error('Duplicate error:', error);
-        toast.error('Failed to duplicate resume');
+        // The context has already shown a toast on failure; nothing more to do.
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Duplicate error:', error);
+        }
       } finally {
         setActionLoading(null);
       }
     },
-    [navigate]
+    [duplicateResume, navigate]
   );
 
-  const handleDownload = useCallback(async (resume) => {
-    toast.loading('Preparing download...', { id: 'pdf-download' });
-    try {
-      // FIXED: Use dynamic import to avoid crash if module doesn't exist
-      const { generatePDF } = await import('../../utils/pdfGenerator').catch(() => ({
-        generatePDF: () => {
-          throw new Error('PDF generator not available');
-        },
-      }));
+  // `pdfGenerator.generatePDF` expects `(resumeData, template, options)` -
+  // the full Firestore document has an extra wrapper (id, userId, counts)
+  // and no `personal` / `experience` shape, so passing the whole document
+  // produced a blank or broken PDF. Pass `(resume.data, resume.template)`.
+  // The download count is delegated to the context, which uses the atomic
+  // `increment(1)` and updates local state; the previous manual
+  // `(resume.downloadCount || 0) + 1` was a lost-update race.
+  const handleDownload = useCallback(
+    async (resume) => {
+      toast.loading('Preparing download...', { id: 'pdf-download' });
+      try {
+        const { generatePDF } = await import('../../utils/pdfGenerator').catch(() => ({
+          generatePDF: () => {
+            throw new Error('PDF generator not available');
+          },
+        }));
 
-      await generatePDF(resume);
+        await generatePDF(resume.data, resume.template);
 
-      await updateDoc(doc(db, 'resumes', resume.id), {
-        downloadCount: (resume.downloadCount || 0) + 1,
-        lastDownloaded: new Date().toISOString(),
-      });
+        await incrementDownloadCount(resume.id);
 
-      toast.success('Resume downloaded', { id: 'pdf-download' });
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download resume', { id: 'pdf-download' });
-    }
-  }, []);
+        toast.success('Resume downloaded', { id: 'pdf-download' });
+      } catch (error) {
+        console.error('Download error:', error);
+        toast.error('Failed to download resume', { id: 'pdf-download' });
+      }
+    },
+    [incrementDownloadCount]
+  );
 
   const toggleSelectAll = useCallback(() => {
     if (selectedResumes.size === filteredResumes.length) {
@@ -475,8 +534,8 @@ const UserDashboard = () => {
           <StatCard
             title="Last Updated"
             value={
-              stats.lastUpdated
-                ? formatDistanceToNow(new Date(stats.lastUpdated), { addSuffix: true })
+              stats.lastUpdated instanceof Date
+                ? formatDistanceToNow(stats.lastUpdated, { addSuffix: true })
                 : 'Never'
             }
             icon={FiClock}
@@ -601,7 +660,10 @@ const UserDashboard = () => {
                 <Button
                   size="sm"
                   variant="danger"
-                  onClick={() => setShowDeleteConfirm(true)}
+                  onClick={() => {
+                    setDeleteTarget({ type: 'bulk', ids: Array.from(selectedResumes) });
+                    setShowDeleteConfirm(true);
+                  }}
                   icon={<FiTrash2 />}
                 >
                   Delete
@@ -666,7 +728,7 @@ const UserDashboard = () => {
                         onSelect={() => toggleSelectResume(resume.id)}
                         onEdit={() => navigate(`/builder/${resume.id}`)}
                         onDelete={() => {
-                          setResumeToDelete(resume.id);
+                          setDeleteTarget({ type: 'single', id: resume.id });
                           setShowDeleteConfirm(true);
                         }}
                         onDuplicate={() => handleDuplicateResume(resume)}
@@ -686,7 +748,7 @@ const UserDashboard = () => {
           isOpen={showDeleteConfirm}
           onClose={() => {
             setShowDeleteConfirm(false);
-            setResumeToDelete(null);
+            setDeleteTarget(null);
           }}
           title="Delete Resume"
           size="sm"
@@ -695,8 +757,10 @@ const UserDashboard = () => {
             <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
               <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
               <p className="text-sm text-red-700 dark:text-red-300">
-                {selectedResumes.size > 1
-                  ? `Permanently delete ${selectedResumes.size} resumes?`
+                {deleteTarget?.type === 'bulk'
+                  ? `Permanently delete ${deleteTarget.ids.length} resume${
+                      deleteTarget.ids.length === 1 ? '' : 's'
+                    }?`
                   : 'This cannot be undone. The resume will be permanently deleted.'}
               </p>
             </div>
@@ -705,7 +769,7 @@ const UserDashboard = () => {
                 variant="outline"
                 onClick={() => {
                   setShowDeleteConfirm(false);
-                  setResumeToDelete(null);
+                  setDeleteTarget(null);
                 }}
               >
                 Cancel
@@ -713,11 +777,14 @@ const UserDashboard = () => {
               <Button
                 variant="danger"
                 loading={actionLoading?.startsWith('delete')}
-                onClick={() =>
-                  selectedResumes.size > 1
-                    ? handleDeleteResume(resumeToDelete)
-                    : handleDeleteResume(resumeToDelete)
-                }
+                onClick={() => {
+                  if (!deleteTarget) return;
+                  if (deleteTarget.type === 'bulk') {
+                    handleBulkDelete(deleteTarget.ids);
+                  } else {
+                    handleDeleteResume(deleteTarget.id);
+                  }
+                }}
               >
                 Delete
               </Button>

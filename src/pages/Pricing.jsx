@@ -91,12 +91,12 @@ const FAQS = [
 const PRODUCT_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'Product',
-  name: 'Resume Ai Pro',
+  name: 'Maniesta Career OS',
   description:
     'AI-powered ATS resume builder with professional templates and real-time optimisation.',
   brand: {
     '@type': 'Brand',
-    name: 'Resume Ai Pro',
+    name: 'Maniesta Career OS',
   },
   offers: {
     '@type': 'AggregateOffer',

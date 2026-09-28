@@ -118,7 +118,7 @@ export const getRouteByPath = (pathname) => {
 
 export const getRouteMeta = (pathname) =>
   getRouteByPath(pathname)?.meta ?? {
-    title: 'Resume Ai Pro',
+    title: 'Maniesta Career OS',
     description: 'Create professional ATS-optimized resumes',
   };
 

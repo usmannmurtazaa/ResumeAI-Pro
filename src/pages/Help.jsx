@@ -43,7 +43,7 @@ const HELP_CATEGORIES = [
   {
     icon: FiUser,
     title: 'Getting Started',
-    description: 'Learn the basics of Resume Ai Pro',
+    description: 'Learn the basics of Maniesta Career OS',
     articles: [
       { title: 'Creating your first resume', readTime: '5 min' },
       { title: 'Understanding ATS scores', readTime: '4 min' },
@@ -121,7 +121,7 @@ const FAQS = [
     category: 'ATS',
   },
   {
-    q: 'Is Resume Ai Pro free to use?',
+    q: 'Is Maniesta Career OS free to use?',
     a: 'Yes! We offer a free plan with 5 resumes, basic templates, and ATS scoring.',
     category: 'Billing',
   },
@@ -148,7 +148,7 @@ const FAQS = [
 ];
 
 const POPULAR_ARTICLES = [
-  { title: 'Getting Started with Resume Ai Pro', views: '12.5K', icon: FiZap },
+  { title: 'Getting Started with Maniesta Career OS', views: '12.5K', icon: FiZap },
   { title: 'How to Achieve a 90+ ATS Score', views: '8.2K', icon: FiTarget },
   { title: 'Choosing the Perfect Template', views: '6.8K', icon: FiLayout },
   { title: 'AI-Powered Resume Writing Tips', views: '5.4K', icon: FiStar },

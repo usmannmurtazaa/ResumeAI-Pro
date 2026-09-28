@@ -124,6 +124,14 @@ const MAX_NOTIFICATIONS_PER_PAGE = 50;
 
 // ── Utility Functions ────────────────────────────────────────────────────
 
+// Collapses consecutive unread notifications that share the same
+// type + title into a single entry. The returned list preserves the
+// relative order of first occurrence.
+//
+// Important: the object stored in `groupMap` MUST be the same object that
+// is pushed to `grouped`, otherwise the count / message updates performed
+// by the mutation branch below would only affect a private copy and the
+// array actually rendered would keep `count: 1` forever.
 const groupSimilarNotifications = (notifs) => {
   const grouped = [];
   const groupMap = new Map();
@@ -133,14 +141,21 @@ const groupSimilarNotifications = (notifs) => {
     const existing = groupMap.get(key);
 
     if (existing && !existing.read && !notif.read) {
+      // Mutate the same object we already pushed into `grouped` so the
+      // panel sees the updated count and message.
       existing.count = (existing.count || 1) + 1;
       existing.message = `${existing.count} similar notifications`;
       if (notif.createdAt > existing.createdAt) {
         existing.createdAt = notif.createdAt;
       }
     } else {
-      groupMap.set(key, { ...notif, count: 1 });
-      grouped.push({ ...notif, count: 1 });
+      // Create the merged object ONCE, then store the same reference in
+      // both the map and the result array. Do not spread `notif` twice -
+      // that would produce two distinct objects and break the mutation
+      // branch above.
+      const groupedNotif = { ...notif, count: 1 };
+      groupMap.set(key, groupedNotif);
+      grouped.push(groupedNotif);
     }
   });
 
@@ -508,7 +523,7 @@ export const NotificationProvider = ({ children }) => {
       welcome: (userName, options) =>
         createNotification({
           type: NotificationTypes.WELCOME,
-          title: 'Welcome to Resume Ai Pro!',
+          title: 'Welcome to Maniesta Career OS!',
           message: `Hi ${userName}! Let's create your first professional resume.`,
           ...options,
         }),

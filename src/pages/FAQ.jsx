@@ -73,11 +73,11 @@ const CATEGORIES = [
 const FAQ_DATA = {
   general: [
     {
-      q: 'What is Resume Ai Pro?',
-      a: 'Resume Ai Pro is an AI-powered resume builder that helps you create ATS-optimized resumes with real-time scoring, keyword suggestions, and professional templates.',
+      q: 'What is Maniesta Career OS?',
+      a: 'Maniesta Career OS is an AI-powered resume builder that helps you create ATS-optimized resumes with real-time scoring, keyword suggestions, and professional templates.',
     },
     {
-      q: 'Is Resume Ai Pro free?',
+      q: 'Is Maniesta Career OS free?',
       a: 'Yes! We offer a free plan with 5 resumes, basic templates, and ATS scoring. Premium plans unlock unlimited resumes and advanced AI features.',
     },
     {
@@ -211,7 +211,7 @@ const FAQ = () => {
   usePageTitle({
     title: 'FAQ - Frequently Asked Questions',
     description:
-      'Find answers to common questions about Resume Ai Pro - accounts, resume building, ATS scoring, security, and more.',
+      'Find answers to common questions about Maniesta Career OS - accounts, resume building, ATS scoring, security, and more.',
   });
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -291,7 +291,7 @@ const FAQ = () => {
               Frequently Asked <span className="gradient-text">Questions</span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-              Find answers to common questions about Resume Ai Pro
+              Find answers to common questions about Maniesta Career OS
             </p>
             <div className="relative max-w-2xl mx-auto">
               <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />

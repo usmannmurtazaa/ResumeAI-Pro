@@ -1,11 +1,11 @@
 import { FiLayout, FiFileText, FiStar, FiCpu, FiBook } from 'react-icons/fi';
 
 export const siteConfig = {
-  name: 'Resume Ai Pro',
-  shortName: 'Resume Ai Pro',
+  name: 'Maniesta Career OS',
+  shortName: 'Maniesta Career OS',
   tagline: 'AI-Powered ATS Resume Builder',
   description:
-    'Create professional, ATS-optimized resumes with AI-powered suggestions. Stand out from the crowd and land your dream job faster with Resume Ai Pro.',
+    'Create professional, ATS-optimized resumes with AI-powered suggestions. Stand out from the crowd and land your dream job faster with Maniesta Career OS.',
   keywords: [
     'resume builder',
     'ATS resume',
@@ -19,7 +19,7 @@ export const siteConfig = {
     'job search',
   ],
 
-  url: process.env.REACT_APP_SITE_URL || 'https://resumeaixpro.netlify.app',
+  url: process.env.REACT_APP_SITE_URL || 'https://maniestacareeros.netlify.app',
   // apiUrl removed - the app uses the Firebase SDK directly, not a REST API.
   // Any code reading siteConfig.apiUrl will receive an empty string.
   apiUrl: '',
@@ -54,7 +54,7 @@ export const siteConfig = {
   },
 
   ogImage: '/og-image.png',
-  ogImageAlt: 'Resume Ai Pro - AI-Powered ATS Resume Builder',
+  ogImageAlt: 'Maniesta Career OS - AI-Powered ATS Resume Builder',
   twitterImage: '/twitter-image.png',
   favicon: '/favicon.ico',
   logo: '/logo.png',
@@ -196,10 +196,10 @@ export const siteConfig = {
   // correct <title>, <meta name="description">, <link rel="canonical">,
   // and <meta name="robots"> for the current route.
   seo: {
-    siteName: 'Resume Ai Pro',
-    siteUrl: 'https://resumeaixpro.netlify.app',
-    defaultImage: 'https://resumeaixpro.netlify.app/og-image.png',
-    defaultImageAlt: 'Resume Ai Pro - AI-Powered ATS Resume Builder',
+    siteName: 'Maniesta Career OS',
+    siteUrl: 'https://maniestacareeros.netlify.app',
+    defaultImage: 'https://maniestacareeros.netlify.app/og-image.png',
+    defaultImageAlt: 'Maniesta Career OS - AI-Powered ATS Resume Builder',
     twitterHandle: '@usmann_murtazaa',
     twitterCreator: '@usmann_murtazaa',
     authorName: 'Usman Murtaza',
@@ -208,169 +208,169 @@ export const siteConfig = {
     routes: {
       // ─── Public, indexable ────────────────────────────────────────
       '/': {
-        title: 'Resume Ai Pro - AI-Powered ATS Resume Builder',
+        title: 'Maniesta Career OS - AI-Powered ATS Resume Builder',
         description:
           'Create ATS-optimised resumes with AI-powered suggestions, 25+ professional templates, real-time scoring, and instant PDF download. Free to start.',
         robots: 'index, follow',
       },
       '/features': {
-        title: 'Features - AI Resume Builder Tools | Resume Ai Pro',
+        title: 'Features - AI Resume Builder Tools | Maniesta Career OS',
         description:
-          'Explore Resume Ai Pro features: AI content generation, ATS scoring, keyword suggestions, LinkedIn import, and 25+ professional templates.',
+          'Explore Maniesta Career OS features: AI content generation, ATS scoring, keyword suggestions, LinkedIn import, and 25+ professional templates.',
         robots: 'index, follow',
       },
       '/pricing': {
-        title: 'Pricing - Free & Premium Resume Plans | Resume Ai Pro',
+        title: 'Pricing - Free & Premium Resume Plans | Maniesta Career OS',
         description:
           'Simple pricing for every job seeker. Start free, upgrade for unlimited resumes, premium templates, and AI-powered optimisation. No credit card required.',
         robots: 'index, follow',
       },
       '/templates': {
-        title: 'Resume Templates - Professional & ATS-Ready | Resume Ai Pro',
+        title: 'Resume Templates - Professional & ATS-Ready | Maniesta Career OS',
         description:
           'Browse 25+ professional resume templates optimised for ATS. Modern, classic, creative, and tech designs. Pick one, customise, and download.',
         robots: 'index, follow',
       },
       '/blog': {
-        title: 'Career & Resume Blog | Resume Ai Pro',
+        title: 'Career & Resume Blog | Maniesta Career OS',
         description:
           'Practical advice on resume writing, ATS optimisation, job search strategy, and career growth - written for modern job seekers.',
         robots: 'index, follow',
       },
       '/blog/:slug': {
-        title: 'Article | Resume Ai Pro',
+        title: 'Article | Maniesta Career OS',
         description:
-          'Practical advice on resume writing, ATS optimisation, and job search strategy from the Resume Ai Pro team.',
+          'Practical advice on resume writing, ATS optimisation, and job search strategy from the Maniesta Career OS team.',
         robots: 'index, follow',
       },
       '/about': {
-        title: 'About Usman Murtaza & Resume Ai Pro',
+        title: 'About Usman Murtaza & Maniesta Career OS',
         description:
-          'Learn about Resume Ai Pro, created by Usman Murtaza - a Full Stack Developer building modern web applications with React and AI.',
+          'Learn about Maniesta Career OS, created by Usman Murtaza - a Full Stack Developer building modern web applications with React and AI.',
         robots: 'index, follow',
       },
       '/careers': {
-        title: 'Careers - Join Resume Ai Pro',
+        title: 'Careers - Join Maniesta Career OS',
         description:
-          'Explore career opportunities at Resume Ai Pro and the Maniesta ecosystem. We hire developers, designers, and content writers.',
+          'Explore career opportunities at Maniesta Career OS and the Maniesta ecosystem. We hire developers, designers, and content writers.',
         robots: 'index, follow',
       },
       '/contact': {
-        title: 'Contact Resume Ai Pro - Support & Inquiries',
+        title: 'Contact Maniesta Career OS - Support & Inquiries',
         description:
-          'Get in touch with Resume Ai Pro for support, feedback, partnerships, or business inquiries. We respond within 24 hours.',
+          'Get in touch with Maniesta Career OS for support, feedback, partnerships, or business inquiries. We respond within 24 hours.',
         robots: 'index, follow',
       },
       '/help': {
-        title: 'Help Center | Resume Ai Pro',
+        title: 'Help Center | Maniesta Career OS',
         description:
-          'Find answers to common questions about using Resume Ai Pro - building resumes, ATS scoring, templates, billing, and account management.',
+          'Find answers to common questions about using Maniesta Career OS - building resumes, ATS scoring, templates, billing, and account management.',
         robots: 'index, follow',
       },
       '/faq': {
-        title: 'FAQ - Frequently Asked Questions | Resume Ai Pro',
+        title: 'FAQ - Frequently Asked Questions | Maniesta Career OS',
         description:
-          'Answers to common questions about ATS resumes, Resume Ai Pro features, pricing, and how to land more interviews.',
+          'Answers to common questions about ATS resumes, Maniesta Career OS features, pricing, and how to land more interviews.',
         robots: 'index, follow',
       },
       '/privacy': {
-        title: 'Privacy Policy | Resume Ai Pro',
+        title: 'Privacy Policy | Maniesta Career OS',
         description:
-          'How Resume Ai Pro collects, uses, and protects your personal data. Your privacy and data security are our priority.',
+          'How Maniesta Career OS collects, uses, and protects your personal data. Your privacy and data security are our priority.',
         robots: 'index, follow',
       },
       '/terms': {
-        title: 'Terms of Service | Resume Ai Pro',
+        title: 'Terms of Service | Maniesta Career OS',
         description:
-          'Terms and conditions for using Resume Ai Pro. Read our acceptable use policy, subscription terms, and user responsibilities.',
+          'Terms and conditions for using Maniesta Career OS. Read our acceptable use policy, subscription terms, and user responsibilities.',
         robots: 'index, follow',
       },
 
       // ─── Auth routes (not for indexing) ──────────────────────────
       '/login': {
-        title: 'Sign In | Resume Ai Pro',
-        description: 'Sign in to your Resume Ai Pro account to manage your resumes.',
+        title: 'Sign In | Maniesta Career OS',
+        description: 'Sign in to your Maniesta Career OS account to manage your resumes.',
         robots: 'noindex, nofollow',
       },
       '/signup': {
-        title: 'Create Account | Resume Ai Pro',
+        title: 'Create Account | Maniesta Career OS',
         description:
-          'Create a free Resume Ai Pro account and start building ATS-optimised resumes.',
+          'Create a free Maniesta Career OS account and start building ATS-optimised resumes.',
         robots: 'noindex, nofollow',
       },
       '/forgot-password': {
-        title: 'Reset Password | Resume Ai Pro',
-        description: 'Reset your Resume Ai Pro account password.',
+        title: 'Reset Password | Maniesta Career OS',
+        description: 'Reset your Maniesta Career OS account password.',
         robots: 'noindex, nofollow',
       },
       '/verify-email': {
-        title: 'Verify Email | Resume Ai Pro',
-        description: 'Verify your email address to complete your Resume Ai Pro registration.',
+        title: 'Verify Email | Maniesta Career OS',
+        description: 'Verify your email address to complete your Maniesta Career OS registration.',
         robots: 'noindex, nofollow',
       },
 
       // ─── Protected routes (require auth, not for indexing) ───────
       '/dashboard': {
-        title: 'Dashboard | Resume Ai Pro',
-        description: 'Your Resume Ai Pro dashboard.',
+        title: 'Dashboard | Maniesta Career OS',
+        description: 'Your Maniesta Career OS dashboard.',
         robots: 'noindex, nofollow',
       },
       '/builder/:id?': {
-        title: 'Resume Builder | Resume Ai Pro',
+        title: 'Resume Builder | Maniesta Career OS',
         description: 'Build and edit your resume with AI assistance.',
         robots: 'noindex, nofollow',
       },
       '/profile': {
-        title: 'Profile | Resume Ai Pro',
-        description: 'Manage your Resume Ai Pro profile.',
+        title: 'Profile | Maniesta Career OS',
+        description: 'Manage your Maniesta Career OS profile.',
         robots: 'noindex, nofollow',
       },
       '/settings': {
-        title: 'Settings | Resume Ai Pro',
-        description: 'Manage your Resume Ai Pro preferences.',
+        title: 'Settings | Maniesta Career OS',
+        description: 'Manage your Maniesta Career OS preferences.',
         robots: 'noindex, nofollow',
       },
       '/my-resumes': {
-        title: 'My Resumes | Resume Ai Pro',
+        title: 'My Resumes | Maniesta Career OS',
         description: 'View and manage all of your resumes.',
         robots: 'noindex, nofollow',
       },
       '/preview/:id': {
-        title: 'Preview Resume | Resume Ai Pro',
+        title: 'Preview Resume | Maniesta Career OS',
         description: 'Preview your resume.',
         robots: 'noindex, nofollow',
       },
       '/ats-scanner': {
-        title: 'ATS Scanner | Resume Ai Pro',
+        title: 'ATS Scanner | Maniesta Career OS',
         description: 'Scan your resume for ATS compatibility and get optimisation tips.',
         robots: 'noindex, nofollow',
       },
       '/billing': {
-        title: 'Billing | Resume Ai Pro',
-        description: 'Manage your Resume Ai Pro subscription and billing.',
+        title: 'Billing | Maniesta Career OS',
+        description: 'Manage your Maniesta Career OS subscription and billing.',
         robots: 'noindex, nofollow',
       },
       '/analytics': {
-        title: 'Analytics | Resume Ai Pro',
+        title: 'Analytics | Maniesta Career OS',
         description: 'Track your resume performance and job application analytics.',
         robots: 'noindex, nofollow',
       },
       '/cover-letter': {
-        title: 'Cover Letter Builder | Resume Ai Pro',
+        title: 'Cover Letter Builder | Maniesta Career OS',
         description: 'Build AI-assisted cover letters that match your resume.',
         robots: 'noindex, nofollow',
       },
 
       // ─── Admin (never index) ──────────────────────────────────────
       '/admin/*': {
-        title: 'Admin | Resume Ai Pro',
-        description: 'Resume Ai Pro admin panel.',
+        title: 'Admin | Maniesta Career OS',
+        description: 'Maniesta Career OS admin panel.',
         robots: 'noindex, nofollow',
       },
     },
 
     notFound: {
-      title: 'Page Not Found | Resume Ai Pro',
+      title: 'Page Not Found | Maniesta Career OS',
       description: 'The page you are looking for does not exist or has been moved.',
       robots: 'noindex, nofollow',
     },

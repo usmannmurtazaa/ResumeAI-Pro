@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const DEFAULT_APP_NAME = 'Resume Ai Pro';
+const DEFAULT_APP_NAME = 'Maniesta Career OS';
 const SEPARATOR = ' | ';
 
 // ── useDocumentTitle ──────────────────────────────────────────────────────
@@ -13,7 +13,7 @@ const SEPARATOR = ' | ';
  *
  * @param {string} title - The page-specific title
  * @param {Object} options - Configuration options
- * @param {string} options.suffix - App name suffix (default: 'Resume Ai Pro')
+ * @param {string} options.suffix - App name suffix (default: 'Maniesta Career OS')
  * @param {string} options.separator - Separator between title and suffix (default: ' | ')
  * @param {boolean} options.prepend - Put suffix before title instead of after
  */

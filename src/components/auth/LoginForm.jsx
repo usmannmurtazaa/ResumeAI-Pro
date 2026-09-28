@@ -19,7 +19,9 @@ import {
   FiSmile,
 } from 'react-icons/fi';
 import { FcPhone } from 'react-icons/fc';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../services/firebase';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Progress from '../ui/Progress';
@@ -229,14 +231,57 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
   }, [rememberMe, emailValue]);
 
   /**
-   * Proper admin role check using Firebase token claims.
+   * Determines whether the signed-in user should be redirected to the admin
+   * area.
+   *
+   * Two paths are accepted:
+   *
+   *   1. Firebase Auth custom claims on the user's ID token -
+   *      `admin: true`, `superAdmin: true`, or `role: 'admin'`. Kept for
+   *      backward compatibility with projects that have a trusted backend
+   *      setting claims.
+   *
+   *   2. Firestore `users/{uid}.role === 'admin'`. This is the path the app
+   *      itself supports on the Spark plan: `authService.updateUserRole`
+   *      writes the Firestore role, and the rest of the UI reads it via
+   *      `AuthContext.userRole` / `hasRole('admin')`. Mirroring that here
+   *      keeps the login redirect consistent with `AdminRoute`.
+   *
+   * A user whose Firestore `status === 'suspended'` is always treated as a
+   * non-admin, regardless of claims or role. This complements the earlier
+   * fixes in `authService.syncUserDocAfterProviderAuth` (suspended users are
+   * not reactivated by OAuth sign-in) and `AdminRoute.verifyAdminServerSide`
+   * (suspended users cannot enter the admin UI).
+   *
+   * NOTE: this is a routing decision, not a security boundary. The
+   * authoritative gate for admin-only Firestore operations lives in
+   * `firestore.rules`.
    */
   const checkAdminRole = async (user) => {
     if (!user) return false;
 
     try {
-      const idTokenResult = await user.getIdTokenResult(true);
-      return idTokenResult.claims.admin === true || idTokenResult.claims.superAdmin === true;
+      // Force a fresh token so the claims path reflects the latest state.
+      await user.getIdToken(true);
+      const idTokenResult = await user.getIdTokenResult();
+
+      const isClaimsAdmin =
+        idTokenResult.claims.admin === true ||
+        idTokenResult.claims.superAdmin === true ||
+        idTokenResult.claims.role === 'admin';
+
+      // Read the Firestore user document - the app's source of truth for
+      // role and status. This read is permitted by the existing
+      // `allow read: if isSelf(userId) || isPrivilegedAdmin();` rule on
+      // `users/{userId}`.
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      const userData = userSnap.exists() ? userSnap.data() : null;
+
+      if (userData?.status === 'suspended') return false;
+
+      const isFirestoreAdmin = userData?.role === 'admin';
+
+      return isClaimsAdmin || isFirestoreAdmin;
     } catch (error) {
       console.error('Admin role check failed:', error);
       return false;
@@ -245,10 +290,15 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
 
   /**
    * Handle redirect after successful login.
+   *
+   * `user` is the Firebase `User` object returned by `AuthContext.login`,
+   * `AuthContext.loginWithProvider`, and the `onSuccess` callbacks of
+   * `GoogleAuthButton` / `PhoneAuth`. It is NOT a `UserCredential` - do not
+   * unwrap it with `.user`.
    */
-  const handleRedirectAfterLogin = async (userCredential) => {
+  const handleRedirectAfterLogin = async (user) => {
     try {
-      const isAdmin = await checkAdminRole(userCredential.user);
+      const isAdmin = await checkAdminRole(user);
 
       if (isAdmin) {
         toast.success('Welcome, Administrator!', {
@@ -279,7 +329,7 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
     setLoginError(null);
 
     try {
-      const userCredential = await login(data.email, data.password);
+      const user = await login(data.email, data.password);
       resetAttempts();
 
       try {
@@ -292,7 +342,7 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
         console.warn('Could not update localStorage:', error);
       }
 
-      await handleRedirectAfterLogin(userCredential);
+      await handleRedirectAfterLogin(user);
     } catch (error) {
       console.error('Login error:', error);
       recordAttempt();
@@ -345,9 +395,9 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
     setLoginError(null);
 
     try {
-      const userCredential = await loginWithProvider(provider);
+      const user = await loginWithProvider(provider);
       resetAttempts();
-      await handleRedirectAfterLogin(userCredential);
+      await handleRedirectAfterLogin(user);
     } catch (error) {
       console.error(`${provider} login error:`, error);
       recordAttempt();
@@ -385,14 +435,14 @@ const LoginForm = ({ redirectTo = '/dashboard' }) => {
     }
   };
 
-  const handleGoogleSuccess = async (userCredential) => {
+  const handleGoogleSuccess = async (user) => {
     resetAttempts();
-    await handleRedirectAfterLogin({ user: userCredential.user });
+    await handleRedirectAfterLogin(user);
   };
 
-  const handlePhoneSuccess = async (userCredential) => {
+  const handlePhoneSuccess = async (user) => {
     resetAttempts();
-    await handleRedirectAfterLogin({ user: userCredential.user });
+    await handleRedirectAfterLogin(user);
   };
 
   /**

@@ -1,13 +1,13 @@
-# 🚀 ResumeAI Pro
+# 🚀 Maniesta CareerOS
 
 <div align="center">
-  <img src="public/logo.png" alt="Resume Ai Pro Logo" width="200" />
+  <img src="public/logo.png" alt="Maniesta Career OS Logo" width="200" />
 
 > An AI-powered resume builder that generates ATS-optimised resumes with customisable templates, AI-driven content suggestions, and one-click export.
 
 **Built by [Usman Murtaza](https://usmanmurtaza.netlify.app)** - Full Stack Developer
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-resumeaixpro.netlify.app-8b5cf6?style=for-the-badge)](https://resumeaixpro.netlify.app)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-maniestacareeros.netlify.app-8b5cf6?style=for-the-badge)](https://maniestacareeros.netlify.app)
 [![Portfolio](https://img.shields.io/badge/Portfolio-usmanmurtaza.netlify.app-6366f1?style=for-the-badge)](https://usmanmurtaza.netlify.app)
 
 <p>
@@ -24,7 +24,7 @@
 
 ## 📖 Overview
 
-**ResumeAI Pro** is a full-stack SaaS application that helps job seekers build professional, ATS-friendly resumes with AI assistance. It combines a multi-step resume editor, AI-driven content suggestions, and a clean preview experience so users can move from a blank page to a ready-to-send resume quickly.
+**Maniesta CareerOS** is a full-stack SaaS application that helps job seekers build professional, ATS-friendly resumes with AI assistance. It combines a multi-step resume editor, AI-driven content suggestions, and a clean preview experience so users can move from a blank page to a ready-to-send resume quickly.
 
 The project was designed and built end-to-end by **[Usman Murtaza](https://usmanmurtaza.netlify.app)** as part of the broader portfolio of products he develops.
 
@@ -63,7 +63,7 @@ The project was designed and built end-to-end by **[Usman Murtaza](https://usman
 
 ## 🎬 Live Demo
 
-**[resumeaixpro.netlify.app](https://resumeaixpro.netlify.app)**
+**[maniestacareeros.netlify.app](https://maniestacareeros.netlify.app)**
 
 The live demo is connected to a Firebase project and supports real sign-up. You can create a free account to explore the resume builder end to end.
 
@@ -110,7 +110,7 @@ The live demo is connected to a Firebase project and supports real sign-up. You 
 - npm 9 or higher
 - A Firebase project (Spark plan is sufficient)
 - A Netlify account (for functions and hosting, if deploying)
-- An OpenAI API key, if you enable AI features — keep this key server-side only (in Netlify environment variables), never in the browser
+- An OpenAI API key, if you enable AI features - keep this key server-side only (in Netlify environment variables), never in the browser
 
 ### Installation
 
@@ -137,7 +137,7 @@ The app runs at `http://localhost:3000`.
 Create a `.env` file at the project root with:
 
 ```
-# Firebase (client-side, safe to expose — these are public identifiers)
+# Firebase (client-side, safe to expose - these are public identifiers)
 REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
 REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 REACT_APP_FIREBASE_PROJECT_ID=your_project_id
@@ -151,7 +151,7 @@ REACT_APP_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
 REACT_APP_FIREBASE_VAPID_KEY=your_vapid_key
 
 # Site URL (for canonical URLs and analytics)
-REACT_APP_SITE_URL=https://resumeaixpro.netlify.app
+REACT_APP_SITE_URL=https://maniestacareeros.netlify.app
 ```
 
 > **Server-side secrets (OpenAI API key, Stripe keys, etc.) go in Netlify's environment variables**, not in this file. See `netlify/functions/` for how those are consumed. Refer to `.env.example` for the full list.

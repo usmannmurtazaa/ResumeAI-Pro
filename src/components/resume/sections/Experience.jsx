@@ -206,7 +206,11 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
   const [viewMode, setViewMode] = useState('detailed');
-  const [sortOrder, setSortOrder] = useState('date');
+  // `'custom'` means "do not reorder on save". Any other value re-sorts the
+  // array on the next save, discarding any manual drag reorder. Defaulting
+  // to `'custom'` preserves user intent until they explicitly ask for a
+  // sort.
+  const [sortOrder, setSortOrder] = useState('custom');
   const [showBulletSuggestions, setShowBulletSuggestions] = useState({});
   const [totalExperience, setTotalExperience] = useState({ years: 0, months: 0 });
 
@@ -251,21 +255,28 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
   }, [data, setValue]);
 
   // ── Handle Save ────────────────────────────────────────────────────────
+  // The sort is a mutation, not a display preference: it rewrites the array
+  // before persisting it. When the user has manually reordered entries by
+  // dragging or with the chevron buttons, `sortOrder` is set to `'custom'`
+  // so the save preserves their order instead of clobbering it.
 
   const handleSave = useCallback(
     (formData) => {
       if (!mountedRef.current) return;
 
-      const sorted = [...(formData || [])].sort((a, b) => {
-        if (sortOrder === 'date') {
-          const dateA = a.current ? '9999' : a.endDate || '';
-          const dateB = b.current ? '9999' : b.endDate || '';
-          return dateB.localeCompare(dateA);
-        }
-        if (sortOrder === 'company') return (a.company || '').localeCompare(b.company || '');
-        if (sortOrder === 'title') return (a.title || '').localeCompare(b.title || '');
-        return 0;
-      });
+      const sorted =
+        sortOrder === 'custom'
+          ? [...(formData || [])]
+          : [...(formData || [])].sort((a, b) => {
+              if (sortOrder === 'date') {
+                const dateA = a.current ? '9999' : a.endDate || '';
+                const dateB = b.current ? '9999' : b.endDate || '';
+                return dateB.localeCompare(dateA);
+              }
+              if (sortOrder === 'company') return (a.company || '').localeCompare(b.company || '');
+              if (sortOrder === 'title') return (a.title || '').localeCompare(b.title || '');
+              return 0;
+            });
 
       onChange?.(sorted);
       setAutoSaveStatus('saved');
@@ -345,10 +356,13 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
     });
   }, []);
 
+  // Manual reorder (chevron up / down). Switch to `'custom'` so the
+  // subsequent autosave does not re-sort and undo the move.
   const moveItem = useCallback(
     (from, to) => {
       if (to >= 0 && to < fields.length) {
         move(from, to);
+        setSortOrder('custom');
         toast.success('Order updated');
       }
     },
@@ -369,11 +383,15 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
   );
 
   // ── Drag and Drop ──────────────────────────────────────────────────────
+  // Same reasoning as `moveItem`: after a drag, switch the sort mode to
+  // `'custom'` so the next autosave does not re-sort the array and undo
+  // the user's reorder.
 
   const onDragEnd = useCallback(
     (result) => {
       if (!result.destination) return;
       move(result.source.index, result.destination.index);
+      setSortOrder('custom');
     },
     [move]
   );
@@ -429,6 +447,7 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
             onChange={(e) => setSortOrder(e.target.value)}
             className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50"
           >
+            <option value="custom">Custom Order</option>
             <option value="date">Most Recent</option>
             <option value="company">By Company</option>
             <option value="title">By Title</option>

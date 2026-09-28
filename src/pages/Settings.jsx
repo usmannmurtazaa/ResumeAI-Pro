@@ -135,6 +135,9 @@ const Settings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletePartial, setDeletePartial] = useState(false);
 
   // Password form
   const [passwordForm, setPasswordForm] = useState({
@@ -197,6 +200,13 @@ const Settings = () => {
     },
   ]);
 
+  // Whether the signed-in user has a password provider. Used to decide
+  // whether the delete-account modal must collect a password - OAuth-only
+  // accounts do not have one and cannot reauthenticate with it.
+  const userHasPassword = Boolean(
+    user?.providerData?.some((p) => p.providerId === 'password')
+  );
+
   // ── Handlers ─────────────────────────────────────────────────────────
 
   const handleSettingChange = useCallback((key, value) => {
@@ -236,19 +246,66 @@ const Settings = () => {
     }
   }, [passwordForm, updateUserPassword]);
 
+  const closeDeleteModal = useCallback(() => {
+    setShowDeleteModal(false);
+    setDeleteConfirmText('');
+    setDeletePassword('');
+    setDeletePartial(false);
+    setIsDeleting(false);
+  }, []);
+
   const handleDeleteAccount = useCallback(async () => {
     if (deleteConfirmText !== user?.email) {
       toast.error('Please type your email to confirm');
       return;
     }
+
+    if (userHasPassword && !deletePassword) {
+      toast.error('Please enter your password to confirm');
+      return;
+    }
+
+    setIsDeleting(true);
     try {
-      if (deleteAccount) await deleteAccount();
+      await deleteAccount(userHasPassword ? deletePassword : undefined);
       toast.success('Account deleted');
       navigate('/');
-    } catch {
-      toast.error('Failed to delete account');
+    } catch (error) {
+      // A partial failure means the Firestore cleanup succeeded but the
+      // Firebase Auth deletion did not. The user's data is permanently
+      // gone, but their Auth account still exists. Switch to the retry
+      // view - the service is idempotent, so retrying skips the cleanup
+      // and only re-attempts the Auth deletion.
+      if (error?.partial) {
+        setDeletePartial(true);
+      }
+      // For non-partial failures, AuthContext has already shown a
+      // specific error toast; we just leave the modal open so the user
+      // can try again or cancel.
+    } finally {
+      setIsDeleting(false);
     }
-  }, [deleteConfirmText, user, deleteAccount, navigate]);
+  }, [deleteConfirmText, deletePassword, userHasPassword, user, deleteAccount, navigate]);
+
+  const handleRetryDeleteAccount = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount(userHasPassword ? deletePassword : undefined);
+      toast.success('Account deleted');
+      navigate('/');
+    } catch (error) {
+      // Stay in the partial state - the user's Firestore data is gone
+      // regardless of what happens on this retry. If the error is not
+      // marked partial, AuthContext has already toasted it, but we still
+      // want the retry UI visible because the user cannot recover their
+      // deleted data through any other path.
+      if (!error?.partial) {
+        setDeletePartial(true);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deletePassword, userHasPassword, deleteAccount, navigate]);
 
   const handleRevokeSession = useCallback((id) => {
     setSessions((prev) => prev.filter((s) => s.id !== id));
@@ -576,40 +633,107 @@ const Settings = () => {
       </div>
 
       {/* Delete Account Modal */}
-      <Modal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        title="Delete Account"
-      >
-        <div className="space-y-4">
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200">
-            <div className="flex items-center gap-2 mb-2">
-              <FiAlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" aria-hidden="true" />
-              <span className="text-sm text-red-700 font-medium">This cannot be undone</span>
+      <Modal isOpen={showDeleteModal} onClose={closeDeleteModal} title="Delete Account">
+        {deletePartial ? (
+          // ── Partial-failure state ───────────────────────────────────
+          // The Firestore cleanup succeeded, but the Firebase Auth
+          // deletion did not (typically `auth/requires-recent-login`).
+          // The user's data is already gone; only the account record
+          // remains. Offer a retry that re-invokes the idempotent
+          // service method.
+          <div className="space-y-4">
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-2">
+                <FiAlertTriangle
+                  className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    Deletion partially completed
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                    Your resume data has been removed, but we couldn&apos;t finish closing your
+                    account. Click Retry to complete the deletion. If the retry keeps failing,
+                    sign out and sign in again to refresh your session, then retry.
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-red-600">
-              All resumes, data, and settings will be permanently deleted.
-            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={closeDeleteModal} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleRetryDeleteAccount}
+                loading={isDeleting}
+                disabled={isDeleting}
+              >
+                Retry
+              </Button>
+            </div>
           </div>
-          <p className="text-sm">Type your email to confirm:</p>
-          <Input
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            placeholder={user?.email}
-          />
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleDeleteAccount}
-              disabled={deleteConfirmText !== user?.email}
-            >
-              Delete
-            </Button>
+        ) : (
+          // ── Initial confirmation state ─────────────────────────────
+          <div className="space-y-4">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200">
+              <div className="flex items-center gap-2 mb-2">
+                <FiAlertTriangle
+                  className="w-4 h-4 text-red-600 flex-shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="text-sm text-red-700 font-medium">This cannot be undone</span>
+              </div>
+              <p className="text-xs text-red-600">
+                All resumes, data, and settings will be permanently deleted.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm mb-2">Type your email to confirm:</p>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={user?.email}
+                disabled={isDeleting}
+                autoComplete="off"
+              />
+            </div>
+
+            {userHasPassword && (
+              <div>
+                <p className="text-sm mb-2">Enter your password to confirm:</p>
+                <Input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your current password"
+                  disabled={isDeleting}
+                  autoComplete="current-password"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={closeDeleteModal} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleDeleteAccount}
+                loading={isDeleting}
+                disabled={
+                  isDeleting ||
+                  deleteConfirmText !== user?.email ||
+                  (userHasPassword && !deletePassword)
+                }
+              >
+                Delete
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </Modal>
     </DashboardLayout>
   );

@@ -127,7 +127,7 @@ const AnalyticsSkeleton = () => (
 // ── Main Component ────────────────────────────────────────────────────────
 
 const Analytics = () => {
-  useDocumentTitle('Analytics | Resume Ai Pro');
+  useDocumentTitle('Analytics | Maniesta Career OS');
 
   const { resumes = [], stats: resumeStats, loading: resumesLoading } = useResumeContext();
   const [dateRange, setDateRange] = useState('30days');

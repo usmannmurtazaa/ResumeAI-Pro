@@ -26,7 +26,7 @@ const NotFound = () => {
   usePageTitle({
     title: '404 - Page Not Found',
     description:
-      "The page you're looking for doesn't exist or has been moved. Navigate back to Resume Ai Pro.",
+      "The page you're looking for doesn't exist or has been moved. Navigate back to Maniesta Career OS.",
   });
 
   // FIXED: Safe back navigation

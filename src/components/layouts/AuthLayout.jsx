@@ -221,7 +221,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
                   <FiFileText className="h-6 w-6 text-white" />
                 </div>
-                <h1 className="text-3xl font-bold text-white">Resume Ai Pro</h1>
+                <h1 className="text-3xl font-bold text-white">Maniesta Career OS</h1>
                 <Badge variant="success" className="border-white/30 bg-white/20 text-white">
                   v2.5
                 </Badge>
@@ -289,7 +289,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-accent-500">
                   <FiFileText className="h-5 w-5 text-white" />
                 </div>
-                <h1 className="text-2xl font-bold gradient-text">Resume Ai Pro</h1>
+                <h1 className="text-2xl font-bold gradient-text">Maniesta Career OS</h1>
               </div>
               <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
                 {routeMeta.heroTitle}

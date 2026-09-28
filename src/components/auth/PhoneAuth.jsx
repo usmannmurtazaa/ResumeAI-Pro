@@ -27,7 +27,7 @@ const RESEND_COOLDOWN = 60; // seconds
 const SMS_RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
 const MAX_SMS_PER_HOUR = 5;
 const OTP_LOCKOUT_DURATION = 5 * 60 * 1000; // 5 minutes (milliseconds)
-const COOLDOWN_DURATION_EXTENDED = 5 * 60; // 5 minutes (seconds) — used when Firebase rate-limits
+const COOLDOWN_DURATION_EXTENDED = 5 * 60; // 5 minutes (seconds) - used when Firebase rate-limits
 
 // ── Custom Hook: SMS Rate Limiter ───────────────────────────────────────────
 

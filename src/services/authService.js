@@ -60,9 +60,14 @@ const COLLECTIONS = {
   sessions: 'sessions',
 };
 
-const SESSION_STORAGE_KEY = 'resumeaixpro.current-session-id';
+const SESSION_STORAGE_KEY = 'maniestacareeros.current-session-id';
 const BATCH_CHUNK_SIZE = 400;
 const MAX_SESSIONS_DISPLAY = 25;
+
+// Firebase Auth caps the `photoURL` field at roughly 2 KB. We validate
+// against the same limit client-side so that a caller never sends a value
+// that will be rejected with HTTP 400 by `accounts:update`.
+const MAX_AUTH_PHOTO_URL_LENGTH = 2048;
 
 const RESTRICTED_PROFILE_FIELDS = new Set([
   'role',
@@ -152,6 +157,21 @@ const sanitizeProfileData = (data = {}) =>
   Object.fromEntries(
     Object.entries(data).filter(([k, v]) => !RESTRICTED_PROFILE_FIELDS.has(k) && v !== undefined)
   );
+
+/**
+ * Whether a value is safe to forward to Firebase Auth's `updateProfile` as
+ * the `photoURL`. Firebase Auth stores the value verbatim and caps the field
+ * at roughly 2 KB; larger values, and values that are not `http(s)` URLs
+ * (notably the `data:image/...;base64,...` strings produced by
+ * `FileReader.readAsDataURL`), are rejected by the server with HTTP 400.
+ * Anything that fails this check should be skipped on the Auth side and -
+ * if appropriate - handled through Firebase Storage instead.
+ */
+const isSafeAuthPhotoURL = (value) => {
+  if (typeof value !== 'string') return false;
+  if (value.length === 0 || value.length > MAX_AUTH_PHOTO_URL_LENGTH) return false;
+  return /^https?:\/\//i.test(value);
+};
 
 const generateUniqueFileName = (name) => {
   const ext = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
@@ -294,7 +314,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
   const existing = await getDoc(ref);
 
   // Fields refreshed on every OAuth sign-in. `status` is intentionally NOT
-  // part of this set — it is admin-managed and must persist across sign-ins
+  // part of this set - it is admin-managed and must persist across sign-ins
   // so that a suspended account stays suspended.
   const base = {
     email: user.email || null,
@@ -308,7 +328,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
   };
 
   if (!existing.exists()) {
-    // New user — provision the document with the default status.
+    // New user - provision the document with the default status.
     await setDoc(ref, {
       ...base,
       role: 'user',
@@ -318,7 +338,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
     return true;
   }
 
-  // Existing user — update profile fields only. Do not touch `status`.
+  // Existing user - update profile fields only. Do not touch `status`.
   await updateDoc(ref, base);
   return false;
 };
@@ -548,10 +568,25 @@ export const authService = {
       const sanitized = sanitizeProfileData(data);
       const authUpdates = {};
       if (user?.uid === userId) {
-        if (sanitized.displayName !== undefined && sanitized.displayName !== user.displayName)
+        if (sanitized.displayName !== undefined && sanitized.displayName !== user.displayName) {
           authUpdates.displayName = sanitized.displayName;
-        if (sanitized.photoURL !== undefined && sanitized.photoURL !== user.photoURL)
+        }
+
+        // Only forward `photoURL` to Firebase Auth when it is an actual
+        // `http(s)` URL that fits within the field's size limit. Data URLs
+        // (from `FileReader.readAsDataURL`) and other non-URL values are
+        // skipped here - Firebase Auth responds with HTTP 400 for them, which
+        // would otherwise abort the entire profile save. The value still
+        // flows through to the Firestore write below so the app's own avatar
+        // display keeps working.
+        if (
+          sanitized.photoURL !== undefined &&
+          sanitized.photoURL !== user.photoURL &&
+          isSafeAuthPhotoURL(sanitized.photoURL)
+        ) {
           authUpdates.photoURL = sanitized.photoURL;
+        }
+
         if (Object.keys(authUpdates).length) await updateProfile(user, authUpdates);
       }
       await updateDoc(doc(db, COLLECTIONS.users, userId), {
@@ -681,41 +716,120 @@ export const authService = {
     return getProviderIds(auth.currentUser);
   },
 
+  /**
+   * Deletes the current user's account and their Firestore data.
+   *
+   * Idempotency contract:
+   *   1. Fetch `users/{uid}` first. Its presence signals "Firestore cleanup
+   *      has not yet completed".
+   *   2. If present, delete the dependent documents (resumes, notifications,
+   *      sessions, settings, subscriptions) in one pass. The user document is
+   *      deleted LAST so that a subsequent retry can detect a partial
+   *      completion and skip the cleanup step.
+   *   3. Attempt the Firebase Auth deletion. If it fails - most commonly with
+   *      `auth/requires-recent-login` for OAuth-only accounts - return
+   *      `{ success: false, partial: true }` so the caller can offer a retry.
+   *      On retry, `users/{uid}` is missing, so the cleanup is skipped and
+   *      only the Auth deletion is attempted.
+   *
+   * Residual risk (Spark plan, no Cloud Functions):
+   *   There is no server-side actor that can delete an Auth account without
+   *   the client's own token, and no server-side actor that can clean up
+   *   Firestore data after the token is gone. A user who abandons the retry
+   *   after step 2 leaves their Auth account behind while their Firestore
+   *   data is permanently gone. This is the best achievable on Spark; the
+   *   alternative - deleting Auth first - makes the Firestore data orphaned
+   *   and unrecoverable to anyone except an admin. The current order keeps
+   *   the user's identity, at the cost of the data, which is the safer
+   *   default for the account-holder's recovery options (they can sign in
+   *   again and start over cleanly).
+   */
   async deleteUserAccount(password) {
     try {
       const user = getCurrentUserOrThrow();
-      if (hasPasswordProvider(user)) await reauthenticateWithPassword(password);
 
-      const [resumes, notifs, sessions] = await Promise.all([
-        getDocs(query(collection(db, COLLECTIONS.resumes), where('userId', '==', user.uid))),
-        getDocs(query(collection(db, COLLECTIONS.notifications), where('userId', '==', user.uid))),
-        getDocs(collection(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions)),
-      ]);
+      // Pre-flight: password users re-authenticate with their password.
+      // OAuth-only users get a fresh ID token (best-effort) - this does not
+      // override `requires-recent-login` but does surface other stale-session
+      // issues before any destructive work.
+      if (hasPasswordProvider(user)) {
+        await reauthenticateWithPassword(password);
+      } else {
+        try {
+          await user.getIdToken(true);
+        } catch {
+          // Ignore - the Auth deletion step below will surface a hard error
+          // if the session truly cannot be refreshed.
+        }
+      }
 
-      try {
-        await setDoc(doc(db, COLLECTIONS.deletedAccounts, user.uid), {
-          userId: user.uid,
-          email: user.email,
-          deletedAt: serverTimestamp(),
-          reason: 'user_requested',
-        });
-      } catch {}
+      const userRef = doc(db, COLLECTIONS.users, user.uid);
+      const userSnap = await getDoc(userRef);
 
-      await deleteInBatches([
-        ...resumes.docs.map((d) => d.ref),
-        ...notifs.docs.map((d) => d.ref),
-        ...sessions.docs.map((d) => d.ref),
-        doc(db, COLLECTIONS.settings, user.uid),
-        doc(db, COLLECTIONS.subscriptions, user.uid),
-        doc(db, COLLECTIONS.users, user.uid),
-      ]);
+      if (userSnap.exists()) {
+        // First attempt (or an attempt where the cleanup did not complete).
+        const [resumes, notifs, sessions] = await Promise.all([
+          getDocs(query(collection(db, COLLECTIONS.resumes), where('userId', '==', user.uid))),
+          getDocs(
+            query(collection(db, COLLECTIONS.notifications), where('userId', '==', user.uid))
+          ),
+          getDocs(collection(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions)),
+        ]);
+
+        // Audit record - written before the destructive step so it survives
+        // the Firestore cleanup. On a retry this block is skipped, so the
+        // original deletion timestamp is preserved.
+        try {
+          await setDoc(doc(db, COLLECTIONS.deletedAccounts, user.uid), {
+            userId: user.uid,
+            email: user.email,
+            deletedAt: serverTimestamp(),
+            reason: 'user_requested',
+          });
+        } catch {}
+
+        // Delete everything except the user document.
+        await deleteInBatches([
+          ...resumes.docs.map((d) => d.ref),
+          ...notifs.docs.map((d) => d.ref),
+          ...sessions.docs.map((d) => d.ref),
+          doc(db, COLLECTIONS.settings, user.uid),
+          doc(db, COLLECTIONS.subscriptions, user.uid),
+        ]);
+
+        // Delete the user document last. Its presence is the durable signal
+        // that Firestore cleanup is still pending; once it is gone, a retry
+        // knows the cleanup is complete.
+        try {
+          await deleteDoc(userRef);
+        } catch {
+          // Best-effort. If this fails, a retry will still attempt the
+          // cleanup - the dependent documents are already gone, so the
+          // second cleanup pass is a no-op.
+        }
+      }
+      // Else: retry after a partial failure - nothing left to clean up in
+      // Firestore, proceed directly to the Auth deletion.
+
       safeTrackEvent('account_deleted', { userId: user.uid });
       clearStoredSessionId();
       await firebaseDeleteUser(user);
       toast.success('Account deleted');
       return { success: true };
     } catch (e) {
-      return { success: false, error: getErrorMessage(e), code: e.code };
+      const code = e?.code;
+      // If Auth deletion failed after the Firestore cleanup, mark the
+      // response so callers can offer a retry.
+      const partial =
+        code === 'auth/requires-recent-login' ||
+        code === 'auth/user-token-expired' ||
+        code === 'auth/network-request-failed';
+      return {
+        success: false,
+        error: getErrorMessage(e),
+        code,
+        ...(partial ? { partial: true } : {}),
+      };
     }
   },
 
@@ -762,7 +876,7 @@ export const authService = {
    * SECURITY NOTE:
    * The authoritative authorization check for this operation MUST live in
    * Firestore Security Rules (and/or a trusted backend). The client-side
-   * guard implemented below is defense-in-depth only — a determined attacker
+   * guard implemented below is defense-in-depth only - a determined attacker
    * can bypass it by calling the Firestore SDK directly from the console.
    *
    * Firestore rules for `users/{uid}` must therefore enforce that only a
@@ -785,7 +899,7 @@ export const authService = {
       }
 
       // 3. Defense-in-depth: block non-admin callers from the client SDK.
-      //    The real check lives in Firestore rules — see the docstring above.
+      //    The real check lives in Firestore rules - see the docstring above.
       const callerSnap = await getDoc(doc(db, COLLECTIONS.users, caller.uid));
       const callerRole = callerSnap.exists() ? callerSnap.data()?.role : null;
       if (callerRole !== 'admin') {

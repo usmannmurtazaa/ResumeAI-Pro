@@ -527,7 +527,7 @@ const Dashboard = () => {
       <Modal
         isOpen={showWelcomeModal}
         onClose={() => setShowWelcomeModal(false)}
-        title="Welcome to Resume Ai Pro!"
+        title="Welcome to Maniesta Career OS!"
         size="md"
       >
         <div className="space-y-4">

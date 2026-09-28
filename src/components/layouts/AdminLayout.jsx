@@ -895,7 +895,7 @@ const AdminLayout = ({ children, title, description }) => {
           {/* Footer */}
           <footer className="mt-auto border-t border-gray-200 px-6 py-4 dark:border-gray-800">
             <div className="flex flex-col items-center justify-between gap-2 text-center text-xs text-gray-500 sm:flex-row sm:text-left">
-              <p>© {new Date().getFullYear()} Resume Ai Pro Admin</p>
+              <p>© {new Date().getFullYear()} Maniesta Career OS Admin</p>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setShowSystemStatus(true)}

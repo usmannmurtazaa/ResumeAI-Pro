@@ -154,7 +154,7 @@ const ResumeBuilder = ({
 
   // ── Debounced Auto-Save ──────────────────────────────────────────────
   // The debounce lives here so that the async `onChange` callback fires only
-  // after ~1500ms of idle typing — not on every keystroke. The parent
+  // after ~1500ms of idle typing - not on every keystroke. The parent
   // (`Builder.jsx`) applies its own debounce before writing to Firestore,
   // so this layer protects against parent state churn / reset races.
 
@@ -284,7 +284,7 @@ const ResumeBuilder = ({
     return () => {
       mountedRef.current = false;
       // saveTimeoutRef holds a numeric timeout ID, not a DOM node. Reading
-      // `.current` in cleanup is safe — we explicitly want the latest value.
+      // `.current` in cleanup is safe - we explicitly want the latest value.
       // eslint-disable-next-line react-hooks/exhaustive-deps
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };

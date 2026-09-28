@@ -341,6 +341,9 @@ export const SettingsProvider = ({ children }) => {
   }, [user, applySettingsToApp]);
 
   // ── Sync Pending Changes ─────────────────────────────────────────────
+  // This is the ONLY path that writes settings to Firestore. Do not add an
+  // inline `updateDoc` inside `updateSetting` - that would duplicate the
+  // write (one immediate, one debounced) and double the quota cost.
 
   const syncPendingChanges = useDebouncedCallback(async () => {
     if (!user || !isOnline || Object.keys(pendingChanges).length === 0) return;
@@ -385,6 +388,8 @@ export const SettingsProvider = ({ children }) => {
         return;
       }
 
+      // Optimistic UI update - applies immediately, does not require a
+      // network round-trip.
       setSettings((prev) => ({ ...prev, [key]: value }));
       applySettingsToApp({ [key]: value });
 
@@ -397,21 +402,13 @@ export const SettingsProvider = ({ children }) => {
         return;
       }
 
+      // Queue the change. `syncPendingChanges` is the sole writer - it runs
+      // 2s after the last push, batches multiple rapid toggles into a single
+      // `updateDoc`, and handles the offline case by deferring until the
+      // connection is restored.
       setPendingChanges((prev) => ({ ...prev, [key]: value }));
-
-      if (isOnline) {
-        try {
-          await updateDoc(doc(db, 'settings', user.uid), {
-            [key]: value,
-            '_metadata.updatedAt': serverTimestamp(),
-          });
-        } catch {
-          toast.error('Failed to update setting');
-          setSettings((prev) => ({ ...prev, [key]: !value }));
-        }
-      }
     },
-    [user, isOnline, applySettingsToApp]
+    [user, applySettingsToApp]
   );
 
   const toggleSetting = useCallback(

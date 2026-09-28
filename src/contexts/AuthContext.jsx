@@ -221,6 +221,11 @@ export const AuthProvider = ({ children }) => {
   const warningTimerRef = useRef(null);
   const activityTimeoutRef = useRef(null);
   const lastActivityRef = useRef(Date.now());
+  // Tracks the UID that most recently went through `hydrateUserDocument`.
+  // Used to distinguish a real sign-in (null → uid, or uid1 → uid2) from a
+  // token-refresh event on the same session (uid → uid). Only real sign-ins
+  // should write the `lastLogin` audit fields. See `hydrateUserDocument`.
+  const lastHydratedUidRef = useRef(null);
 
   // ── State Helpers ─────────────────────────────────────────────────────
 
@@ -314,9 +319,26 @@ export const AuthProvider = ({ children }) => {
     }
   }, [clearAuthState, syncFirebaseUserState]);
 
+  // ── Hydrate User Document ────────────────────────────────────────────
+  // Reads the user doc on every auth event (so role / status / subscription
+  // stay fresh), but only writes the `lastLogin` audit fields on an actual
+  // sign-in. `onAuthStateChanged` fires on token refresh (≈ hourly) as well
+  // as on sign-in; without this gate the audit write would run once per
+  // hour for every idle signed-in user, consuming the Spark-plan write
+  // quota for no benefit.
+  //
+  // Fields that DO change across a session (displayName, photoURL,
+  // emailVerified, email) are written by their own dedicated service
+  // methods (`updateUserProfile`, `verifyEmail`, `updateUserEmail`,
+  // `sendVerificationEmail`), which target Firestore explicitly - so
+  // skipping the write here does not leave them stale.
   const hydrateUserDocument = useCallback(async (firebaseUser) => {
+    const isNewSignIn = lastHydratedUidRef.current !== firebaseUser.uid;
+    lastHydratedUidRef.current = firebaseUser.uid;
+
     const userDocRef = doc(db, COLLECTIONS.users, firebaseUser.uid);
     const existingUserSnapshot = await getDoc(userDocRef);
+
     if (existingUserSnapshot.exists()) {
       const existingData = existingUserSnapshot.data();
       const mergedData = {
@@ -326,23 +348,28 @@ export const AuthProvider = ({ children }) => {
         photoURL: existingData.photoURL ?? firebaseUser.photoURL ?? null,
         emailVerified: firebaseUser.emailVerified,
       };
-      try {
-        await updateDoc(userDocRef, {
-          email: mergedData.email,
-          displayName: mergedData.displayName,
-          photoURL: mergedData.photoURL,
-          emailVerified: firebaseUser.emailVerified,
-          lastLogin: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          'metadata.lastSeenAt': serverTimestamp(),
-        });
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Unable to update user session metadata', error);
+
+      if (isNewSignIn) {
+        try {
+          await updateDoc(userDocRef, {
+            email: mergedData.email,
+            displayName: mergedData.displayName,
+            photoURL: mergedData.photoURL,
+            emailVerified: firebaseUser.emailVerified,
+            lastLogin: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            'metadata.lastSeenAt': serverTimestamp(),
+          });
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Unable to update user session metadata', error);
+          }
         }
       }
+
       return { created: false, data: mergedData };
     }
+
     const newUserData = {
       email: firebaseUser.email ?? null,
       displayName: getDisplayName(firebaseUser),
@@ -464,6 +491,9 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       try {
         if (!firebaseUser) {
+          // Reset the "last hydrated UID" so that a subsequent sign-in for
+          // any user is treated as a fresh sign-in by `hydrateUserDocument`.
+          lastHydratedUidRef.current = null;
           clearAuthState();
           return;
         }
@@ -481,7 +511,7 @@ export const AuthProvider = ({ children }) => {
             userId: firebaseUser.uid,
             method: getPrimaryProviderId(firebaseUser),
           });
-          toast.success('Welcome to Resume Ai Pro!');
+          toast.success('Welcome to Maniesta Career OS!');
         }
         resetSessionTimer();
       } catch (error) {
@@ -838,6 +868,20 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  /**
+   * Deletes the current user's account.
+   *
+   * Forwards the password to `authService.deleteUserAccount`, which handles
+   * the reauthentication contract for password users. Password users must
+   * supply their password here; OAuth-only users may pass `undefined`.
+   *
+   * The service returns `{ success: false, partial: true }` when the
+   * Firestore cleanup succeeded but the Firebase Auth deletion failed. That
+   * flag is preserved on the thrown `Error` so callers can offer a
+   * retry-specific UI. The generic error toast is suppressed on partial
+   * failures for the same reason - the caller knows the user-facing message
+   * better than this layer does.
+   */
   const deleteAccount = useCallback(
     async (password) => {
       try {
@@ -846,6 +890,12 @@ export const AuthProvider = ({ children }) => {
         if (!result.success) {
           const error = new Error(result.error);
           error.code = result.code || 'auth/unknown';
+          // Preserve the partial-completion flag. Without this, a caller that
+          // needs to distinguish a clean failure from one that already
+          // removed the user's Firestore data has no way to do so.
+          if (result.partial) {
+            error.partial = true;
+          }
           throw error;
         }
         clearAuthState();
@@ -853,7 +903,13 @@ export const AuthProvider = ({ children }) => {
         return true;
       } catch (error) {
         setAuthError(error);
-        toast.error(getErrorMessage(error.code));
+        // Skip the generic toast on partial failures - the caller will
+        // present a specific, actionable message (typically with a retry
+        // button). A generic toast here would compete with it and confuse
+        // the user about what actually happened.
+        if (!error.partial) {
+          toast.error(getErrorMessage(error.code));
+        }
         throw error;
       }
     },

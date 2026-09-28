@@ -32,7 +32,7 @@ service cloud.firestore {
     //
     // A non-admin with Firestore `role: 'user'` and no claims still fails
     // exactly as before. Nothing about the security posture is loosened:
-    // a user cannot promote themselves — the `users/{userId}` update rule
+    // a user cannot promote themselves - the `users/{userId}` update rule
     // still rejects any write that touches `role`.
     // ────────────────────────────────────────────────────────────────────
 

@@ -66,6 +66,20 @@ const SCORE_FILTERS = [
   { value: 'needs-work', label: 'Needs Work (<60%)' },
 ];
 
+// Static lookup for the grid action buttons. Tailwind 3's JIT only emits
+// classes it can see as literal substrings in the source, so a dynamic
+// template like `bg-${color}-50` produces no CSS. Every class in this map
+// appears verbatim so the stylesheet contains it.
+const ACTION_BUTTON_TONES = {
+  primary:
+    'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30',
+  purple:
+    'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30',
+  green:
+    'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30',
+  blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30',
+};
+
 // ── Utility ───────────────────────────────────────────────────────────────
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -226,8 +240,7 @@ const ResumeGridCard = React.memo(
                   disabled={loading}
                   className={cn(
                     'flex-1 p-2 rounded-lg transition-colors disabled:opacity-50',
-                    `bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400`,
-                    `hover:bg-${color}-100 dark:hover:bg-${color}-900/30`
+                    ACTION_BUTTON_TONES[color] || ACTION_BUTTON_TONES.primary
                   )}
                 >
                   <Icon className="w-4 h-4 mx-auto" />

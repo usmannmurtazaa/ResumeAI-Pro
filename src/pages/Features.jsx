@@ -139,7 +139,7 @@ const FEATURES = [
     icon: FiMessageCircle,
     title: 'Support',
     description:
-      'Access to a comprehensive help center, video tutorials, and email support to help you get the most out of Resume Ai Pro.',
+      'Access to a comprehensive help center, video tutorials, and email support to help you get the most out of Maniesta Career OS.',
     color: 'from-teal-500 to-cyan-500',
     details: [
       'Help center with guides',
@@ -233,7 +233,7 @@ const Features = () => {
               Everything You Need to <span className="gradient-text">Land the Job</span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              From AI-powered writing to ATS optimization, Resume Ai Pro gives you all the tools to
+              From AI-powered writing to ATS optimization, Maniesta Career OS gives you all the tools to
               create a standout resume.
             </p>
           </motion.div>

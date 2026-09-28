@@ -101,7 +101,7 @@ const Login = () => {
                 <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
                   <FiFileText className="w-6 h-6 text-white" />
                 </div>
-                <h1 className="text-3xl font-bold text-white">Resume Ai Pro</h1>
+                <h1 className="text-3xl font-bold text-white">Maniesta Career OS</h1>
                 <Badge variant="success" className="bg-white/20 text-white border-white/30">
                   v2.5
                 </Badge>
@@ -180,35 +180,14 @@ const Login = () => {
                 <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-accent-500 rounded-xl flex items-center justify-center">
                   <FiFileText className="w-5 h-5 text-white" />
                 </div>
-                <h1 className="text-2xl font-bold gradient-text">Resume Ai Pro</h1>
+                <h1 className="text-2xl font-bold gradient-text">Maniesta Career OS</h1>
               </div>
               <h2 className="text-xl font-semibold">Welcome Back!</h2>
               <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">Sign in to continue</p>
             </div>
           </div>
 
-          <div className="hidden lg:block mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-              Sign in to your account
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Welcome back! Please enter your details
-            </p>
-          </div>
-
           <LoginForm redirectTo={fromLocation} />
-
-          <div className="mt-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">
-              Don't have an account?{' '}
-              <Link
-                to="/signup"
-                className="text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium hover:underline"
-              >
-                Create free account
-              </Link>
-            </p>
-          </div>
 
           {/* Demo credentials only in development */}
           {IS_DEVELOPMENT && (
@@ -218,19 +197,6 @@ const Login = () => {
               </p>
             </div>
           )}
-
-          <div className="mt-6 text-center text-xs text-gray-400">
-            <p>
-              By continuing, you agree to our{' '}
-              <Link to="/terms" className="text-primary-500 hover:text-primary-600">
-                Terms
-              </Link>{' '}
-              and{' '}
-              <Link to="/privacy" className="text-primary-500 hover:text-primary-600">
-                Privacy Policy
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>

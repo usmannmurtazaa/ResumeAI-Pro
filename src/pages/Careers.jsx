@@ -221,7 +221,7 @@ const Careers = () => {
   usePageTitle({
     title: 'Careers - Join Our Team',
     description:
-      'Join Resume Ai Pro and help millions of job seekers land their dream jobs. View open positions in engineering, product, design, and more.',
+      'Join Maniesta Career OS and help millions of job seekers land their dream jobs. View open positions in engineering, product, design, and more.',
   });
 
   const [selectedDepartment, setSelectedDepartment] = useState('all');

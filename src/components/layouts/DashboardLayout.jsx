@@ -618,7 +618,7 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
                     onClick={() => setSidebarOpen(false)}
                   >
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500" />
-                    <span className="text-lg font-bold gradient-text">Resume Ai Pro</span>
+                    <span className="text-lg font-bold gradient-text">Maniesta Career OS</span>
                   </Link>
                   <button
                     onClick={() => setSidebarOpen(false)}
@@ -999,7 +999,7 @@ const DashboardLayout = ({ children, title, description, showWelcome = true }) =
 
           <footer className="border-t border-gray-200 px-6 py-4 dark:border-gray-800">
             <div className="flex flex-col items-center justify-between gap-2 text-center text-xs text-gray-500 sm:flex-row sm:text-left">
-              <p>© {new Date().getFullYear()} Resume Ai Pro</p>
+              <p>© {new Date().getFullYear()} Maniesta Career OS</p>
               <div className="flex items-center gap-4">
                 <Link to="/privacy" className="hover:text-primary-500">
                   Privacy

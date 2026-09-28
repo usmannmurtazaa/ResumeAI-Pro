@@ -80,7 +80,12 @@ const useScrollDirection = () => {
 const isTypingTarget = (target) => {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    target.isContentEditable
+  );
 };
 
 const useKeyboardShortcut = (key, callback, options = {}) => {
@@ -547,7 +552,7 @@ const Navbar = () => {
               <Link
                 to="/"
                 className="flex items-center gap-3 group flex-shrink-0"
-                aria-label="Resume Ai Pro Home"
+                aria-label="Maniesta Career OS Home"
               >
                 <motion.div
                   className="relative"
@@ -560,7 +565,7 @@ const Navbar = () => {
                   </div>
                 </motion.div>
                 <span className="hidden sm:block font-bold text-lg gradient-text">
-                  Resume Ai Pro
+                  Maniesta Career OS
                 </span>
               </Link>
 
@@ -792,7 +797,25 @@ const Navbar = () => {
           </div>
 
           {/* Mobile Menu */}
-          <AnimatePresence>
+          <AnimatePresence
+            onExitComplete={() => {
+              // When the mobile panel unmounts, any element it contained
+              // may still hold document focus. Blur it so the browser is
+              // allowed to fully hide the panel (avoids the
+              // "aria-hidden on an element with a focused descendant"
+              // warning) and so Tab navigation starts from the button
+              // again. `onExitComplete` is a prop of AnimatePresence, not
+              // of the child motion.div - putting it on the child is a
+              // no-op and produces a React warning.
+              const active = document.activeElement;
+              if (
+                active instanceof HTMLElement &&
+                mobileNavPanelRef.current?.contains(active)
+              ) {
+                active.blur();
+              }
+            }}
+          >
             {isMenuOpen && (
               <motion.div
                 ref={mobileNavPanelRef}
@@ -804,15 +827,6 @@ const Navbar = () => {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
-                onExitComplete={() => {
-                  const active = document.activeElement;
-                  if (
-                    active instanceof HTMLElement &&
-                    mobileNavPanelRef.current?.contains(active)
-                  ) {
-                    active.blur();
-                  }
-                }}
                 className="lg:hidden py-2 border-t border-gray-200 bg-white/98 dark:border-gray-700 dark:bg-gray-900/98 max-h-[calc(100vh-4rem)] overflow-y-auto"
               >
                 <div className="space-y-1 pb-2">

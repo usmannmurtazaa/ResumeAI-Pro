@@ -6,7 +6,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import './styles/globals.css';
 
 // ── Environment Constants ───────────────────────────────────────────────────
-const APP_NAME = process.env.REACT_APP_NAME || 'Resume Ai Pro';
+const APP_NAME = process.env.REACT_APP_NAME || 'Maniesta Career OS';
 const APP_VERSION = process.env.REACT_APP_VERSION || '2.5.0';
 const APP_ENVIRONMENT = process.env.REACT_APP_ENVIRONMENT || process.env.NODE_ENV || 'development';
 const SENTRY_DSN = process.env.REACT_APP_SENTRY_DSN;
@@ -78,7 +78,7 @@ const initializeSentry = () => {
     Sentry.init({
       dsn: SENTRY_DSN,
       environment: APP_ENVIRONMENT,
-      release: `resumeaixpro@${APP_VERSION}`,
+      release: `maniestacareeros@${APP_VERSION}`,
       tracesSampleRate: parseNumberEnv(
         process.env.REACT_APP_SENTRY_TRACES_SAMPLE_RATE,
         IS_PRODUCTION ? 0.1 : 1

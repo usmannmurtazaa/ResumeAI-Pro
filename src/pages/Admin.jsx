@@ -34,7 +34,7 @@ const AdminHome = () => (
 const Admin = () => {
   const { user, loading, initializing, hasRole } = useAuth();
 
-  useDocumentTitle('Admin | Resume Ai Pro');
+  useDocumentTitle('Admin | Maniesta Career OS');
 
   if (loading || initializing) {
     return (

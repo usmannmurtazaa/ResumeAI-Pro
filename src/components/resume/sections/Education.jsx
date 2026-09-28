@@ -102,7 +102,7 @@ const Education = ({ data = [], onChange, onValidationChange }) => {
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
-  const [sortOrder, setSortOrder] = useState('date');
+  const [sortOrder, setSortOrder] = useState('custom');
   const [viewMode, setViewMode] = useState('detailed');
 
   const mountedRef = useRef(true);
@@ -146,20 +146,27 @@ const Education = ({ data = [], onChange, onValidationChange }) => {
   }, [data, setValue]);
 
   // ── Handle Save ────────────────────────────────────────────────────────
+  // The sort is a mutation, not a display preference: it rewrites the array
+  // before persisting it. When the user has manually reordered entries by
+  // dragging or with the chevron buttons, `sortOrder` is set to `'custom'`
+  // so the save preserves their order instead of clobbering it.
 
   const handleSave = useCallback(
     (formData) => {
       if (!mountedRef.current) return;
 
-      const sorted = [...(formData || [])].sort((a, b) => {
-        if (sortOrder === 'date') {
-          return (b.endDate || '9999').localeCompare(a.endDate || '9999');
-        }
-        if (sortOrder === 'institution')
-          return (a.institution || '').localeCompare(b.institution || '');
-        if (sortOrder === 'degree') return (a.degree || '').localeCompare(b.degree || '');
-        return 0;
-      });
+      const sorted =
+        sortOrder === 'custom'
+          ? [...(formData || [])]
+          : [...(formData || [])].sort((a, b) => {
+              if (sortOrder === 'date') {
+                return (b.endDate || '9999').localeCompare(a.endDate || '9999');
+              }
+              if (sortOrder === 'institution')
+                return (a.institution || '').localeCompare(b.institution || '');
+              if (sortOrder === 'degree') return (a.degree || '').localeCompare(b.degree || '');
+              return 0;
+            });
 
       onChange?.(sorted);
       setAutoSaveStatus('saved');
@@ -236,10 +243,13 @@ const Education = ({ data = [], onChange, onValidationChange }) => {
     });
   }, []);
 
+  // Manual reorder (chevron up / down). Switch to `'custom'` so the
+  // subsequent autosave does not re-sort and undo the move.
   const moveItem = useCallback(
     (from, to) => {
       if (to >= 0 && to < fields.length) {
         move(from, to);
+        setSortOrder('custom');
         toast.success('Order updated');
       }
     },
@@ -256,11 +266,15 @@ const Education = ({ data = [], onChange, onValidationChange }) => {
   );
 
   // ── Drag and Drop ──────────────────────────────────────────────────────
+  // Same reasoning as `moveItem`: after a drag, switch the sort mode to
+  // `'custom'` so the next autosave does not re-sort the array and undo
+  // the user's reorder.
 
   const onDragEnd = useCallback(
     (result) => {
       if (!result.destination) return;
       move(result.source.index, result.destination.index);
+      setSortOrder('custom');
     },
     [move]
   );
@@ -320,6 +334,7 @@ const Education = ({ data = [], onChange, onValidationChange }) => {
             onChange={(e) => setSortOrder(e.target.value)}
             className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50"
           >
+            <option value="custom">Custom Order</option>
             <option value="date">By Date</option>
             <option value="institution">By Institution</option>
             <option value="degree">By Degree</option>

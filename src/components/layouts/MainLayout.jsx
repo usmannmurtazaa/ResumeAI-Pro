@@ -185,7 +185,7 @@ const MainLayout = ({
   const headerBackdropFilter = useMotionTemplate`blur(${headerBlurAmount}px)`;
 
   const resolvedTitle = useMemo(
-    () => (pageTitle ? `${pageTitle} | Resume Ai Pro` : 'Resume Ai Pro'),
+    () => (pageTitle ? `${pageTitle} | Maniesta Career OS` : 'Maniesta Career OS'),
     [pageTitle]
   );
 
@@ -349,7 +349,7 @@ const MainLayout = ({
         {pageDescription && <meta property="og:description" content={pageDescription} />}
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="Resume Ai Pro" />
+        <meta property="og:site_name" content="Maniesta Career OS" />
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 

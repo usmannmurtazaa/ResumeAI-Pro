@@ -48,31 +48,31 @@ const CONTACT_INFO = [
 const SOCIAL_LINKS = [
   {
     icon: FiTwitter,
-    href: 'https://twitter.com/resumeaixpro',
+    href: 'https://twitter.com/maniestacareeros',
     label: 'Twitter',
     color: 'hover:text-blue-400',
   },
   {
     icon: FiLinkedin,
-    href: 'https://linkedin.com/company/resumeaixpro',
+    href: 'https://linkedin.com/company/maniestacareeros',
     label: 'LinkedIn',
     color: 'hover:text-blue-600',
   },
   {
     icon: FiGithub,
-    href: 'https://github.com/resumeaixpro',
+    href: 'https://github.com/maniestacareeros',
     label: 'GitHub',
     color: 'hover:text-gray-900 dark:hover:text-white',
   },
   {
     icon: FiFacebook,
-    href: 'https://facebook.com/resumeaixpro',
+    href: 'https://facebook.com/maniestacareeros',
     label: 'Facebook',
     color: 'hover:text-blue-600',
   },
   {
     icon: FiInstagram,
-    href: 'https://instagram.com/resumeaixpro',
+    href: 'https://instagram.com/maniestacareeros',
     label: 'Instagram',
     color: 'hover:text-pink-500',
   },
@@ -118,7 +118,7 @@ const Contact = () => {
   usePageTitle({
     title: 'Contact Us',
     description:
-      "Get in touch with Resume Ai Pro. Send us a message and we'll respond within 24 hours.",
+      "Get in touch with Maniesta Career OS. Send us a message and we'll respond within 24 hours.",
   });
 
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);

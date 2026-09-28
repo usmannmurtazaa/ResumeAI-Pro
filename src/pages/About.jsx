@@ -54,7 +54,7 @@ const MILESTONES = [
   {
     year: '2024',
     title: 'The Beginning',
-    description: 'Resume Ai Pro was conceptualized to solve the ATS challenge',
+    description: 'Maniesta Career OS was conceptualized to solve the ATS challenge',
   },
   {
     year: '2025',
@@ -121,7 +121,7 @@ const About = () => {
                 About Us
               </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-                Empowering Careers with <span className="gradient-text">Resume Ai Pro</span>
+                Empowering Careers with <span className="gradient-text">Maniesta Career OS</span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
                 We're on a mission to help job seekers land their dream jobs with professional,
@@ -177,7 +177,7 @@ const About = () => {
                 </h2>
                 <div className="space-y-4 text-gray-700 dark:text-gray-300 leading-relaxed">
                   <p>
-                    Created by <strong>Usman Murtaza</strong>, Resume Ai Pro was born from a
+                    Created by <strong>Usman Murtaza</strong>, Maniesta Career OS was born from a
                     frustrating observation: countless qualified candidates were being filtered out
                     by Applicant Tracking Systems before a human ever saw their resume.
                   </p>
@@ -187,7 +187,7 @@ const About = () => {
                     project grew into a platform used by job seekers around the world.
                   </p>
                   <p>
-                    Today, Resume Ai Pro combines AI technology with professional design to ensure
+                    Today, Maniesta Career OS combines AI technology with professional design to ensure
                     your resume not only passes ATS filters but also impresses hiring managers.
                   </p>
                 </div>
@@ -246,7 +246,7 @@ const About = () => {
                 What Drives <span className="gradient-text">Us Forward</span>
               </h2>
               <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                Our core values shape everything we do at Resume Ai Pro
+                Our core values shape everything we do at Maniesta Career OS
               </p>
             </motion.div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
