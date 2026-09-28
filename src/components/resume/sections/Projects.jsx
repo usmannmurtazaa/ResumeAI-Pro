@@ -252,7 +252,7 @@ const Projects = ({ data = [], onChange, onValidationChange }) => {
     // Compute the percentage locally and use the same value for both the
     // state update and the onValidationChange callback. Reading the
     // `completionPercentage` state here would give the value from the
-    // previous render — the callback would always lag one edit behind — and
+    // previous render - the callback would always lag one edit behind - and
     // adding that state to the dependency array would cause an infinite
     // loop (the effect updates the state it would be watching).
     const nextCompletion = total > 0 ? Math.round((completed / total) * 100) : 0;

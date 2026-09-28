@@ -75,7 +75,7 @@ const Button = forwardRef(
       // NOTE: `onClick` is intentionally NOT destructured. Destructuring it
       // would remove it from the `...props` rest object and, since it is
       // never referenced again in the body, it would be silently dropped
-      // from the rendered element — which is exactly the bug this file
+      // from the rendered element - which is exactly the bug this file
       // previously had. Letting it flow through `...props` forwards it to
       // the underlying <button> / <motion.a> the same way every other
       // pass-through attribute (aria-label, title, name, data-*, etc.) is.
@@ -176,7 +176,7 @@ export const IconButton = forwardRef(
     // The shell stays the compact `icon` shape for every IconButton so
     // padding, rounding, and hit-target stay consistent across the app.
     // The caller's `size` is forwarded as `iconSize`, which controls the
-    // glyph's dimensions only — that is the part a caller actually needs
+    // glyph's dimensions only - that is the part a caller actually needs
     // to change (a large close button in a modal, a small inline action
     // in a table row, etc.).
     <Button

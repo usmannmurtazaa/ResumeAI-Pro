@@ -57,7 +57,7 @@ rl.question('\nEnter choice (1-3): ', (choice) => {
         break;
 
       default:
-        // Unreachable while `deployOptions` and this switch stay in sync —
+        // Unreachable while `deployOptions` and this switch stay in sync -
         // the `!selected` guard above already rejects any choice outside the
         // three known values. The case is still required so that a future
         // addition to `deployOptions` that forgets to add a matching case

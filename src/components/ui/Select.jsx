@@ -223,7 +223,7 @@ export const MultiSelect = forwardRef(
         <div className="relative">
           {/*
             The forwarded ref attaches to the trigger button. That button is
-            the control's focusable element — the same target a caller would
+            the control's focusable element - the same target a caller would
             expect from a select-like component: focus(), measure(), or
             scrollIntoView() on the ref reaches the interactive surface, not
             the surrounding wrapper. The wrapper carries the internal

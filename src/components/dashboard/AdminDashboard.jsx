@@ -695,7 +695,7 @@ const AdminDashboard = () => {
                       <div className="flex gap-1">
                         <button
                           onClick={() =>
-                            toast(`${user.displayName || 'User'} — ${user.email || 'no email'}`, {
+                            toast(`${user.displayName || 'User'} - ${user.email || 'no email'}`, {
                               icon: 'ℹ️',
                               duration: 4000,
                             })

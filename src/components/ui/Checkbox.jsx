@@ -49,7 +49,7 @@ const Checkbox = forwardRef(
           handler. The <input> below is the sole keyboard entry point; the
           browser natively toggles a focused checkbox on Space and fires the
           change event. Any manual toggle handler on the label would double
-          up with that native behaviour — the two toggles cancel each other
+          up with that native behaviour - the two toggles cancel each other
           out, and the checkbox appears to ignore the user's keypress.
         */}
         <label

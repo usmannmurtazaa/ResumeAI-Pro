@@ -87,7 +87,7 @@ const FORM_FIELDS = [
     label: 'Website/Portfolio',
     icon: FiGlobe,
     placeholder: 'https://johndoe.com',
-    // The `\/` escapes outside character classes are required — without
+    // The `\/` escapes outside character classes are required - without
     // them, the `/` would terminate the regex literal. The escapes that
     // used to appear inside `[...]` were unnecessary: `.`, `/`, and a
     // trailing `-` are all literal inside a character class.
@@ -144,7 +144,7 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
 
   // `handleSubmit` is intentionally not destructured here. The component
   // does not render a <form> and does not use react-hook-form's submit
-  // pipeline — saving is performed by `handleManualSave` and the debounced
+  // pipeline - saving is performed by `handleManualSave` and the debounced
   // autosave, both of which call `trigger()` directly for validation.
   const {
     register,

@@ -828,7 +828,7 @@ export const detectWeakVerbs = (text) => {
  * constant (rather than inline in `export default`) so stack traces,
  * DevTools, and editor auto-import show the symbol as `atsKeywordsApi`
  * instead of `<anonymous>`. Consumers can import either the default export
- * or the named export — both refer to the same object.
+ * or the named export - both refer to the same object.
  */
 const atsKeywordsApi = {
   industryKeywords,

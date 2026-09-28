@@ -25,7 +25,7 @@ const BASE_TEXTAREA =
 
 // Focus-ring classes are applied on top of the active variant, so every
 // standard variant shows a visible focus indicator. Do NOT rewrite this as
-// `VARIANTS[variant] || VARIANTS.default + ' focus:...'` — the `+` operator
+// `VARIANTS[variant] || VARIANTS.default + ' focus:...'` - the `+` operator
 // binds tighter than `||`, so the focus classes would only be applied in
 // the fallback branch (i.e. for an unknown variant name), and every known
 // variant would lose its focus ring.

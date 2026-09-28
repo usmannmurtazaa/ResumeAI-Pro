@@ -462,7 +462,7 @@ const PhoneAuth = ({
   // Feedback contract (mirrors GoogleAuthButton):
   //   The component delegates post-sign-in user feedback to the caller via
   //   `onSuccess`. If the caller provides `onSuccess`, this component does
-  //   NOT emit a success toast — the caller's handler is the single
+  //   NOT emit a success toast - the caller's handler is the single
   //   feedback surface and does its own redirect + toast. The local toast
   //   only fires when the caller did not provide `onSuccess`, so that a
   //   hypothetical consumer who mounts the modal in isolation still gets a

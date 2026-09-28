@@ -122,7 +122,7 @@ const Card = forwardRef(
     //                                 React never remounts the node)
     // • animate=true  + custom comp → motion.div (fallback; matches prior
     //                                 behaviour). We deliberately do NOT use
-    //                                 motion.create(Component) here — that
+    //                                 motion.create(Component) here - that
     //                                 would instantiate a new wrapper on
     //                                 every render and remount the DOM
     //                                 node along with any state inside it.

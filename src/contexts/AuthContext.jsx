@@ -213,7 +213,7 @@ export const AuthProvider = ({ children }) => {
   // Fields that DO change across a session (displayName, photoURL,
   // emailVerified, email) are written by their own dedicated service
   // methods (`updateUserProfile`, `verifyEmail`, `updateUserEmail`,
-  // `sendVerificationEmail`), which target Firestore explicitly — so
+  // `sendVerificationEmail`), which target Firestore explicitly - so
   // skipping the write here does not leave them stale.
   const hydrateUserDocument = useCallback(async (firebaseUser) => {
     const isNewSignIn = lastHydratedUidRef.current !== firebaseUser.uid;
@@ -394,7 +394,7 @@ export const AuthProvider = ({ children }) => {
             userId: firebaseUser.uid,
             method: getPrimaryProviderId(firebaseUser),
           });
-          // No toast here — provider-layer success feedback is delegated to
+          // No toast here - provider-layer success feedback is delegated to
           // the caller. The `toast.success('Welcome to Resume Ai Pro!')`
           // that used to live here fired on top of the caller's own welcome
           // toast.
@@ -484,9 +484,9 @@ export const AuthProvider = ({ children }) => {
   //   The provider layer updates state and propagates errors by throwing.
   //   It does NOT emit `toast.*` for operations whose callers already
   //   provide their own toasts. Exceptions:
-  //     • `logout` — the context is the single feedback surface; callers
+  //     • `logout` - the context is the single feedback surface; callers
   //       (Navbar, Settings, SessionTimeout) do not toast on success.
-  //     • `deleteAccount` — the modal closes on success, so the context
+  //     • `deleteAccount` - the modal closes on success, so the context
   //       is the single feedback surface; the error toast is already
   //       suppressed on partial failures.
   //   Any future method added here should follow the same rule: toast
@@ -594,7 +594,7 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
       clearAuthState();
-      // Provider-layer toast — see the toast contract above. Callers do not
+      // Provider-layer toast - see the toast contract above. Callers do not
       // consistently toast on logout success, so the provider is the single
       // feedback surface for this action.
       toast.success('Logged out successfully.');
@@ -757,7 +757,7 @@ export const AuthProvider = ({ children }) => {
    * Firestore cleanup succeeded but the Firebase Auth deletion failed. That
    * flag is preserved on the thrown `Error` so callers can offer a
    * retry-specific UI. The generic error toast is suppressed on partial
-   * failures for the same reason — the caller knows the user-facing message
+   * failures for the same reason - the caller knows the user-facing message
    * better than this layer does.
    */
   const deleteAccount = useCallback(
@@ -777,13 +777,13 @@ export const AuthProvider = ({ children }) => {
           throw error;
         }
         clearAuthState();
-        // Provider-layer toast — the delete modal closes on success, so
+        // Provider-layer toast - the delete modal closes on success, so
         // the provider is the single feedback surface for this action.
         toast.success('Account deleted successfully.');
         return true;
       } catch (error) {
         setAuthError(error);
-        // Skip the generic toast on partial failures — the caller will
+        // Skip the generic toast on partial failures - the caller will
         // present a specific, actionable message (typically with a retry
         // button). A generic toast here would compete with it and confuse
         // the user about what actually happened.

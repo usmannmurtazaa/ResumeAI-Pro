@@ -59,7 +59,7 @@ export const useMediaQuery = (query, options = {}) => {
     // would (a) require the ESLint `react-hooks/exhaustive-deps` warning to
     // be suppressed, and (b) create an infinite-loop hazard the moment
     // someone "fixes" the warning by adding `matches` to the dependency
-    // array — the effect would re-run on every state update it itself
+    // array - the effect would re-run on every state update it itself
     // produces. Passing a function to `setMatches` receives the latest
     // state as its argument and React bails out of the re-render when the
     // value is unchanged.

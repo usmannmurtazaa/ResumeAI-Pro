@@ -603,7 +603,7 @@ const scoreProjects = (data) => {
   projects.forEach((proj) => {
     if (proj.technologies?.trim()) hasTech++;
     if (proj.link || proj.github) hasLink++;
-    // `hasDescription` was previously counted here but never read — the score
+    // `hasDescription` was previously counted here but never read - the score
     // uses only `techRatio` and `hasLink`. If project description presence
     // should influence the score in future, add it deliberately and update
     // the thresholds.
@@ -1125,7 +1125,7 @@ const generateRecommendations = (categories, data, industry) => {
  * constant (rather than inline in `export default { ... }`) so stack traces,
  * DevTools, and editor auto-import show the symbol as `atsScoring` instead
  * of `<anonymous>`. Consumers can import either the default export or the
- * named export — both refer to the same object.
+ * named export - both refer to the same object.
  */
 const atsScoring = {
   calculateDetailedScore,

@@ -34,7 +34,7 @@ const Radio = forwardRef(
     // When this Radio is used inside a RadioGroup, the group owns the
     // `name` / `checked` / `error` state and only needs the selected value
     // from each option. The DOM event is deliberately not forwarded to the
-    // group's `onChange` — this is why the inline arrow takes no arguments.
+    // group's `onChange` - this is why the inline arrow takes no arguments.
     // Outside a group, the caller's own `onChange` is forwarded unchanged
     // and continues to receive the native event object.
     const handleChange = context ? () => context.onChange(value) : onChange;

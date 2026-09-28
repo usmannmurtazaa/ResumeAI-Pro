@@ -72,7 +72,7 @@ const Tabs = ({
   const tabListRef = useRef(null);
   const prefersReducedMotion = useReducedMotion();
 
-  // `layoutId` is a globally unique identifier in Framer Motion — two
+  // `layoutId` is a globally unique identifier in Framer Motion - two
   // simultaneously-mounted Tabs instances that share the same string will
   // animate their indicators into each other. Compose a per-instance value
   // so each Tabs gets its own layout namespace.

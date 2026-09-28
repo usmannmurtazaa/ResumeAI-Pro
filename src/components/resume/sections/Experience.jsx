@@ -399,8 +399,8 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
   // ── Animation Variants ────────────────────────────────────────────────
   // The per-item variants are applied to each `<motion.div>` inside the
   // Droppable. The previously-declared `containerVariants` set was dead
-  // code — the outer container is a plain `<div>`, not a `motion.div` with
-  // `variants` — and has been removed.
+  // code - the outer container is a plain `<div>`, not a `motion.div` with
+  // `variants` - and has been removed.
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },

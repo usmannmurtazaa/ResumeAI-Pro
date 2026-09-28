@@ -56,10 +56,10 @@ import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebas
 //
 // The remaining `toast.success(...)` calls are for operations where the
 // service is currently the ONLY feedback surface in the codebase:
-//   • `verifyEmail` — no caller in the current tree invokes this method;
+//   • `verifyEmail` - no caller in the current tree invokes this method;
 //     `VerifyEmail.jsx` uses `applyActionCode` directly.
-//   • `uploadProfileImage` / `deleteProfileImage` — no visible caller.
-//   • `revokeSession` / `revokeAllOtherSessions` — no visible caller.
+//   • `uploadProfileImage` / `deleteProfileImage` - no visible caller.
+//   • `revokeSession` / `revokeAllOtherSessions` - no visible caller.
 // Before removing any of these, wire the caller with its own toast.
 import toast from 'react-hot-toast';
 import { auth, db, storage, logAnalyticsEvent } from './firebase';
@@ -179,8 +179,8 @@ const sanitizeProfileData = (data = {}) =>
  * at roughly 2 KB; larger values, and values that are not `http(s)` URLs
  * (notably the `data:image/...;base64,...` strings produced by
  * `FileReader.readAsDataURL`), are rejected by the server with HTTP 400.
- * Anything that fails this check should be skipped on the Auth side and —
- * if appropriate — handled through Firebase Storage instead.
+ * Anything that fails this check should be skipped on the Auth side and -
+ * if appropriate - handled through Firebase Storage instead.
  */
 const isSafeAuthPhotoURL = (value) => {
   if (typeof value !== 'string') return false;
@@ -329,7 +329,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
   const existing = await getDoc(ref);
 
   // Fields refreshed on every OAuth sign-in. `status` is intentionally NOT
-  // part of this set — it is admin-managed and must persist across sign-ins
+  // part of this set - it is admin-managed and must persist across sign-ins
   // so that a suspended account stays suspended.
   const base = {
     email: user.email || null,
@@ -343,7 +343,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
   };
 
   if (!existing.exists()) {
-    // New user — provision the document with the default status.
+    // New user - provision the document with the default status.
     await setDoc(ref, {
       ...base,
       role: 'user',
@@ -353,7 +353,7 @@ const syncUserDocAfterProviderAuth = async (user, providerName, isNewUser) => {
     return true;
   }
 
-  // Existing user — update profile fields only. Do not touch `status`.
+  // Existing user - update profile fields only. Do not touch `status`.
   await updateDoc(ref, base);
   return false;
 };
@@ -562,14 +562,14 @@ export const authService = {
   // only the caller's own document, so Firestore rejects it with
   // `Missing or insufficient permissions`. The correct approach is to write
   // directly to the caller's own uid when it is available. When it is not
-  // (link opened in a different browser), the Firestore write is skipped —
+  // (link opened in a different browser), the Firestore write is skipped -
   // the Auth-side flag is already set, and `hydrateUserDocument` will sync
   // the Firestore document on the next sign-in.
   //
   // NOTE: `VerifyEmail.jsx` currently bypasses this method and calls
   // `applyActionCode` directly. If that changes, the Firestore-side
   // `emailVerified` write here becomes live and the toast below should be
-  // reviewed against whichever page calls this — it is currently the sole
+  // reviewed against whichever page calls this - it is currently the sole
   // feedback surface for the method.
   async verifyEmail(oobCode) {
     try {
@@ -592,7 +592,7 @@ export const authService = {
           } catch (error) {
             // A Firestore failure here does not invalidate the Auth-side
             // verification. Surface it in development without failing the
-            // whole call — the caller's toast and redirect should still fire.
+            // whole call - the caller's toast and redirect should still fire.
             if (process.env.NODE_ENV === 'development') {
               console.warn('Unable to update Firestore emailVerified flag', error);
             }
@@ -626,7 +626,7 @@ export const authService = {
         // Only forward `photoURL` to Firebase Auth when it is an actual
         // `http(s)` URL that fits within the field's size limit. Data URLs
         // (from `FileReader.readAsDataURL`) and other non-URL values are
-        // skipped here — Firebase Auth responds with HTTP 400 for them, which
+        // skipped here - Firebase Auth responds with HTTP 400 for them, which
         // would otherwise abort the entire profile save. The value still
         // flows through to the Firestore write below so the app's own avatar
         // display keeps working.
@@ -775,8 +775,8 @@ export const authService = {
    *      sessions, settings, subscriptions) in one pass. The user document is
    *      deleted LAST so that a subsequent retry can detect a partial
    *      completion and skip the cleanup step.
-   *   3. Attempt the Firebase Auth deletion. If it fails — most commonly with
-   *      `auth/requires-recent-login` for OAuth-only accounts — return
+   *   3. Attempt the Firebase Auth deletion. If it fails - most commonly with
+   *      `auth/requires-recent-login` for OAuth-only accounts - return
    *      `{ success: false, partial: true }` so the caller can offer a retry.
    *      On retry, `users/{uid}` is missing, so the cleanup is skipped and
    *      only the Auth deletion is attempted.
@@ -787,7 +787,7 @@ export const authService = {
    *   Firestore data after the token is gone. A user who abandons the retry
    *   after step 2 leaves their Auth account behind while their Firestore
    *   data is permanently gone. This is the best achievable on Spark; the
-   *   alternative — deleting Auth first — makes the Firestore data orphaned
+   *   alternative - deleting Auth first - makes the Firestore data orphaned
    *   and unrecoverable to anyone except an admin. The current order keeps
    *   the user's identity, at the cost of the data, which is the safer
    *   default for the account-holder's recovery options (they can sign in
@@ -798,7 +798,7 @@ export const authService = {
       const user = getCurrentUserOrThrow();
 
       // Pre-flight: password users re-authenticate with their password.
-      // OAuth-only users get a fresh ID token (best-effort) — this does not
+      // OAuth-only users get a fresh ID token (best-effort) - this does not
       // override `requires-recent-login` but does surface other stale-session
       // issues before any destructive work.
       if (hasPasswordProvider(user)) {
@@ -807,7 +807,7 @@ export const authService = {
         try {
           await user.getIdToken(true);
         } catch {
-          // Ignore — the Auth deletion step below will surface a hard error
+          // Ignore - the Auth deletion step below will surface a hard error
           // if the session truly cannot be refreshed.
         }
       }
@@ -825,7 +825,7 @@ export const authService = {
           getDocs(collection(db, COLLECTIONS.users, user.uid, COLLECTIONS.sessions)),
         ]);
 
-        // Audit record — written before the destructive step so it survives
+        // Audit record - written before the destructive step so it survives
         // the Firestore cleanup. On a retry this block is skipped, so the
         // original deletion timestamp is preserved.
         try {
@@ -853,11 +853,11 @@ export const authService = {
           await deleteDoc(userRef);
         } catch {
           // Best-effort. If this fails, a retry will still attempt the
-          // cleanup — the dependent documents are already gone, so the
+          // cleanup - the dependent documents are already gone, so the
           // second cleanup pass is a no-op.
         }
       }
-      // Else: retry after a partial failure — nothing left to clean up in
+      // Else: retry after a partial failure - nothing left to clean up in
       // Firestore, proceed directly to the Auth deletion.
 
       safeTrackEvent('account_deleted', { userId: user.uid });
@@ -924,7 +924,7 @@ export const authService = {
    * SECURITY NOTE:
    * The authoritative authorization check for this operation MUST live in
    * Firestore Security Rules (and/or a trusted backend). The client-side
-   * guard implemented below is defense-in-depth only — a determined attacker
+   * guard implemented below is defense-in-depth only - a determined attacker
    * can bypass it by calling the Firestore SDK directly from the console.
    *
    * Firestore rules for `users/{uid}` must therefore enforce that only a
@@ -947,7 +947,7 @@ export const authService = {
       }
 
       // 3. Defense-in-depth: block non-admin callers from the client SDK.
-      //    The real check lives in Firestore rules — see the docstring above.
+      //    The real check lives in Firestore rules - see the docstring above.
       const callerSnap = await getDoc(doc(db, COLLECTIONS.users, caller.uid));
       const callerRole = callerSnap.exists() ? callerSnap.data()?.role : null;
       if (callerRole !== 'admin') {

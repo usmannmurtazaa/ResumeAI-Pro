@@ -32,7 +32,7 @@ const BASE_INPUT =
 // so every standard variant shows a visible focus indicator.
 //
 // Do NOT rewrite this as `VARIANTS[variant] || VARIANTS.default + ' focus:...'`
-// — the `+` operator binds tighter than `||`, so the focus classes would only
+// - the `+` operator binds tighter than `||`, so the focus classes would only
 // be applied in the fallback branch (i.e. for an unknown variant name), and
 // every known variant would lose its focus ring. This is the bug that was
 // fixed in `Textarea.jsx` and is fixed here in the same way.
@@ -389,8 +389,8 @@ export const SearchInput = forwardRef(
   ({ placeholder = 'Search...', onSearch, className = '', ...props }, ref) => (
     // `onSearch` is forwarded so that the native `search` event from the
     // <input type="search"> below reaches the caller. Browsers fire that
-    // event when the user presses Enter inside the field — the standard
-    // "user submitted the query" signal — and when the user clicks the
+    // event when the user presses Enter inside the field - the standard
+    // "user submitted the query" signal - and when the user clicks the
     // native clear button. Wiring it here restores the prop's contract:
     // without this, callers had to reimplement Enter handling themselves.
     <Input

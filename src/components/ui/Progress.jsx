@@ -295,7 +295,7 @@ export const ProgressWithStatus = ({
   // No default. The caller's color, when provided, overrides the semantic
   // color derived from `value` / `status`. Removing the previous
   // `= 'primary'` default is what allows the fallback below to be
-  // meaningful — with the default in place, `color` was always truthy and
+  // meaningful - with the default in place, `color` was always truthy and
   // the caller could never tell the component to use the semantic color.
   color,
   className = '',
@@ -332,7 +332,7 @@ export const ProgressWithStatus = ({
       {/*
         The caller's `color`, when provided, overrides the semantic color
         derived from the current value / status. When omitted, the semantic
-        color is used — the same behavior as before this fix.
+        color is used - the same behavior as before this fix.
       */}
       <Progress value={value} max={max} size={size} color={color || config.color} />
     </div>

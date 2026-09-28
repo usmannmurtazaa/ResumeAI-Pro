@@ -161,7 +161,7 @@ export const prefetchRouteHints = ['/dashboard', '/builder', '/templates'];
  * (rather than inline in `export default`) so stack traces, DevTools, and
  * editor auto-import show the symbol as `routesConfig` instead of
  * `<anonymous>`. Consumers can import either the default export or the
- * named export — both refer to the same object.
+ * named export - both refer to the same object.
  */
 const routesConfig = {
   PUBLIC_PATHS,

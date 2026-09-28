@@ -69,8 +69,8 @@ const calculateEducationDuration = (startDate, endDate) => {
 
 // Note: an earlier version of this file computed a "highest degree" value
 // from the education entries via a module-level helper and a `useMemo`.
-// Neither has a consumer today — the education header renders a plain
-// count badge, not a highest-degree badge — so both were removed as dead
+// Neither has a consumer today - the education header renders a plain
+// count badge, not a highest-degree badge - so both were removed as dead
 // code. If a highest-degree badge is reintroduced later, both pieces need
 // to be added back alongside the JSX that renders the value.
 
@@ -275,8 +275,8 @@ const Education = ({ data = [], onChange, onValidationChange }) => {
   // ── Animation Variants ────────────────────────────────────────────────
   // The per-item variants are applied to each `<motion.div>` inside the
   // Droppable. The previously-declared `containerVariants` set was dead
-  // code — the outer container is a plain `<div>`, not a `motion.div` with
-  // `variants` — and has been removed.
+  // code - the outer container is a plain `<div>`, not a `motion.div` with
+  // `variants` - and has been removed.
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },

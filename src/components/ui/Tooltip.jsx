@@ -303,7 +303,7 @@ export const Popover = ({
   // Ref to hold the latest `close` callback so the outside-click / Escape
   // effect below does not need `close` in its dependency array. `close`
   // depends on the `onClose` prop, which parents commonly pass as an inline
-  // arrow function — that makes its identity change on every parent
+  // arrow function - that makes its identity change on every parent
   // render. Listing it directly would re-attach the document listeners on
   // every render, which risks dropping an outside click in the gap between
   // removeEventListener and addEventListener. Referencing it through a ref
@@ -347,7 +347,7 @@ export const Popover = ({
   }, [onClose]);
 
   // Keep `closeRef` in sync with the latest `close`. No dependency array,
-  // so it runs after every render — the next `isOpen` transition will
+  // so it runs after every render - the next `isOpen` transition will
   // therefore always install listeners whose handler reads the current
   // `close`, not a stale one.
   useEffect(() => {

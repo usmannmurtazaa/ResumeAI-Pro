@@ -92,7 +92,7 @@ const GoogleAuthButton = ({
   // Feedback contract:
   //   The button delegates the post-sign-in user feedback to the caller via
   //   `onSuccess`. If the caller passes `onSuccess`, this component does NOT
-  //   emit a success toast — the caller's handler is the single feedback
+  //   emit a success toast - the caller's handler is the single feedback
   //   surface and does its own redirect + toast. The local toast only fires
   //   when the caller does not provide `onSuccess`, so that consumers who
   //   mount the button in isolation still see a confirmation.
