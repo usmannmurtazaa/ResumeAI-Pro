@@ -52,7 +52,8 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
     # Content Security Policy - includes Firebase Auth, Firestore, Analytics,
-    # Sentry, and the pdf.js worker CDN.
+    # Sentry, the pdf.js worker CDN, Stripe.js, and the Google Fonts the
+    # service worker fetches.
     #
     # `https://cdnjs.cloudflare.com` is required because
     # `src/utils/resumeParser.js` sets `GlobalWorkerOptions.workerSrc` to
@@ -61,16 +62,30 @@
     # worker is blocked and every PDF upload into the ATS Scanner fails
     # silently (the parser reports a generic "failed to parse" error).
     #
+    # `https://js.stripe.com` is required in `script-src` because the Stripe
+    # SDK loader injects `<script src="https://js.stripe.com/v3">`. Without
+    # it, every subscription-upgrade action fails with
+    # `Failed to load Stripe.js` and the Checkout flow cannot open.
+    # `https://api.stripe.com` and `https://js.stripe.com` are also required
+    # in `connect-src` for the SDK's follow-up requests.
+    #
+    # `https://fonts.googleapis.com` and `https://fonts.gstatic.com` are
+    # required in `connect-src` because `public/sw.js` intercepts those
+    # requests and re-fetches them. The browser's direct font path uses
+    # `font-src`, but the service worker's fetch path is governed by
+    # `connect-src`. Without these entries the SW returns a synthetic 503
+    # for every Inter `.woff2` and the font falls back to the system stack.
+    #
     # The Firebase Auth lines (apis.google.com, accounts.google.com,
     # gstatic.com, firebaseapp.com, identitytoolkit, securetoken) are
     # required for Google sign-in to work.
     Content-Security-Policy = """
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://*.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://www.googletagservices.com https://*.googleadservices.com https://www.google-analytics.com https://*.g.doubleclick.net https://apis.google.com https://accounts.google.com https://www.gstatic.com https://*.firebaseapp.com https://cdnjs.cloudflare.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://*.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://www.googletagservices.com https://*.googleadservices.com https://www.google-analytics.com https://*.g.doubleclick.net https://apis.google.com https://accounts.google.com https://www.gstatic.com https://*.firebaseapp.com https://cdnjs.cloudflare.com https://js.stripe.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com data:;
       img-src 'self' data: https: blob: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.googlesyndication.com https://*.g.doubleclick.net https://*.googleadservices.com https://*.googleusercontent.com;
-      connect-src 'self' https://*.sentry.io https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.netlify.app wss://*.firebaseio.com https://www.google-analytics.com https://*.google-analytics.com https://*.g.doubleclick.net https://www.google.com https://stats.g.doubleclick.net https://*.googlesyndication.com https://*.googleadservices.com https://googleads.g.doubleclick.net https://apis.google.com https://accounts.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://cdnjs.cloudflare.com;
+      connect-src 'self' https://*.sentry.io https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.netlify.app wss://*.firebaseio.com https://www.google-analytics.com https://*.google-analytics.com https://*.g.doubleclick.net https://www.google.com https://stats.g.doubleclick.net https://*.googlesyndication.com https://*.googleadservices.com https://googleads.g.doubleclick.net https://apis.google.com https://accounts.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://cdnjs.cloudflare.com https://js.stripe.com https://api.stripe.com https://fonts.googleapis.com https://fonts.gstatic.com;
       frame-src 'self' https://*.firebaseapp.com https://*.stripe.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.googlesyndication.com https://apis.google.com https://accounts.google.com;
       media-src 'self';
       object-src 'none';

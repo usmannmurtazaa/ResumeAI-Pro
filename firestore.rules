@@ -13,27 +13,24 @@ service cloud.firestore {
     //
     //   1. Custom claims on the caller's Firebase Auth ID token:
     //      `admin: true`, `superAdmin: true`, or `role: 'admin'`.
-    //      This is the "classic" path. It is kept for backward
-    //      compatibility with any project that has claims-based admins
-    //      configured via a trusted backend.
+    //      This is the "classic" path and the ONLY path that can authorize
+    //      a list/query operation, because Firestore's query evaluation
+    //      cannot use `get()`.
     //
-    //   2. Firestore `users/{callerUid}.role === 'admin'`. This is the
-    //      path the app itself supports: `authService.updateUserRole`
-    //      writes the Firestore role, and `AuthContext.userRole` reads
-    //      it. On the Spark plan there is no Cloud Functions runtime to
-    //      mint custom claims, so Firestore is the only source of truth
-    //      the deployed app can actually control.
+    //   2. Firestore `users/{callerUid}.role === 'admin'`. This path uses
+    //      `get()` and is therefore usable ONLY for single-document reads
+    //      (allow get). It is retained for the app's Firestore-role
+    //      admin flow on single-doc operations like
+    //      `AdminRoute.verifyAdminServerSide`.
     //
-    // The Firestore path costs one additional `get()` read, but only when
-    // it is reached. Firestore rules short-circuit `||`, so normal user
-    // operations (own resume reads, own user doc updates) never evaluate
-    // `hasFirestoreAdminRole()`. The read only fires on attempts that a
-    // non-admin could not perform anyway.
+    // Both paths must agree on the caller's identity; neither weakens the
+    // other. A non-admin with Firestore `role: 'user'` and no claims still
+    // fails both.
     //
-    // A non-admin with Firestore `role: 'user'` and no claims still fails
-    // exactly as before. Nothing about the security posture is loosened:
-    // a user cannot promote themselves - the `users/{userId}` update rule
-    // still rejects any write that touches `role`.
+    // NOTE: Firestore rules for `list` cannot call `get()`. Any match block
+    // below that combines an admin path with a document-dependent self path
+    // therefore splits `read` into `allow get` (which may use `get()`) and
+    // `allow list` (which may not).
     // ────────────────────────────────────────────────────────────────────
 
     function hasAdminClaims() {
@@ -115,8 +112,14 @@ service cloud.firestore {
         && (!('userId' in request.resource.data));
     }
 
+    // ── users/{userId} ──────────────────────────────────────────────────
+    // `read` is split into `get` and `list` because the admin path
+    // (`isPrivilegedAdmin`) contains `get()` and therefore cannot be
+    // evaluated for collection queries. Admin collection reads require
+    // `hasAdminClaims()`.
     match /users/{userId} {
-      allow read: if isSelf(userId) || isPrivilegedAdmin();
+      allow get: if isSelf(userId) || isPrivilegedAdmin();
+      allow list: if hasAdminClaims();
       allow create: if isSelf(userId) && isValidUserCreate();
       allow update: if (isSelf(userId) && isAllowedUserUpdate()) || isPrivilegedAdmin();
       allow delete: if isSelf(userId) || isPrivilegedAdmin();
@@ -152,9 +155,17 @@ service cloud.firestore {
       ]);
     }
 
+    // ── resumes/{resumeId} ──────────────────────────────────────────────
+    // `read` is split into `get` and `list`. The user path
+    // (`resource.data.userId == request.auth.uid`) is query-provable
+    // because the client filters the list by `userId`. The admin path
+    // for lists requires `hasAdminClaims()`.
     match /resumes/{resumeId} {
-      allow read: if signedIn()
+      allow get: if signedIn()
         && (resource.data.userId == request.auth.uid || isPrivilegedAdmin());
+
+      allow list: if signedIn()
+        && (resource.data.userId == request.auth.uid || hasAdminClaims());
 
       // Direct client-side resume creation is denied.
       // The Netlify Functions use Admin SDK, which bypasses these rules.
@@ -187,15 +198,25 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // ── subscriptions/{userId} ──────────────────────────────────────────
+    // Same split as `users/{userId}` — the admin path contains `get()`,
+    // so admin list operations require `hasAdminClaims()`.
     match /subscriptions/{userId} {
-      allow read: if isSelf(userId) || isPrivilegedAdmin();
+      allow get: if isSelf(userId) || isPrivilegedAdmin();
+      allow list: if hasAdminClaims();
       allow create, update: if isPrivilegedAdmin();
       allow delete: if isSelf(userId) || isPrivilegedAdmin();
     }
 
+    // ── analytics/{docId} ───────────────────────────────────────────────
+    // Same split as above.
     match /analytics/{docId} {
-      allow read: if isPrivilegedAdmin()
+      allow get: if isPrivilegedAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
+
+      allow list: if hasAdminClaims()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+
       allow create: if signedIn()
         && request.resource.data.keys().hasAll(['userId', 'name'])
         && request.resource.data.userId == request.auth.uid;
@@ -206,10 +227,14 @@ service cloud.firestore {
       allow read, create, update, delete: if isSelf(userId);
     }
 
+    // ── deletedAccounts/{docId} ─────────────────────────────────────────
+    // Admin-only. `read` is split; list operations require claims.
     match /deletedAccounts/{docId} {
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if isPrivilegedAdmin();
+
+      allow get, update, delete: if isPrivilegedAdmin();
+      allow list: if hasAdminClaims();
     }
   }
 }
