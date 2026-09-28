@@ -7,7 +7,7 @@ import './styles/globals.css';
 
 // ── Environment Constants ───────────────────────────────────────────────────
 const APP_NAME = process.env.REACT_APP_NAME || 'Maniesta Career OS';
-const APP_VERSION = process.env.REACT_APP_VERSION || '2.5.0';
+const APP_VERSION = process.env.REACT_APP_VERSION || '3.1.3';
 const APP_ENVIRONMENT = process.env.REACT_APP_ENVIRONMENT || process.env.NODE_ENV || 'development';
 const SENTRY_DSN = process.env.REACT_APP_SENTRY_DSN;
 const ANALYTICS_ENABLED = process.env.REACT_APP_ENABLE_ANALYTICS === 'true';

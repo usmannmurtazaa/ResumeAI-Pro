@@ -95,7 +95,7 @@ const SignUp = () => {
                 </div>
                 <h1 className="text-3xl font-bold text-white">Resume Ai Pro</h1>
                 <Badge variant="success" className="bg-white/20 text-white border-white/30">
-                  v2.5
+                  v3.1
                 </Badge>
               </div>
               <h2 className="text-2xl xl:text-3xl font-semibold text-white/95">

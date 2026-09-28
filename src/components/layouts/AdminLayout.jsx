@@ -903,7 +903,7 @@ const AdminLayout = ({ children, title, description }) => {
                 >
                   System Status
                 </button>
-                <span>v{process.env.REACT_APP_VERSION || '2.5.0'}</span>
+                <span>v{process.env.REACT_APP_VERSION || '3.1.3'}</span>
               </div>
             </div>
           </footer>

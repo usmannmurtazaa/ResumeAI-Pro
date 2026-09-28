@@ -13,7 +13,7 @@ import {
 // ── Application Constants ────────────────────────────────────────────────
 
 export const APP_NAME = 'Maniesta Career OS';
-export const APP_VERSION = '2.5.0';
+export const APP_VERSION = '3.1.3';
 export const APP_DESCRIPTION = 'AI-powered ATS resume builder';
 export const APP_URL = 'https://maniestacareer.netlify.app';
 export const SUPPORT_EMAIL = 'usmanmurtazaportfolio@gmail.com';

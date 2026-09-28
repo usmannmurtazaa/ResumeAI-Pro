@@ -223,7 +223,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 </div>
                 <h1 className="text-3xl font-bold text-white">Maniesta Career OS</h1>
                 <Badge variant="success" className="border-white/30 bg-white/20 text-white">
-                  v2.5
+                  v3.1
                 </Badge>
               </div>
               <h2 className="text-2xl font-semibold leading-tight text-white/95 xl:text-3xl">

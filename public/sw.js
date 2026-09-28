@@ -2,7 +2,7 @@
 const CONFIG = {
   // Cache versioning - bump this number on every content-changing deploy
   // to force old caches to be deleted on activate.
-  CACHE_VERSION: '2.5.1',
+  CACHE_VERSION: '3.1.3',
 
   // Cache names
   CACHE_NAMES: {

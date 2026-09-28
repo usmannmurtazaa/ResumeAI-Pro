@@ -470,7 +470,7 @@ const Sidebar = ({
 
             {!isCollapsed && (
               <p className="text-center text-[10px] text-gray-400">
-                v{process.env.REACT_APP_VERSION || '2.5.0'}
+                v{process.env.REACT_APP_VERSION || '3.1.3'}
               </p>
             )}
           </div>

@@ -244,7 +244,7 @@ const initializeAnalytics = async () => {
     analytics = getAnalytics(app);
     setAnalyticsCollectionEnabled(analytics, isProduction);
     setUserProperties(analytics, {
-      app_version: process.env.REACT_APP_VERSION || '2.5.0',
+      app_version: process.env.REACT_APP_VERSION || '3.1.3',
       environment: process.env.NODE_ENV || 'development',
       platform: 'web',
     });
