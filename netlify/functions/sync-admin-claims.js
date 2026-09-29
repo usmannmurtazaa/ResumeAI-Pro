@@ -6,38 +6,6 @@ if (!admin.apps.length) {
   });
 }
 
-const db = admin.firestore();
-
-/**
- * Mints an `admin: true` custom claim for the caller IF the server-side
- * source of truth (Firestore `users/{uid}`) says they are an admin and not
- * suspended.
- *
- * Why this function exists
- * ────────────────────────
- * Firestore Security Rules cannot use `get()` inside an `allow list`
- * clause, so any list or aggregation query on a collection can only be
- * authorized by custom claims on the caller's ID token — not by the
- * Firestore `role` field. The app's admin-promotion workflow lives entirely
- * in Firestore (`authService.updateUserRole` writes `users/{uid}.role`),
- * which means the promoted user's next admin-area visit needs a custom
- * claim minted from the Firestore role. This function does that minting.
- *
- * What this function does NOT do
- * ──────────────────────────────
- *   • It does not accept claims from the request body. The claim is derived
- *     from the caller's own `users/{uid}` document, never from what the
- *     client asks for.
- *   • It does not downgrade claims. If Firestore role is not 'admin', it
- *     leaves the existing claim alone (admin-by-claim-only accounts keep
- *     their access). Setting an explicit `admin: false` here would break
- *     those accounts; claims revoked by an operator are revoked directly
- *     through the Admin SDK or a separate endpoint, not by this function.
- *   • It does not log the caller's role decision; the response is the same
- *     whether the caller is admin or not, so a caller cannot probe the
- *     endpoint to learn their own server-side role.
- */
-
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) };
@@ -49,13 +17,19 @@ exports.handler = async (event) => {
     return { statusCode: 401, body: JSON.stringify({ message: 'Unauthorized' }) };
   }
 
-  // ── Error categorisation ────────────────────────────────────────────
-  //   • 401 — the caller's ID token is missing, expired, or revoked.
-  //   • 400 — reserved for future parameter errors; not used today.
-  //   • 500 — the server side failed (Firestore or Auth Admin API). The
-  //           client receives a generic message; the full error is logged
-  //           server-side only.
+  // ── Why this function exists ────────────────────────────────────────
+  // Firestore rules cannot call `get()` inside `allow list`, so a list
+  // operation cannot be authorized by a Firestore-role check. The app's
+  // source of truth for "is this user an admin" is `users/{uid}.role`.
+  // This function mirrors that into a custom claim (`admin: true`) which
+  // *can* authorize list operations. It is called by `AdminRoute` after
+  // the client confirms the caller is a Firestore-role admin.
+  //
+  // The claim is always derived from the server-side Firestore document.
+  // It is never accepted from the request body.
 
+  // Split auth from the rest so an invalid token returns 401 rather than
+  // falling through to the outer catch as a 500.
   let decoded;
   try {
     decoded = await admin.auth().verifyIdToken(token);
@@ -68,42 +42,42 @@ exports.handler = async (event) => {
   }
 
   try {
-    const userRef = db.collection('users').doc(decoded.uid);
+    const userRef = admin.firestore().collection('users').doc(decoded.uid);
     const userSnap = await userRef.get();
     const userData = userSnap.exists ? userSnap.data() : null;
 
-    // Fail-closed: unknown users get no claim.
-    if (!userData || userData.role !== 'admin') {
+    // Fail closed on missing/suspended callers. Both cases return the same
+    // shape as the "not an admin" case so the caller cannot probe their
+    // own status through this endpoint.
+    if (!userData || userData.status === 'suspended' || userData.role !== 'admin') {
       return {
         statusCode: 200,
-        body: JSON.stringify({ synced: false }),
+        body: JSON.stringify({ success: true, synced: false }),
       };
     }
 
-    // Suspended admins do not get a fresh claim. Any existing claim on the
-    // token was minted earlier and will expire on its own; the client guard
-    // rejects suspended users on the Firestore read regardless.
-    if (userData.status === 'suspended') {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ synced: false }),
-      };
+    // Preserve any claims already on the account. `setCustomUserClaims`
+    // overwrites the entire claims object, so we read first and merge.
+    let existingClaims = {};
+    try {
+      const existing = await admin.auth().getUser(decoded.uid);
+      existingClaims = existing.customClaims || {};
+    } catch (error) {
+      console.error('sync-admin-claims: unable to read existing claims:', error);
+      // Continue with an empty base — the important claim is `admin` and
+      // losing unknown claims here is preferable to failing the sync.
     }
 
-    // Mint the claim. Merge-preserving: setCustomUserClaims replaces the
-    // entire claim set, so we pass both `admin: true` and keep any existing
-    // custom claims that the project may have set elsewhere (e.g. tier).
-    // For this project there are no other custom claims in use, so the
-    // object is simply `{ admin: true }`. If you add more claims later,
-    // read them from the user record first and merge them here.
-    await admin.auth().setCustomUserClaims(decoded.uid, { admin: true });
+    const nextClaims = { ...existingClaims, admin: true };
+    await admin.auth().setCustomUserClaims(decoded.uid, nextClaims);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ synced: true }),
+      body: JSON.stringify({ success: true, synced: true }),
     };
   } catch (error) {
     console.error('sync-admin-claims error:', error);
+    // Do not echo `error.message` — it may contain Admin SDK internals.
     return {
       statusCode: 500,
       body: JSON.stringify({ message: 'Failed to sync admin claims' }),
