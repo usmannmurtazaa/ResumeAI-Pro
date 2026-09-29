@@ -5,13 +5,12 @@ import {
   collection,
   doc,
   getCountFromServer,
-  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   updateDoc,
-  where,
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
@@ -45,6 +44,10 @@ import {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const ITEMS_PER_PAGE = 10;
+
+// Firestore caps a single `writeBatch` at 500 operations. Leave headroom
+// for the SDK by capping bulk updates at 400 per batch.
+const FIRESTORE_BATCH_LIMIT = 400;
 
 // The admin dashboard subscribes to the `users` and `resumes` collections.
 // Without a cap, Firestore streams every document on mount and re-reads any
@@ -120,7 +123,7 @@ const DashboardSkeleton = () => (
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { userRole } = useAuth();
+  const { userRole, getToken } = useAuth();
 
   // Permission check
   const isAdmin = userRole === 'admin';
@@ -146,7 +149,10 @@ const AdminDashboard = () => {
   const [totalResumeCount, setTotalResumeCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [actionLoading, setActionLoading] = useState(null); // Track which action is loading
+  const [actionLoading, setActionLoading] = useState(null); // Tracks which action is loading
+  // H-09: the actual timestamp of the last successful count refresh,
+  // rather than a wall-clock time recomputed on every render.
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -184,6 +190,8 @@ const AdminDashboard = () => {
       if (!mountedRef.current) return;
       setTotalUserCount(usersSnap.data().count || 0);
       setTotalResumeCount(resumesSnap.data().count || 0);
+      // H-09: stamp the header with the moment the count query resolved.
+      setLastUpdated(new Date());
     } catch (err) {
       console.error('Failed to fetch total counts:', err);
       // Retain previous values on failure; do not spam toasts.
@@ -352,6 +360,18 @@ const AdminDashboard = () => {
 
   const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
 
+  // M-20: precomputed map of userId -> resume count. Building this once per
+  // `resumes` change reduces the per-render cost of the table from
+  // O(rows × resumes) to O(rows + resumes).
+  const resumeCountByUser = useMemo(() => {
+    const map = new Map();
+    resumes.forEach((r) => {
+      if (!r.userId) return;
+      map.set(r.userId, (map.get(r.userId) || 0) + 1);
+    });
+    return map;
+  }, [resumes]);
+
   // ── Reset page on filter change ──────────────────────────────────────────
 
   useEffect(() => {
@@ -388,25 +408,53 @@ const AdminDashboard = () => {
     });
   }, []);
 
+  // ── C-07: server-side delete via the `delete-user` Netlify Function ─────
+  //
+  // The server-side endpoint performs the entire delete: Firestore cleanup
+  // (resumes, notifications, sessions, settings, subscriptions, the user
+  // document) AND the Firebase Auth account removal. The client cannot
+  // delete another user's Auth account directly, so delegating the whole
+  // operation to the server keeps it atomic from the caller's perspective.
+  //
+  // Response shapes:
+  //   { success: true, userId }                     on complete success
+  //   { message, partial: true }  (500)             Firestore done, Auth pending
+  //   { message }                 (4xx / 500)       hard failure
+  const deleteUser = useCallback(
+    async (userId) => {
+      const token = await getToken(true);
+      if (!token) {
+        throw Object.assign(new Error('Unable to authenticate'), { code: 'auth/no-token' });
+      }
+
+      const response = await fetch('/.netlify/functions/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ targetUserId: userId }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const error = new Error(data?.message || 'Failed to delete user');
+        if (data?.partial) error.partial = true;
+        throw error;
+      }
+
+      return data;
+    },
+    [getToken]
+  );
+
   const handleDeleteUser = useCallback(
     async (userId) => {
+      if (!userId) return;
       setActionLoading(`delete-${userId}`);
       try {
-        // Fetch the user's full resume set directly. The `resumes` state is
-        // bounded by ADMIN_RESUMES_LIMIT and cannot be relied upon here.
-        const userResumesSnap = await getDocs(
-          query(collection(db, 'resumes'), where('userId', '==', userId))
-        );
-
-        const batch = writeBatch(db);
-        userResumesSnap.forEach((resumeDoc) => {
-          batch.delete(resumeDoc.ref);
-        });
-        batch.delete(doc(db, 'users', userId));
-
-        await batch.commit();
-
-        // Update totals to reflect the removed documents.
+        await deleteUser(userId);
         await refreshTotalCounts();
 
         toast.success('User deleted successfully');
@@ -414,12 +462,14 @@ const AdminDashboard = () => {
         setUserToDelete(null);
       } catch (error) {
         console.error('Delete user error:', error);
-        toast.error('Failed to delete user');
+        // On a partial failure, the endpoint provides a specific message
+        // telling the admin the Auth deletion still needs to be retried.
+        toast.error(error?.partial ? error.message : 'Failed to delete user');
       } finally {
         setActionLoading(null);
       }
     },
-    [refreshTotalCounts]
+    [deleteUser, refreshTotalCounts]
   );
 
   const handleSuspendUser = useCallback(async (userId, currentStatus) => {
@@ -427,7 +477,9 @@ const AdminDashboard = () => {
     try {
       await updateDoc(doc(db, 'users', userId), {
         status: currentStatus === 'active' ? 'suspended' : 'active',
-        updatedAt: new Date().toISOString(),
+        // H-08: use serverTimestamp() so this field is consistent with
+        // every other writer in the codebase.
+        updatedAt: serverTimestamp(),
       });
       toast.success(`User ${currentStatus === 'active' ? 'suspended' : 'activated'}`);
     } catch (error) {
@@ -436,6 +488,111 @@ const AdminDashboard = () => {
       setActionLoading(null);
     }
   }, []);
+
+  // ── C-06: Bulk operations ────────────────────────────────────────────────
+
+  const handleBulkSuspend = useCallback(async () => {
+    const ids = Array.from(selectedUsers);
+    if (ids.length === 0) return;
+
+    setActionLoading('bulk-suspend');
+    try {
+      for (let i = 0; i < ids.length; i += FIRESTORE_BATCH_LIMIT) {
+        const chunk = ids.slice(i, i + FIRESTORE_BATCH_LIMIT);
+        const batch = writeBatch(db);
+        chunk.forEach((uid) => {
+          batch.update(doc(db, 'users', uid), {
+            status: 'suspended',
+            updatedAt: serverTimestamp(),
+          });
+        });
+        await batch.commit();
+      }
+
+      toast.success(`${ids.length} user${ids.length === 1 ? '' : 's'} suspended`);
+      setSelectedUsers(new Set());
+    } catch (error) {
+      console.error('Bulk suspend error:', error);
+      toast.error('Failed to suspend users');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [selectedUsers]);
+
+  const handleBulkActivate = useCallback(async () => {
+    const ids = Array.from(selectedUsers);
+    if (ids.length === 0) return;
+
+    setActionLoading('bulk-activate');
+    try {
+      for (let i = 0; i < ids.length; i += FIRESTORE_BATCH_LIMIT) {
+        const chunk = ids.slice(i, i + FIRESTORE_BATCH_LIMIT);
+        const batch = writeBatch(db);
+        chunk.forEach((uid) => {
+          batch.update(doc(db, 'users', uid), {
+            status: 'active',
+            updatedAt: serverTimestamp(),
+          });
+        });
+        await batch.commit();
+      }
+
+      toast.success(`${ids.length} user${ids.length === 1 ? '' : 's'} activated`);
+      setSelectedUsers(new Set());
+    } catch (error) {
+      console.error('Bulk activate error:', error);
+      toast.error('Failed to activate users');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [selectedUsers]);
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedUsers);
+    if (ids.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Delete ${ids.length} user${ids.length === 1 ? '' : 's'}? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setActionLoading('bulk-delete');
+    try {
+      // Sequential calls to keep per-second write quota predictable and to
+      // surface a partial failure clearly rather than silently succeeding
+      // for some IDs and failing for others.
+      const failed = [];
+      for (const uid of ids) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await deleteUser(uid);
+        } catch (err) {
+          console.error('Bulk delete failed for', uid, err);
+          failed.push(uid);
+        }
+      }
+
+      await refreshTotalCounts();
+
+      const succeeded = ids.length - failed.length;
+
+      if (failed.length === 0) {
+        toast.success(`Deleted ${ids.length} user${ids.length === 1 ? '' : 's'}`);
+        setSelectedUsers(new Set());
+      } else if (succeeded > 0) {
+        toast.error(
+          `Deleted ${succeeded} of ${ids.length} users. ${failed.length} failed — they remain selected so you can retry.`
+        );
+        // Keep the failed users selected so the admin can retry without
+        // re-selecting them from scratch.
+        setSelectedUsers(new Set(failed));
+      } else {
+        toast.error('Failed to delete users');
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  }, [selectedUsers, deleteUser, refreshTotalCounts]);
 
   const handleRefresh = useCallback(() => {
     // Firestore real-time listeners auto-update the loaded window; the
@@ -487,7 +644,7 @@ const AdminDashboard = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold gradient-text">Admin Dashboard</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Last updated: {format(new Date(), 'MMM dd, yyyy HH:mm')}
+            Last updated: {lastUpdated ? format(lastUpdated, 'MMM dd, yyyy HH:mm') : '—'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -504,7 +661,6 @@ const AdminDashboard = () => {
           value={stats.totalUsers}
           icon={FiUsers}
           color="from-blue-500 to-blue-600"
-          trend={12}
           subtitle={`+${stats.newUsersToday} today`}
         />
         <StatCard
@@ -512,7 +668,6 @@ const AdminDashboard = () => {
           value={stats.totalResumes}
           icon={FiFileText}
           color="from-purple-500 to-purple-600"
-          trend={8}
           subtitle={`+${stats.newResumesToday} today`}
         />
         <StatCard
@@ -531,7 +686,7 @@ const AdminDashboard = () => {
         />
       </div>
 
-      {/* Users Table - Simplified for brevity */}
+      {/* Users Table */}
       <Card className="p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h3 className="text-lg font-semibold">User Management</h3>
@@ -577,16 +732,42 @@ const AdminDashboard = () => {
               <span className="font-medium">{selectedUsers.size}</span> users selected
             </span>
             <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setSelectedUsers(new Set())}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedUsers(new Set())}
+                disabled={actionLoading === 'bulk-delete'}
+              >
                 Clear
               </Button>
-              <Button size="sm" variant="outline" icon={<FiUserX />}>
+              <Button
+                size="sm"
+                variant="outline"
+                icon={<FiUserX />}
+                onClick={handleBulkSuspend}
+                loading={actionLoading === 'bulk-suspend'}
+                disabled={actionLoading !== null}
+              >
                 Suspend
               </Button>
-              <Button size="sm" variant="outline" icon={<FiUserCheck />}>
+              <Button
+                size="sm"
+                variant="outline"
+                icon={<FiUserCheck />}
+                onClick={handleBulkActivate}
+                loading={actionLoading === 'bulk-activate'}
+                disabled={actionLoading !== null}
+              >
                 Activate
               </Button>
-              <Button size="sm" variant="danger" icon={<FiTrash2 />}>
+              <Button
+                size="sm"
+                variant="danger"
+                icon={<FiTrash2 />}
+                onClick={handleBulkDelete}
+                loading={actionLoading === 'bulk-delete'}
+                disabled={actionLoading !== null}
+              >
                 Delete
               </Button>
             </div>
@@ -634,7 +815,7 @@ const AdminDashboard = () => {
             </thead>
             <tbody>
               {paginatedUsers.map((user) => {
-                const userResumeCount = resumes.filter((r) => r.userId === user.id).length;
+                const userResumeCount = resumeCountByUser.get(user.id) || 0;
                 const isSuspending = actionLoading === `suspend-${user.id}`;
                 const isDeleting = actionLoading === `delete-${user.id}`;
 

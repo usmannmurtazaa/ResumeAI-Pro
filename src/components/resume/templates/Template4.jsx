@@ -24,6 +24,83 @@ import {
   FiFileText,
 } from 'react-icons/fi';
 
+// ── Print styles (scoped) ─────────────────────────────────────────────────
+//
+// These rules used to live in a `<style jsx>` block, which is a Next.js
+// `styled-jsx` construct. CRA does not transform it, so the CSS leaked
+// globally. Every selector below is now prefixed with `.resume-template-4`
+// — the class carried by this component's root element — so the rules
+// apply only within this template's subtree.
+//
+// The `body { … }` rule from the original block is collapsed onto
+// `.resume-template-4` itself: in print, the surrounding app chrome is
+// hidden by `globals.css`, so the template root is the effective print
+// body for everything inside this component.
+//
+// IMPORTANT: this block is deliberately duplicated per template (with a
+// unique scope class) rather than moved to a shared stylesheet, so that
+// changing one template's print behavior cannot silently change another's.
+// When copying to another template, replace every occurrence of
+// `resume-template-4` with that template's scope class.
+//
+// Template4's print overrides target the blue palette, expand
+// `.line-clamp-3` so truncated project descriptions become fully visible
+// in print, and cover three `print:text-*` sizes (xs/sm/base). That
+// specific set is intentional and preserved verbatim.
+const PRINT_STYLES = `
+  @media print {
+    .resume-template-4.max-w-4xl {
+      max-width: 100% !important;
+    }
+    .resume-template-4.shadow-2xl {
+      box-shadow: none !important;
+    }
+    .resume-template-4 .line-clamp-3 {
+      overflow: visible !important;
+      display: block !important;
+    }
+    .resume-template-4 .text-blue-500 {
+      color: #1d4ed8 !important;
+    }
+    .resume-template-4 .text-blue-600 {
+      color: #1d4ed8 !important;
+    }
+    .resume-template-4 .text-blue-700 {
+      color: #1d4ed8 !important;
+    }
+    .resume-template-4 .border-gray-200 {
+      border-color: #d1d5db !important;
+    }
+    .resume-template-4 section {
+      page-break-inside: avoid;
+    }
+    .resume-template-4 h1,
+    .resume-template-4 h2,
+    .resume-template-4 h3,
+    .resume-template-4 h4,
+    .resume-template-4 h5,
+    .resume-template-4 h6 {
+      page-break-after: avoid;
+    }
+    .resume-template-4 .print\\:page-break-inside-avoid {
+      page-break-inside: avoid;
+    }
+    .resume-template-4 {
+      font-size: 10pt;
+      line-height: 1.4;
+    }
+    .resume-template-4 .print\\:text-xs {
+      font-size: 8pt !important;
+    }
+    .resume-template-4 .print\\:text-sm {
+      font-size: 9pt !important;
+    }
+    .resume-template-4 .print\\:text-base {
+      font-size: 10pt !important;
+    }
+  }
+`;
+
 const Template4 = ({ data, className = '' }) => {
   const {
     personal = {},
@@ -121,7 +198,7 @@ const Template4 = ({ data, className = '' }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className={`max-w-4xl mx-auto bg-white dark:bg-gray-900 shadow-2xl print:shadow-none print:max-w-full ${className}`}
+      className={`resume-template-4 max-w-4xl mx-auto bg-white dark:bg-gray-900 shadow-2xl print:shadow-none print:max-w-full ${className}`}
     >
       {/* Header with gradient accent bar */}
       <div className="h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 print:h-1 print:bg-gray-300"></div>
@@ -571,60 +648,11 @@ const Template4 = ({ data, className = '' }) => {
         </div>
       </div>
 
-      {/* Print Styles */}
-      <style jsx>{`
-        @media print {
-          .max-w-4xl {
-            max-width: 100% !important;
-          }
-          .shadow-2xl {
-            box-shadow: none !important;
-          }
-          .line-clamp-3 {
-            overflow: visible !important;
-            display: block !important;
-          }
-          .text-blue-500 {
-            color: #1d4ed8 !important;
-          }
-          .text-blue-600 {
-            color: #1d4ed8 !important;
-          }
-          .text-blue-700 {
-            color: #1d4ed8 !important;
-          }
-          .border-gray-200 {
-            border-color: #d1d5db !important;
-          }
-          section {
-            page-break-inside: avoid;
-          }
-          h1,
-          h2,
-          h3,
-          h4,
-          h5,
-          h6 {
-            page-break-after: avoid;
-          }
-          .print\\:page-break-inside-avoid {
-            page-break-inside: avoid;
-          }
-          body {
-            font-size: 10pt;
-            line-height: 1.4;
-          }
-          .print\\:text-xs {
-            font-size: 8pt !important;
-          }
-          .print\\:text-sm {
-            font-size: 9pt !important;
-          }
-          .print\\:text-base {
-            font-size: 10pt !important;
-          }
-        }
-      `}</style>
+      {/* Scoped print stylesheet. Rendered as a plain <style> element with
+          the CSS string injected via dangerouslySetInnerHTML. All selectors
+          are scoped to `.resume-template-4` so the rules cannot leak
+          outside this component. */}
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
     </motion.div>
   );
 };

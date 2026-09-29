@@ -23,6 +23,92 @@ import {
   FiSmile,
 } from 'react-icons/fi';
 
+// ── Print styles (scoped) ─────────────────────────────────────────────────
+//
+// These rules used to live in a `<style jsx>` block, which is a Next.js
+// `styled-jsx` construct. CRA does not transform it, so the CSS leaked
+// globally. Every selector below is now prefixed with `.resume-template-3`
+// — the class carried by this component's root element — so the rules
+// apply only within this template's subtree.
+//
+// The `body { … }` rule from the original block is collapsed onto
+// `.resume-template-3` itself: in print, the surrounding app chrome is
+// hidden by `globals.css`, so the template root is the effective print
+// body for everything inside this component.
+//
+// IMPORTANT: this block is deliberately duplicated per template (with a
+// unique scope class) rather than moved to a shared stylesheet, so that
+// changing one template's print behavior cannot silently change another's.
+// When copying to another template, replace every occurrence of
+// `resume-template-3` with that template's scope class.
+//
+// Template3's print overrides target the purple/pink palette and remove
+// the backdrop-blur. That palette-specific set is intentional and
+// preserved verbatim.
+const PRINT_STYLES = `
+  @media print {
+    .resume-template-3.max-w-4xl {
+      max-width: 100% !important;
+    }
+    .resume-template-3.shadow-2xl {
+      box-shadow: none !important;
+    }
+    .resume-template-3 .bg-gradient-to-br {
+      background: #ffffff !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .resume-template-3 .backdrop-blur-sm {
+      backdrop-filter: none !important;
+    }
+    .resume-template-3 .text-purple-500 {
+      color: #6b21a8 !important;
+    }
+    .resume-template-3 .text-purple-600 {
+      color: #6b21a8 !important;
+    }
+    .resume-template-3 .text-purple-700 {
+      color: #6b21a8 !important;
+    }
+    .resume-template-3 .border-purple-200 {
+      border-color: #d1d5db !important;
+    }
+    .resume-template-3 section {
+      page-break-inside: avoid;
+    }
+    .resume-template-3 h1,
+    .resume-template-3 h2,
+    .resume-template-3 h3,
+    .resume-template-3 h4,
+    .resume-template-3 h5,
+    .resume-template-3 h6 {
+      page-break-after: avoid;
+    }
+    .resume-template-3 .print\\:page-break-inside-avoid {
+      page-break-inside: avoid;
+    }
+    .resume-template-3 {
+      font-size: 10pt;
+      line-height: 1.4;
+    }
+    .resume-template-3 .print\\:text-xs {
+      font-size: 8pt !important;
+    }
+    .resume-template-3 .print\\:text-sm {
+      font-size: 9pt !important;
+    }
+    .resume-template-3 .print\\:text-base {
+      font-size: 10pt !important;
+    }
+    .resume-template-3 .print\\:text-lg {
+      font-size: 11pt !important;
+    }
+    .resume-template-3 .print\\:text-2xl {
+      font-size: 14pt !important;
+    }
+  }
+`;
+
 const Template3 = ({ data, className = '' }) => {
   const {
     personal = {},
@@ -151,7 +237,7 @@ const Template3 = ({ data, className = '' }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className={`max-w-4xl mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-purple-950/20 dark:to-gray-900 shadow-2xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none print:bg-white print:max-w-full ${className}`}
+      className={`resume-template-3 max-w-4xl mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-purple-950/20 dark:to-gray-900 shadow-2xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none print:bg-white print:max-w-full ${className}`}
     >
       <div className="p-6 sm:p-8 print:p-4">
         {/* Header Section */}
@@ -590,70 +676,11 @@ const Template3 = ({ data, className = '' }) => {
         </div>
       </div>
 
-      {/* Print Styles */}
-      <style jsx>{`
-        @media print {
-          .max-w-4xl {
-            max-width: 100% !important;
-          }
-          .shadow-2xl {
-            box-shadow: none !important;
-          }
-          .bg-gradient-to-br {
-            background: #ffffff !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .backdrop-blur-sm {
-            backdrop-filter: none !important;
-          }
-          .text-purple-500 {
-            color: #6b21a8 !important;
-          }
-          .text-purple-600 {
-            color: #6b21a8 !important;
-          }
-          .text-purple-700 {
-            color: #6b21a8 !important;
-          }
-          .border-purple-200 {
-            border-color: #d1d5db !important;
-          }
-          section {
-            page-break-inside: avoid;
-          }
-          h1,
-          h2,
-          h3,
-          h4,
-          h5,
-          h6 {
-            page-break-after: avoid;
-          }
-          .print\\:page-break-inside-avoid {
-            page-break-inside: avoid;
-          }
-          body {
-            font-size: 10pt;
-            line-height: 1.4;
-          }
-          .print\\:text-xs {
-            font-size: 8pt !important;
-          }
-          .print\\:text-sm {
-            font-size: 9pt !important;
-          }
-          .print\\:text-base {
-            font-size: 10pt !important;
-          }
-          .print\\:text-lg {
-            font-size: 11pt !important;
-          }
-          .print\\:text-2xl {
-            font-size: 14pt !important;
-          }
-        }
-      `}</style>
+      {/* Scoped print stylesheet. Rendered as a plain <style> element with
+          the CSS string injected via dangerouslySetInnerHTML. All selectors
+          are scoped to `.resume-template-3` so the rules cannot leak
+          outside this component. */}
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
     </motion.div>
   );
 };

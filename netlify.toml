@@ -62,6 +62,14 @@
     # worker is blocked and every PDF upload into the ATS Scanner fails
     # silently (the parser reports a generic "failed to parse" error).
     #
+    # `worker-src 'self' blob:` is required because pdf.js constructs its
+    # worker from a `blob:` URL that wraps the downloaded worker script.
+    # Without this directive, the browser falls back to `script-src`,
+    # `blob:` is rejected, and pdf.js falls back to the "fake worker" -
+    # parsing then runs on the main thread and freezes the UI on file
+    # upload. The `blob:` entry in `script-src` is a defensive fallback for
+    # engines that do not consult `worker-src`.
+    #
     # `https://js.stripe.com` is required in `script-src` because the Stripe
     # SDK loader injects `<script src="https://js.stripe.com/v3">`. Without
     # it, every subscription-upgrade action fails with
@@ -81,7 +89,8 @@
     # required for Google sign-in to work.
     Content-Security-Policy = """
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://*.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://www.googletagservices.com https://*.googleadservices.com https://www.google-analytics.com https://*.g.doubleclick.net https://apis.google.com https://accounts.google.com https://www.gstatic.com https://*.firebaseapp.com https://cdnjs.cloudflare.com https://js.stripe.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.sentry.io https://www.googletagmanager.com https://*.google-analytics.com https://*.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://www.googletagservices.com https://*.googleadservices.com https://www.google-analytics.com https://*.g.doubleclick.net https://apis.google.com https://accounts.google.com https://www.gstatic.com https://*.firebaseapp.com https://cdnjs.cloudflare.com https://js.stripe.com;
+      worker-src 'self' blob:;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com data:;
       img-src 'self' data: https: blob: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.googlesyndication.com https://*.g.doubleclick.net https://*.googleadservices.com https://*.googleusercontent.com;
@@ -111,7 +120,7 @@
   [headers.values]
     Content-Type = "text/css; charset=UTF-8"
 
-# Service Worker - no cache (FIXED: Added proper SW headers)
+# Service Worker - no cache
 [[headers]]
   for = "/sw.js"
   [headers.values]

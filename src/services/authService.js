@@ -132,6 +132,10 @@ const ERROR_MESSAGES = {
   'auth/invalid-user-id': 'A valid user id is required.',
   'auth/invalid-role': 'That role is not supported.',
   'auth/insufficient-role': 'Administrator access is required for this action.',
+  // Codes used by the suspended-account guard (C-11).
+  // The message is intentionally neutral: it confirms the block without
+  // leaking the suspension reason, which is server-side information.
+  'auth/account-suspended': 'This account has been suspended. Please contact support.',
 };
 
 // ── Utilities ──────────────────────────────────────────────────────────────
@@ -191,6 +195,47 @@ const isSafeAuthPhotoURL = (value) => {
 const generateUniqueFileName = (name) => {
   const ext = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`;
+};
+
+// ── Suspended-Account Guard (C-11) ─────────────────────────────────────────
+//
+// Firebase Auth is unaware of the Firestore `users/{uid}.status` field, so
+// the sign-in flow can complete successfully for a user whose account has
+// been suspended by an admin. Every sign-in entry point in this service
+// must therefore read the Firestore document and refuse to complete the
+// sign-in when `status === 'suspended'`.
+//
+// The three callers of this helper are:
+//   • signIn (email + password)
+//   • syncUserDocAfterProviderAuth (OAuth: Google, GitHub, Facebook, etc.)
+//   • confirmPhoneSignIn (phone OTP)
+//
+// If a fourth sign-in path is ever added, it MUST invoke this helper too.
+// The helper does not return on the suspended branch - it throws, so
+// callers do not need to check its return value.
+
+/**
+ * Signs the Firebase Auth user out and clears the local session identifier,
+ * then throws an `auth/account-suspended` error. Called when a sign-in
+ * attempt is made against a suspended account.
+ *
+ * Signing out before throwing is essential: without it, the client would
+ * retain a valid Firebase ID token and a subsequent Firebase SDK call could
+ * silently re-establish the session. Clearing the session id ensures a
+ * subsequent sign-in attempt cannot accidentally reuse the previous
+ * session's record.
+ */
+const failSuspendedSignIn = async (userId) => {
+  try {
+    await firebaseSignOut(auth);
+  } catch {
+    // Best effort - the throw below is what the caller observes.
+  }
+  clearStoredSessionId();
+  safeTrackEvent('suspended_sign_in_attempt', userId ? { userId } : {});
+  throw Object.assign(new Error('This account has been suspended.'), {
+    code: 'auth/account-suspended',
+  });
 };
 
 // ── Session Storage ────────────────────────────────────────────────────────
@@ -334,6 +379,15 @@ const syncUserDocAfterProviderAuth = async (user, providerName) => {
   const ref = doc(db, COLLECTIONS.users, user.uid);
   const existing = await getDoc(ref);
 
+  // C-11: refuse the sign-in if the account has been suspended. Checked
+  // before any write so no `lastLogin` update or `setDoc` occurs for a
+  // suspended account. `failSuspendedSignIn` signs the Firebase user out
+  // and throws; the caller's outer try/catch converts the throw into the
+  // standard `{ success: false, error, code }` response.
+  if (existing.exists() && existing.data()?.status === 'suspended') {
+    await failSuspendedSignIn(user.uid);
+  }
+
   // Fields refreshed on every OAuth sign-in. `status` is intentionally NOT
   // part of this set - it is admin-managed and must persist across sign-ins
   // so that a suspended account stays suspended.
@@ -422,7 +476,20 @@ export const authService = {
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       const cred = await signInWithEmailAndPassword(auth, normalizeEmail(email), password);
-      await updateDoc(doc(db, COLLECTIONS.users, cred.user.uid), {
+
+      // C-11: read the user document once before the `lastLogin` write so
+      // we can (a) refuse suspended accounts and (b) preserve the existing
+      // behaviour of writing `lastLogin` for everyone else. The single
+      // `getDoc` replaces no prior read in this method - previously there
+      // was none - so the net cost is +1 read per email/password sign-in,
+      // which is well within Spark-plan quota at realistic volumes.
+      const userRef = doc(db, COLLECTIONS.users, cred.user.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists() && userSnap.data()?.status === 'suspended') {
+        await failSuspendedSignIn(cred.user.uid);
+      }
+
+      await updateDoc(userRef, {
         lastLogin: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -438,6 +505,8 @@ export const authService = {
     try {
       const result = await signInWithPopup(auth, createProvider(name));
       const isNew = Boolean(getAdditionalUserInfo(result)?.isNewUser);
+      // `syncUserDocAfterProviderAuth` performs the suspended check and
+      // will throw before any Firestore write for a suspended account.
       await syncUserDocAfterProviderAuth(result.user, name.toLowerCase());
       await createSessionRecord(result.user.uid);
       safeTrackEvent(isNew ? 'sign_up' : 'login', {
@@ -468,6 +537,16 @@ export const authService = {
       const isNew = Boolean(getAdditionalUserInfo(result)?.isNewUser);
       const ref = doc(db, COLLECTIONS.users, user.uid);
       const existing = await getDoc(ref);
+
+      // C-11: same guard as the other two sign-in paths. Checked before any
+      // write so no `lastLogin` update or `setDoc` occurs for a suspended
+      // account. `failSuspendedSignIn` signs the Firebase user out and
+      // throws; the outer catch converts the throw into the standard
+      // `{ success: false, error, code }` response.
+      if (existing.exists() && existing.data()?.status === 'suspended') {
+        await failSuspendedSignIn(user.uid);
+      }
+
       if (!existing.exists()) {
         await setDoc(ref, {
           phoneNumber: user.phoneNumber,

@@ -45,6 +45,11 @@ const ERROR_MESSAGES = {
     'An account already exists with a different sign-in method.',
   'auth/requires-recent-login': 'Please sign in again to continue.',
   'auth/user-disabled': 'This account has been disabled.',
+  // Codes used by the suspended-account guard (H-03). The message matches
+  // the one in `authService.js` so the user sees a single consistent
+  // string regardless of which gate (sign-in vs. active session) blocked
+  // them.
+  'auth/account-suspended': 'This account has been suspended. Please contact support.',
   'auth/operation-not-allowed': 'This operation is not allowed.',
   'auth/invalid-verification-code': 'Invalid verification code.',
   'auth/code-expired': 'Verification code has expired.',
@@ -215,6 +220,13 @@ export const AuthProvider = ({ children }) => {
   // methods (`updateUserProfile`, `verifyEmail`, `updateUserEmail`,
   // `sendVerificationEmail`), which target Firestore explicitly - so
   // skipping the write here does not leave them stale.
+  //
+  // ── Suspended-account guard (H-03) ──────────────────────────────────
+  // The callback returns `{ created, data, suspended }`. When `suspended`
+  // is true, the caller must terminate the session. The flag is returned
+  // rather than thrown so the caller can sequence side effects (state
+  // clear, toast, sign-out) around the generation guard in
+  // `onAuthStateChanged`. See the caller in the effect below.
   const hydrateUserDocument = useCallback(async (firebaseUser) => {
     const isNewSignIn = lastHydratedUidRef.current !== firebaseUser.uid;
     lastHydratedUidRef.current = firebaseUser.uid;
@@ -224,6 +236,16 @@ export const AuthProvider = ({ children }) => {
 
     if (existingUserSnapshot.exists()) {
       const existingData = existingUserSnapshot.data();
+
+      // Suspended-account gate. Checked before the profile-merge and
+      // lastLogin-write steps so a suspended user never receives a
+      // `lastLogin` / `updatedAt` write. The `=== 'suspended'` comparison
+      // is false for legacy docs with no `status` field, preserving
+      // pre-fix behavior for those accounts.
+      if (existingData.status === 'suspended') {
+        return { created: false, data: existingData, suspended: true };
+      }
+
       const mergedData = {
         ...existingData,
         email: firebaseUser.email ?? existingData.email ?? null,
@@ -381,8 +403,40 @@ export const AuthProvider = ({ children }) => {
           return;
         }
         syncFirebaseUserState(firebaseUser);
-        const { created, data } = await hydrateUserDocument(firebaseUser);
+        const { created, data, suspended } = await hydrateUserDocument(firebaseUser);
         if (!isActive || generation !== hydrationGeneration) return;
+
+        // ── Suspended-account termination (H-03) ───────────────────────
+        // `hydrateUserDocument` reports a suspended status rather than
+        // throwing, so we can sequence the user-visible feedback, state
+        // clear, and sign-out in the correct order:
+        //   1. Clear local state synchronously so React does not briefly
+        //      render protected UI for a user we are about to sign out.
+        //   2. Show the toast. This must happen *before* `signOut` — the
+        //      sign-out triggers `onAuthStateChanged(null)` which
+        //      increments `hydrationGeneration`; if the toast were fired
+        //      after awaiting `signOut`, the generation guard would bail
+        //      us out of this callback before the toast line ran.
+        //   3. Sign out last and swallow errors — the raw Firebase
+        //      session is expected to be terminated regardless, and any
+        //      failure here is not actionable by the user.
+        if (suspended) {
+          safeTrackEvent('suspended_session_terminated', { userId: firebaseUser.uid });
+          clearAuthState();
+          toast.error(ERROR_MESSAGES['auth/account-suspended'], {
+            id: 'auth-account-suspended',
+            duration: 6000,
+          });
+          try {
+            await signOut(auth);
+          } catch (signOutError) {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Failed to sign out suspended session', signOutError);
+            }
+          }
+          return;
+        }
+
         setUserData(data);
         setUserRole(data?.role || 'user');
         safeTrackEvent('user_session_started', {

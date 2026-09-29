@@ -1,13 +1,70 @@
 const admin = require('firebase-admin');
 const Stripe = require('stripe');
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
-  });
+// ── Module-load initialization with graceful failure ─────────────────────
+//
+// `firebase-admin` and `stripe` are initialized at module scope rather
+// than per-invocation so the SDK instances are reused across warm
+// invocations (cold-start optimization).
+//
+// Historically, a missing `FIREBASE_SERVICE_ACCOUNT` env var caused
+// `JSON.parse(undefined)` to throw at module load, which Netlify reported
+// as an opaque HTTP 502 on every request — including requests that never
+// reached the handler. The pattern below stores the failure on a
+// module-level variable and returns a clean 500 from the handler instead,
+// which is diagnosable from the client without access to Netlify logs.
+
+let adminInitError = null;
+let stripeInitError = null;
+
+function initializeAdmin() {
+  if (admin.apps.length > 0) return;
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set');
+  }
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+    });
+  } catch (error) {
+    throw new Error(`Failed to initialize Firebase Admin SDK: ${error.message}`);
+  }
 }
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+try {
+  initializeAdmin();
+} catch (error) {
+  adminInitError = error;
+}
+
+let stripe = null;
+try {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY env var is not set');
+  }
+  stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+} catch (error) {
+  stripeInitError = error;
+}
+
+// Log which env vars are missing, without logging their values. Netlify
+// surfaces `console.error` output in the deploy's function log.
+function logMissingConfig() {
+  const missing = [];
+  if (adminInitError) missing.push('FIREBASE_SERVICE_ACCOUNT');
+  if (stripeInitError) missing.push('STRIPE_SECRET_KEY');
+  if (!process.env.URL && !process.env.DEPLOY_PRIME_URL) {
+    missing.push('URL or DEPLOY_PRIME_URL');
+  }
+  if (!process.env.STRIPE_PRO_PRICE_ID) missing.push('STRIPE_PRO_PRICE_ID');
+  if (!process.env.STRIPE_BUSINESS_PRICE_ID) missing.push('STRIPE_BUSINESS_PRICE_ID');
+
+  if (missing.length > 0) {
+    console.error(
+      `create-checkout-session: missing or invalid configuration: ${missing.join(', ')}`
+    );
+  }
+}
 
 // ── Trusted site URL ─────────────────────────────────────────────────────
 // `success_url` and `cancel_url` are passed to Stripe and become the
@@ -31,12 +88,21 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) };
   }
 
+  // Fail closed on any module-load or deploy-time misconfiguration. This
+  // replaces the previous behavior where a missing env var produced a
+  // Netlify 502 with no body and no actionable message.
+  if (adminInitError || stripeInitError) {
+    logMissingConfig();
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Server is not configured' }),
+    };
+  }
+
   // Fail closed on deploy-time misconfiguration. Do not fall back to any
   // client-controlled value.
   if (!SITE_URL) {
-    console.error(
-      'create-checkout-session: neither process.env.URL nor DEPLOY_PRIME_URL is set'
-    );
+    logMissingConfig();
     return {
       statusCode: 500,
       body: JSON.stringify({ message: 'Server is not configured' }),
@@ -94,6 +160,14 @@ exports.handler = async (event) => {
 
   if (!planId || !priceMap[planId]) {
     return { statusCode: 400, body: JSON.stringify({ message: 'Invalid plan' }) };
+  }
+
+  if (!priceMap[planId]) {
+    logMissingConfig();
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Server is not configured' }),
+    };
   }
 
   try {

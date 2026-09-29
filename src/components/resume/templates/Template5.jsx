@@ -23,6 +23,106 @@ import {
   FiArrowRight,
 } from 'react-icons/fi';
 
+// ── Print styles (scoped) ─────────────────────────────────────────────────
+//
+// These rules used to live in a `<style jsx>` block, which is a Next.js
+// `styled-jsx` construct. CRA does not transform it, so the CSS leaked
+// globally. Every selector below is now prefixed with `.resume-template-5`
+// — the class carried by this component's root element — so the rules
+// apply only within this template's subtree.
+//
+// The `body { … }` rule from the original block is collapsed onto
+// `.resume-template-5` itself: in print, the surrounding app chrome is
+// hidden by `globals.css`, so the template root is the effective print
+// body for everything inside this component.
+//
+// IMPORTANT: this block is deliberately duplicated per template (with a
+// unique scope class) rather than moved to a shared stylesheet, so that
+// changing one template's print behavior cannot silently change another's.
+// When copying to another template, replace every occurrence of
+// `resume-template-5` with that template's scope class.
+//
+// Template5's print overrides are the most impactful of the five because
+// they force `.text-white` to black. Scoping this rule to
+// `.resume-template-5 .text-white` prevents it from turning every
+// `.text-white` element in the app (buttons, dark-mode headers, badges)
+// black during print.
+//
+// The escaped selectors (`.border-white\/20`, `.bg-white\/10`,
+// `.print\:page-break-inside-avoid`) retain their backslash escapes —
+// these are required for the `/` and `:` characters to be parsed as part
+// of the class name rather than as selector syntax.
+const PRINT_STYLES = `
+  @media print {
+    .resume-template-5.max-w-4xl {
+      max-width: 100% !important;
+    }
+    .resume-template-5.shadow-2xl {
+      box-shadow: none !important;
+    }
+    .resume-template-5 .line-clamp-2 {
+      overflow: visible !important;
+      display: block !important;
+    }
+    .resume-template-5 .bg-gradient-to-br {
+      background: #f8fafc !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .resume-template-5 .text-white {
+      color: #000 !important;
+    }
+    .resume-template-5 .text-gray-300 {
+      color: #4b5563 !important;
+    }
+    .resume-template-5 .text-slate-500 {
+      color: #4b5563 !important;
+    }
+    .resume-template-5 .text-slate-600 {
+      color: #4b5563 !important;
+    }
+    .resume-template-5 .text-slate-700 {
+      color: #1f2937 !important;
+    }
+    .resume-template-5 .border-white\\/20 {
+      border-color: #d1d5db !important;
+    }
+    .resume-template-5 .bg-white\\/10 {
+      background: #f3f4f6 !important;
+    }
+    .resume-template-5 section {
+      page-break-inside: avoid;
+    }
+    .resume-template-5 h1,
+    .resume-template-5 h2,
+    .resume-template-5 h3,
+    .resume-template-5 h4,
+    .resume-template-5 h5,
+    .resume-template-5 h6 {
+      page-break-after: avoid;
+    }
+    .resume-template-5 .print\\:page-break-inside-avoid {
+      page-break-inside: avoid;
+    }
+    .resume-template-5 {
+      font-size: 10pt;
+      line-height: 1.4;
+    }
+    .resume-template-5 .print\\:text-xs {
+      font-size: 8pt !important;
+    }
+    .resume-template-5 .print\\:text-sm {
+      font-size: 9pt !important;
+    }
+    .resume-template-5 .print\\:text-base {
+      font-size: 10pt !important;
+    }
+    .resume-template-5 .print\\:text-2xl {
+      font-size: 14pt !important;
+    }
+  }
+`;
+
 const Template5 = ({ data, className = '' }) => {
   const {
     personal = {},
@@ -112,7 +212,7 @@ const Template5 = ({ data, className = '' }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className={`max-w-4xl mx-auto bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 shadow-2xl print:shadow-none print:bg-white print:max-w-full ${className}`}
+      className={`resume-template-5 max-w-4xl mx-auto bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 shadow-2xl print:shadow-none print:bg-white print:max-w-full ${className}`}
     >
       <div className="relative">
         {/* Dark Header Background */}
@@ -574,77 +674,11 @@ const Template5 = ({ data, className = '' }) => {
         </div>
       </div>
 
-      {/* Print Styles */}
-      <style jsx>{`
-        @media print {
-          .max-w-4xl {
-            max-width: 100% !important;
-          }
-          .shadow-2xl {
-            box-shadow: none !important;
-          }
-          .line-clamp-2 {
-            overflow: visible !important;
-            display: block !important;
-          }
-          .bg-gradient-to-br {
-            background: #f8fafc !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .text-white {
-            color: #000 !important;
-          }
-          .text-gray-300 {
-            color: #4b5563 !important;
-          }
-          .text-slate-500 {
-            color: #4b5563 !important;
-          }
-          .text-slate-600 {
-            color: #4b5563 !important;
-          }
-          .text-slate-700 {
-            color: #1f2937 !important;
-          }
-          .border-white\\/20 {
-            border-color: #d1d5db !important;
-          }
-          .bg-white\\/10 {
-            background: #f3f4f6 !important;
-          }
-          section {
-            page-break-inside: avoid;
-          }
-          h1,
-          h2,
-          h3,
-          h4,
-          h5,
-          h6 {
-            page-break-after: avoid;
-          }
-          .print\\:page-break-inside-avoid {
-            page-break-inside: avoid;
-          }
-          body {
-            font-size: 10pt;
-            line-height: 1.4;
-          }
-          .print\\:text-xs {
-            font-size: 8pt !important;
-          }
-          .print\\:text-sm {
-            font-size: 9pt !important;
-          }
-          .print\\:text-base {
-            font-size: 10pt !important;
-          }
-          .print\\:text-2xl {
-            font-size: 14pt !important;
-          }
-        }
-      `}</style>
+      {/* Scoped print stylesheet. Rendered as a plain <style> element with
+          the CSS string injected via dangerouslySetInnerHTML. All selectors
+          are scoped to `.resume-template-5` so the rules cannot leak
+          outside this component. */}
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
     </motion.div>
   );
 };

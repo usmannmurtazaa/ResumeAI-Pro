@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   setDoc,
@@ -18,6 +19,13 @@ import {
 import { db, logAnalyticsEvent } from './firebase';
 import { FREE_RESUME_LIMIT } from '../data/constants';
 const MAX_BATCH_SIZE = 400;
+
+// Upper bound on the number of resume documents that `getUserResumeStats`
+// fetches to compute per-document aggregates (average score, template
+// counts, etc.). Firestore aggregate queries cannot compute these fields,
+// so a bounded slice is used. The authoritative `total` is computed
+// separately via `getCountFromServer` and is not affected by this bound.
+const STATS_SAMPLE_LIMIT = 200;
 
 // ── Field whitelist for resume updates ────────────────────────────────────
 // Mirrors `isAllowedResumeUpdate()` in `firestore.rules`. Keeping the
@@ -80,6 +88,60 @@ const formatResume = (docSnapshot) => {
     createdAt: toDateISO(data.createdAt),
     updatedAt: toDateISO(data.updatedAt),
   };
+};
+
+/**
+ * Reports a failed counter increment (H-26).
+ *
+ * Counter increments are fire-and-forget: their failures are non-critical
+ * for the user-visible flow, and the callers of `incrementViewCount` and
+ * `incrementDownloadCount` do not expect an exception. But a *silent*
+ * failure — as in the previous implementation — hides genuine problems
+ * (a `permission-denied` from a misaligned field whitelist, a `not-found`
+ * from a concurrently deleted resume, or a `resource-exhausted` from a
+ * Spark-plan quota overrun) and makes silent counter drift
+ * indistinguishable from "the counter just didn't go up".
+ *
+ * This helper makes those failures observable without changing the
+ * fire-and-forget contract:
+ *   • In development, the full error is logged to the console.
+ *   • In every environment, a structured `counter_write_failed` analytics
+ *     event is emitted with the counter name and the Firestore error code,
+ *     so drift is visible in GA4 dashboards rather than invisible.
+ *
+ * No user-facing toast or retry is emitted. The count is cosmetic, and a
+ * toast for every failed view would be noisy. Retry is deliberately
+ * omitted: `increment(1)` is atomic on the server, so a retry after a
+ * lost response would double-count. Seeing the failure first lets an
+ * operator decide, with evidence, whether retry is worth that risk.
+ *
+ * The return value of the calling method remains `false`, so callers keep
+ * their existing optimistic-update contract.
+ */
+const reportCounterFailure = (counterName, resumeId, error) => {
+  const code = error?.code || 'unknown';
+
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(
+      `[resumeService] Failed to increment ${counterName} for resume "${resumeId}" (${code})`,
+      error
+    );
+  }
+
+  // Structured event in every environment so drift shows up in GA4 rather
+  // than vanishing. Analytics is free on Spark plan and does not touch
+  // Firestore.
+  try {
+    logAnalyticsEvent('counter_write_failed', {
+      counter: counterName,
+      resumeId,
+      error_code: code,
+    });
+  } catch {
+    // The failure report itself must never break the calling flow. This is
+    // a fire-and-forget path; if even the failure report fails, we have
+    // done what we can.
+  }
 };
 
 // ── Resume Service ─────────────────────────────────────────────────────────
@@ -336,19 +398,47 @@ export const resumeService = {
     }
   },
 
+  // ── Counters (H-26) ────────────────────────────────────────────────────
+  //
+  // Both counter increments are fire-and-forget: they return a boolean and
+  // never throw, so the calling flow (an in-flight resume view or a download
+  // whose file has already been generated) is never interrupted by a counter
+  // failure. The previous implementation used an anonymous
+  // `catch { return false; }` that discarded every error — including
+  // `permission-denied` from a rules/whitelist mismatch — and left silent
+  // counter drift invisible. Failures are now reported through
+  // `reportCounterFailure` above.
+
   async incrementViewCount(resumeId) {
+    if (!resumeId || typeof resumeId !== 'string') {
+      reportCounterFailure(
+        'viewCount',
+        resumeId,
+        Object.assign(new Error('Invalid resumeId'), { code: 'invalid-argument' })
+      );
+      return false;
+    }
     try {
       await updateDoc(doc(db, 'resumes', resumeId), {
         viewCount: increment(1),
         lastViewed: serverTimestamp(),
       });
       return true;
-    } catch {
+    } catch (error) {
+      reportCounterFailure('viewCount', resumeId, error);
       return false;
     }
   },
 
   async incrementDownloadCount(resumeId) {
+    if (!resumeId || typeof resumeId !== 'string') {
+      reportCounterFailure(
+        'downloadCount',
+        resumeId,
+        Object.assign(new Error('Invalid resumeId'), { code: 'invalid-argument' })
+      );
+      return false;
+    }
     try {
       await updateDoc(doc(db, 'resumes', resumeId), {
         downloadCount: increment(1),
@@ -356,7 +446,8 @@ export const resumeService = {
       });
       logAnalyticsEvent('resume_downloaded', { resumeId });
       return true;
-    } catch {
+    } catch (error) {
+      reportCounterFailure('downloadCount', resumeId, error);
       return false;
     }
   },
@@ -392,11 +483,21 @@ export const resumeService = {
   },
 
   // ── Limits & Stats ─────────────────────────────────────────────────────
+  //
+  // All three methods below previously read every resume in the user's
+  // collection just to count them. On Spark plan this scales linearly with
+  // the number of resumes a user has created. They now use Firestore's
+  // aggregate `count()` queries, which are billed at approximately 1 read
+  // per 1,000 matching documents (minimum 1 read per query), so the cost of
+  // these calls is effectively constant regardless of resume count.
 
   async canCreateResume(userId, isPremium = false) {
     if (isPremium) return true;
     try {
-      return (await this.getUserResumes(userId)).length < FREE_RESUME_LIMIT;
+      const snap = await getCountFromServer(
+        query(collection(db, 'resumes'), where('userId', '==', userId))
+      );
+      return (snap.data().count || 0) < FREE_RESUME_LIMIT;
     } catch {
       return false;
     }
@@ -405,24 +506,63 @@ export const resumeService = {
   async getRemainingFreeResumes(userId, isPremium = false) {
     if (isPremium) return Infinity;
     try {
-      return Math.max(0, FREE_RESUME_LIMIT - (await this.getUserResumes(userId)).length);
+      const snap = await getCountFromServer(
+        query(collection(db, 'resumes'), where('userId', '==', userId))
+      );
+      const total = snap.data().count || 0;
+      // Defensive: clamp to 0. A premium user whose subscription lapses
+      // mid-session could otherwise see a negative "remaining" count.
+      return Math.max(0, FREE_RESUME_LIMIT - total);
     } catch {
       return 0;
     }
   },
 
+  // ── getUserResumeStats ─────────────────────────────────────────────────
+  // Computes aggregate statistics for a user's resumes.
+  //
+  // Authoritative `total` — fetched via `getCountFromServer`, exact for any
+  // number of resumes.
+  //
+  // Derived fields — `completed`, `avgScore`, `bestScore`, `templateCounts`,
+  // `totalDownloads`, `totalViews`, `lastUpdated` — require per-document
+  // data that Firestore aggregates cannot compute. They are computed from a
+  // bounded slice of the `STATS_SAMPLE_LIMIT` most recently updated resumes.
+  // For users with ≤ STATS_SAMPLE_LIMIT resumes (the overwhelming majority),
+  // the values are identical to the previous implementation. For users above
+  // the bound, the derived fields reflect the most recent slice rather than
+  // the entire collection; `total` remains exact.
+  //
+  // If the bound ever needs to be removed, note that it exists to cap the
+  // read cost of this call — do not delete it without measuring the impact
+  // on the Spark-plan quota for the highest-volume users.
   async getUserResumeStats(userId) {
     try {
-      const resumes = await this.getUserResumes(userId);
-      const total = resumes.length;
-      const completed = resumes.filter((r) => r.status === 'completed' || r.atsScore >= 80).length;
-      const scores = resumes.map((r) => r.atsScore || 0).filter((s) => s > 0);
+      const [totalSnap, sampleSnap] = await Promise.all([
+        getCountFromServer(query(collection(db, 'resumes'), where('userId', '==', userId))),
+        getDocs(
+          query(
+            collection(db, 'resumes'),
+            where('userId', '==', userId),
+            orderBy('updatedAt', 'desc'),
+            limit(STATS_SAMPLE_LIMIT)
+          )
+        ),
+      ]);
+
+      const total = totalSnap.data().count || 0;
+      const sample = sampleSnap.docs.map(formatResume);
+
+      const completed = sample.filter(
+        (r) => r.status === 'completed' || r.atsScore >= 80
+      ).length;
+      const scores = sample.map((r) => r.atsScore || 0).filter((s) => s > 0);
       const avgScore = scores.length
         ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
         : 0;
 
       const templateCounts = {};
-      resumes.forEach((r) => {
+      sample.forEach((r) => {
         const t = r.template || 'modern';
         templateCounts[t] = (templateCounts[t] || 0) + 1;
       });
@@ -430,14 +570,18 @@ export const resumeService = {
       return {
         total,
         completed,
-        inProgress: total - completed,
+        // Clamp to 0 for the same reason as `getRemainingFreeResumes`: the
+        // sample-derived `completed` cannot exceed the aggregate `total` in
+        // steady state, but a replication lag between the two parallel
+        // queries could momentarily produce `completed > total`.
+        inProgress: Math.max(0, total - completed),
         avgScore,
         bestScore: scores.length ? Math.max(...scores) : 0,
-        totalDownloads: resumes.reduce((s, r) => s + (r.downloadCount || 0), 0),
-        totalViews: resumes.reduce((s, r) => s + (r.viewCount || 0), 0),
+        totalDownloads: sample.reduce((s, r) => s + (r.downloadCount || 0), 0),
+        totalViews: sample.reduce((s, r) => s + (r.viewCount || 0), 0),
         templateCounts,
-        lastUpdated: resumes[0]?.updatedAt || null,
-        freeRemaining: FREE_RESUME_LIMIT - total,
+        lastUpdated: sample[0]?.updatedAt || null,
+        freeRemaining: Math.max(0, FREE_RESUME_LIMIT - total),
       };
     } catch {
       return {
