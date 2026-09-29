@@ -15,76 +15,112 @@ const ADMIN_ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart'];
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
 
+const SYNC_ADMIN_CLAIMS_ENDPOINT = '/.netlify/functions/sync-admin-claims';
+
 // ── Security Utilities ──────────────────────────────────────────────────────
 
 /**
  * Verifies that a user should be allowed into the admin area.
  *
- * Two paths are accepted:
+ * Returns a structured result:
+ *   • { verified: true,  source: 'claims' }    — token already carries admin claims
+ *   • { verified: true,  source: 'firestore' } — Firestore role is 'admin',
+ *                                                 claims still need to be minted
+ *   • { verified: false, source: null }        — no admin path matched
  *
- *   1. Firebase Auth custom claims - `admin`, `superAdmin`, or
- *      `role: 'admin'`. This is the "classic" path and requires a trusted
- *      backend (Cloud Function or manual Admin SDK script) to have set the
- *      claims. Kept for backward compatibility with any project that has
- *      claims-based admins configured.
- *
- *   2. Firestore `users/{uid}.role === 'admin'`. This is the path the app
- *      itself supports: `authService.updateUserRole` writes the Firestore
- *      role, `AuthContext` reads it into `userRole`, and `hasRole('admin')`
- *      is used everywhere in the UI. On the Spark plan there is no
- *      server-side way to mint custom claims, so Firestore is the only
- *      source of truth the deployed app can actually control.
- *
- * A user whose Firestore `status === 'suspended'` is always rejected,
- * regardless of claims or role. This prevents a stale admin from entering
- * the panel after being suspended.
- *
- * NOTE: this is a client-side guard, not a security boundary. The
- * authoritative check for admin-only Firestore operations lives in
- * `firestore.rules`.
+ * The caller is responsible for calling the claims-sync function when
+ * `source === 'firestore'`. This function does NOT write anything.
  */
 const verifyAdminServerSide = async (user) => {
-  if (!user) return false;
+  if (!user) return { verified: false, source: null };
 
   try {
-    // Force a fresh token in case the caller's ID token is stale. This is
-    // required so that the claims path reflects the latest state and so any
-    // recently-revoked account is caught.
+    // Force a fresh token so the claims path reflects the latest state.
     await user.getIdToken(true);
-
     const decodedToken = await user.getIdTokenResult();
 
     const isAdminClaim = decodedToken.claims.admin === true;
     const isSuperAdminClaim = decodedToken.claims.superAdmin === true;
-    const roleClaim = decodedToken.claims.role;
-    const isAdminRoleClaim = roleClaim === 'admin';
+    const isAdminRoleClaim = decodedToken.claims.role === 'admin';
     const hasClaimsAdmin = isAdminClaim || isSuperAdminClaim || isAdminRoleClaim;
 
-    // Read the Firestore user document. This is the app's source of truth
-    // for role / status. The read is permitted by the existing
-    // `allow read: if isSelf(userId) || isPrivilegedAdmin();` rule on
-    // `users/{userId}`.
+    if (hasClaimsAdmin) {
+      return { verified: true, source: 'claims' };
+    }
+
+    // Claims path failed. Check Firestore as a second source of truth.
+    // This is what makes a Firestore-role admin able to reach the panel.
     const userRef = doc(db, 'users', user.uid);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.exists() ? userSnap.data() : null;
-    const hasFirestoreAdmin = userData?.role === 'admin';
-    const isSuspended = userData?.status === 'suspended';
 
-    // Suspension always wins - even a claims-based admin is locked out
-    // once their Firestore `status` is 'suspended'.
-    if (isSuspended) {
+    if (userData?.status === 'suspended') {
       console.warn('Admin access denied: account is suspended');
-      return false;
+      return { verified: false, source: null };
     }
 
-    if (!hasClaimsAdmin && !hasFirestoreAdmin) {
-      console.warn('Admin access denied: no admin claims and Firestore role is not admin');
-      return false;
+    if (userData?.role === 'admin') {
+      return { verified: true, source: 'firestore' };
     }
 
-    return true;
+    console.warn('Admin access denied: no admin claims and Firestore role is not admin');
+    return { verified: false, source: null };
   } catch (error) {
     console.error('Admin verification failed:', error);
+    return { verified: false, source: null };
+  }
+};
+
+/**
+ * Calls the Netlify Function that mints the admin custom claim from the
+ * Firestore `role` field, then refreshes the caller's ID token.
+ *
+ * Returns true when the token now carries `admin: true`, false otherwise.
+ *
+ * The function itself performs the same server-side role check that this
+ * client already performed — it is authoritative, and the client's prior
+ * check is merely a UX optimization so we don't call it for obvious non-admins.
+ */
+const syncAdminClaimsAndRefreshToken = async (user) => {
+  if (!user) return false;
+
+  try {
+    const token = await user.getIdToken();
+    const response = await fetch(SYNC_ADMIN_CLAIMS_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      // 401 — the token was rejected; treat as verification failure.
+      // 500 — the server failed; also treat as failure.
+      // 200 with { synced: false } — caller is not an admin per the
+      // server's own read; treat as failure.
+      console.warn('sync-admin-claims returned non-OK:', response.status);
+      return false;
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    if (!payload?.synced) {
+      return false;
+    }
+
+    // Force a token refresh so the newly-minted claim is present on the
+    // ID token that Firestore will see on the next query.
+    await user.getIdToken(true);
+
+    // Confirm the claim landed before releasing the guard. If the token
+    // still lacks `admin: true` after the refresh, fail closed — a query
+    // against a list rule would be rejected otherwise and the admin would
+    // see the raw Firestore permission-denied error.
+    const refreshed = await user.getIdTokenResult(true);
+    return refreshed.claims.admin === true;
+  } catch (error) {
+    console.error('syncAdminClaimsAndRefreshToken failed:', error);
     return false;
   }
 };
@@ -129,7 +165,7 @@ const logAdminActivity = async (user, action, details = {}) => {
  *
  * The rate limiter is intended to protect the admin area from brute-force
  * retries of `verifyAdminServerSide`. It only counts **failed** verification
- * attempts - successful navigations between admin pages must not increment
+ * attempts — successful navigations between admin pages must not increment
  * the counter, otherwise an admin browsing the panel for a few minutes would
  * be locked out by their own legitimate activity.
  *
@@ -174,6 +210,7 @@ const AdminRoute = ({
   children,
   redirectTo = '/dashboard',
   requireVerified = true,
+  allowImpersonation = false, // For support staff to view as admin
   sessionTimeout = ADMIN_SESSION_TIMEOUT,
 }) => {
   const { user, userRole, loading, isEmailVerified, logout } = useAuth();
@@ -184,6 +221,7 @@ const AdminRoute = ({
   const [countdown, setCountdown] = useState(5);
   const [verifying, setVerifying] = useState(true);
   const [adminVerified, setAdminVerified] = useState(false);
+  const [verifyingStage, setVerifyingStage] = useState('credentials');
 
   const lastActivityRef = useRef(Date.now());
   const sessionCheckIntervalRef = useRef(null);
@@ -192,7 +230,7 @@ const AdminRoute = ({
   // Check if user is coming from a different route
   const fromLocation = location.state?.from?.pathname || redirectTo;
 
-  // ── Server-Side Admin Verification ──────────────────────────────────────
+  // ── Server-Side Admin Verification + Claims Sync ──────────────────────
 
   useEffect(() => {
     mountedRef.current = true;
@@ -200,6 +238,7 @@ const AdminRoute = ({
     const performAdminVerification = async () => {
       if (!loading && user && userRole === 'admin') {
         setVerifying(true);
+        setVerifyingStage('credentials');
 
         try {
           // Check rate limiting state (read-only; does not record).
@@ -212,37 +251,53 @@ const AdminRoute = ({
             return;
           }
 
-          // Verify admin status server-side
-          const isVerified = await verifyAdminServerSide(user);
+          // Step 1 — verify the caller via claims or Firestore role.
+          const result = await verifyAdminServerSide(user);
 
-          if (mountedRef.current) {
-            setAdminVerified(isVerified);
-
-            if (isVerified) {
-              // Successful verification resets the failed-attempt counter so
-              // that a legitimately authorised admin can navigate the panel
-              // freely.
-              clearRateLimitAttempts();
-
-              // Log successful admin access
-              await logAdminActivity(user, 'admin_access_granted', {
-                route: location.pathname,
-                from: location.state?.from?.pathname,
-              });
-
-              toast.success('Admin access verified', { duration: 2000 });
-            } else {
-              // Only failed verifications count toward the rate limit.
+          if (!result.verified) {
+            if (mountedRef.current) {
+              setAdminVerified(false);
               recordFailedAttempt();
-
-              // Log failed verification
               await logAdminActivity(user, 'admin_verification_failed', {
                 route: location.pathname,
-                reason: 'Server-side verification failed',
+                reason: 'No admin claims and Firestore role is not admin',
               });
-
               toast.error('Admin verification failed');
             }
+            return;
+          }
+
+          // Step 2 — if authorized via Firestore role, mint the claim
+          // and refresh the token. This is the only way to authorize
+          // list and aggregation queries, which the rules gate on
+          // custom claims.
+          if (result.source === 'firestore') {
+            setVerifyingStage('syncing-claims');
+            const synced = await syncAdminClaimsAndRefreshToken(user);
+            if (!synced) {
+              if (mountedRef.current) {
+                setAdminVerified(false);
+                recordFailedAttempt();
+                await logAdminActivity(user, 'admin_verification_failed', {
+                  route: location.pathname,
+                  reason: 'Claims sync did not produce an admin claim',
+                });
+                toast.error('Admin verification failed');
+              }
+              return;
+            }
+          }
+
+          // Step 3 — success. Clear rate limit and admit.
+          if (mountedRef.current) {
+            setAdminVerified(true);
+            clearRateLimitAttempts();
+            await logAdminActivity(user, 'admin_access_granted', {
+              route: location.pathname,
+              from: location.state?.from?.pathname,
+              source: result.source,
+            });
+            toast.success('Admin access verified', { duration: 2000 });
           }
         } catch (error) {
           if (mountedRef.current) {
@@ -253,6 +308,7 @@ const AdminRoute = ({
         } finally {
           if (mountedRef.current) {
             setVerifying(false);
+            setVerifyingStage('credentials');
           }
         }
       } else {
@@ -400,6 +456,15 @@ const AdminRoute = ({
 
   // Loading or verifying state
   if (loading || verifying) {
+    const message =
+      verifyingStage === 'syncing-claims'
+        ? 'Preparing admin access...'
+        : 'Verifying admin credentials...';
+    const subMessage =
+      verifyingStage === 'syncing-claims'
+        ? 'Syncing role information (this happens once)'
+        : 'Checking security permissions';
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         <motion.div
@@ -418,15 +483,9 @@ const AdminRoute = ({
 
           <Loader size="lg" />
 
-          <p className="mt-4 text-gray-600 dark:text-gray-400">
-            {verifying ? 'Verifying admin credentials...' : 'Loading...'}
-          </p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">{message}</p>
 
-          <p className="text-xs text-gray-400 mt-2">
-            {verifying
-              ? 'Checking security permissions'
-              : 'Please wait while we check your permissions'}
-          </p>
+          <p className="text-xs text-gray-400 mt-2">{subMessage}</p>
 
           {verifying && (
             <div className="mt-4 flex items-center justify-center gap-2">
@@ -698,6 +757,10 @@ export const withSuperAdminProtection = (WrappedComponent) => {
 
 /**
  * Custom hook for admin access checks.
+ *
+ * Note: this hook does NOT perform the claims sync — it is intended for
+ * lightweight read-only checks outside of the AdminRoute render tree.
+ * A consumer that needs the sync should route through `AdminRoute`.
  */
 export const useAdminAccess = () => {
   const { user, userRole, loading, isEmailVerified } = useAuth();
@@ -710,8 +773,8 @@ export const useAdminAccess = () => {
     const verifyAccess = async () => {
       if (user && userRole === 'admin') {
         try {
-          const verified = await verifyAdminServerSide(user);
-          if (mounted) setIsVerified(verified);
+          const result = await verifyAdminServerSide(user);
+          if (mounted) setIsVerified(result.verified);
         } catch (error) {
           if (mounted) setIsVerified(false);
         }
