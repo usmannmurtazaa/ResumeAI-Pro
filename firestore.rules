@@ -179,23 +179,43 @@ service cloud.firestore {
         && (resource.data.userId == request.auth.uid || isPrivilegedAdmin());
     }
 
+    // ── settings/{userId} ───────────────────────────────────────────────
+    // One settings document per user, keyed by uid. A user reads and writes
+    // only their own settings. Admins (support use case) may read or update
+    // any user's settings. The `read` split into `get`/`list` follows the
+    // same pattern as `users/{userId}`: the admin path contains `get()` and
+    // cannot authorize a collection query, so `list` requires claims.
     match /settings/{userId} {
-      allow read, write: if isSelf(userId);
+      allow get: if isSelf(userId) || isPrivilegedAdmin();
+      allow list: if hasAdminClaims();
+      allow create, update, delete: if isSelf(userId) || isPrivilegedAdmin();
     }
 
+    // ── notifications/{notificationId} ─────────────────────────────────
+    // Users read, create, and delete their own notifications. Admins may
+    // read or delete any notification (e.g. to remove spam or perform
+    // moderation). The `read` split follows the same pattern as elsewhere.
     match /notifications/{notificationId} {
-      allow read: if signedIn()
-        && resource.data.userId == request.auth.uid;
+      allow get: if signedIn()
+        && (resource.data.userId == request.auth.uid || isPrivilegedAdmin());
+
+      allow list: if signedIn()
+        && (resource.data.userId == request.auth.uid || hasAdminClaims());
 
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid;
 
       allow update, delete: if signedIn()
-        && resource.data.userId == request.auth.uid;
+        && (resource.data.userId == request.auth.uid || isPrivilegedAdmin());
     }
 
+    // ── templates/{templateId} ─────────────────────────────────────────
+    // Public read (templates are shown to signed-out visitors on the
+    // marketing site). Admin write. Previously only `read` was declared,
+    // so admin template management was impossible.
     match /templates/{templateId} {
       allow read: if true;
+      allow write: if isPrivilegedAdmin();
     }
 
     // ── subscriptions/{userId} ──────────────────────────────────────────
@@ -209,7 +229,12 @@ service cloud.firestore {
     }
 
     // ── analytics/{docId} ───────────────────────────────────────────────
-    // Same split as above.
+    // Same split as above. The `create` rule was previously permissive:
+    // it required `userId` and `name` to be present but did not restrict
+    // what OTHER keys a client could inject into the document. It now
+    // accepts exactly the field set that `src/services/analytics.js`
+    // writes, and pins `timestamp` to the server time so the client
+    // cannot forge it.
     match /analytics/{docId} {
       allow get: if isPrivilegedAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
@@ -218,8 +243,19 @@ service cloud.firestore {
         || (signedIn() && resource.data.userId == request.auth.uid);
 
       allow create: if signedIn()
-        && request.resource.data.keys().hasAll(['userId', 'name'])
-        && request.resource.data.userId == request.auth.uid;
+        && request.resource.data.keys().hasAll(['userId', 'name', 'timestamp'])
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'data',
+          'userId',
+          'url',
+          'referrer',
+          'userAgent',
+          'timestamp'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.timestamp == request.time;
+
       allow update, delete: if isPrivilegedAdmin();
     }
 

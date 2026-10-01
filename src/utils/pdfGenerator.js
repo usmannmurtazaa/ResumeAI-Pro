@@ -38,6 +38,10 @@ const OFFSCREEN_WIDTH = '210mm'; // A4 width
 // realistic resume line, so no legitimate content is dropped.
 const MAX_TEXT_NODE_LENGTH = 10_000;
 
+// Upper bound on the font-wait step in `mountResumePreview`. See the doc
+// comment above `waitForContainerFonts` below for why this exists.
+const FONT_WAIT_TIMEOUT_MS = 3000;
+
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // ── Lazy-Loaded Heavy Dependencies ────────────────────────────────────────
@@ -87,12 +91,93 @@ const waitForNextPaint = () =>
     });
   });
 
-const waitForFonts = async () => {
-  if (!isBrowser || !document.fonts?.ready) return;
+/**
+ * Returns true if every font used by the container (and its descendants)
+ * is currently available in the document's font set.
+ *
+ * Called by `waitForContainerFonts` as a fast path: if all fonts are
+ * already cached (the common case after the browser has loaded the page
+ * once), the wait can be skipped entirely.
+ *
+ * Returns `true` when `document.fonts` is unavailable, when the container
+ * is missing, or when the container has no descendants. These are all
+ * cases where there is nothing useful to wait for.
+ */
+const areContainerFontsReady = (container) => {
+  if (!isBrowser || !document.fonts?.check) return true;
+  if (!container) return true;
+
+  const elements = [container, ...container.querySelectorAll('*')];
+  for (const el of elements) {
+    let style;
+    try {
+      style = window.getComputedStyle(el);
+    } catch {
+      // Detached or otherwise unqueryable element - skip it.
+      continue;
+    }
+
+    const family = style.fontFamily;
+    if (!family) continue;
+
+    const weight = style.fontWeight || '400';
+    const fontStyle = style.fontStyle || 'normal';
+
+    // `document.fonts.check` takes a CSS font shorthand. The `12px` size is
+    // arbitrary - the family, weight, and style are what matter for the
+    // check. If the shorthand is malformed, `check` throws; treat that as
+    // "unknown" and continue, since a bad shorthand on one element must not
+    // cause the whole wait to be skipped.
+    try {
+      if (!document.fonts.check(`${fontStyle} ${weight} 12px ${family}`)) {
+        return false;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return true;
+};
+
+/**
+ * Waits for the fonts used by `container` to become available, bounded by
+ * `timeoutMs`.
+ *
+ * ── Why this exists ────────────────────────────────────────────────────
+ * The previous implementation awaited `document.fonts.ready`, which
+ * resolves only after every pending font load across the ENTIRE document
+ * completes. If any unrelated stylesheet on the page (an icon font from a
+ * CDN, a large CJK font, a stylesheet that never resolves) is stuck, that
+ * promise never resolves and PDF generation hangs indefinitely — the user
+ * sees an infinite "Preparing download…" state with no error and no
+ * recovery.
+ *
+ * ── What this does instead ─────────────────────────────────────────────
+ *   1. Fast path: if every font used by the container is already
+ *      available (`areContainerFontsReady`), return immediately without
+ *      awaiting anything.
+ *   2. Slow path: race `document.fonts.ready` against a timeout. If the
+ *      timeout wins, proceed anyway — any still-loading font will fall
+ *      back to a system font in the PDF. A PDF with fallback fonts is
+ *      strictly better than a PDF that never renders.
+ *
+ * The timeout is intentionally small (3 s). A user-initiated download
+ * should not stall for longer than that, and a font that has not finished
+ * loading within 3 s of the offscreen container being mounted is unlikely
+ * to be the fonts the resume actually uses.
+ */
+const waitForContainerFonts = async (container, timeoutMs = FONT_WAIT_TIMEOUT_MS) => {
+  if (!isBrowser || !document.fonts) return;
+  if (areContainerFontsReady(container)) return;
+
+  const timeoutPromise = new Promise((resolve) => {
+    setTimeout(resolve, timeoutMs);
+  });
+
   try {
-    await document.fonts.ready;
+    await Promise.race([document.fonts.ready, timeoutPromise]);
   } catch {
-    // Font loading failed - continue with fallback fonts
+    // Font loading failed on some element — continue with fallback fonts.
   }
 };
 
@@ -397,8 +482,11 @@ const mountResumePreview = async (resumeData, template) => {
     const { default: TemplateComponent } = await loader();
     root.render(createElement(TemplateComponent, { data: resumeData }));
 
-    await waitForFonts();
     await waitForNextPaint();
+    // Scoped, bounded font wait. See the doc comment above
+    // `waitForContainerFonts` for why this is preferred to the previous
+    // unbounded `document.fonts.ready` await.
+    await waitForContainerFonts(container);
     await waitForImages(container);
     await waitForNextPaint();
 

@@ -866,6 +866,17 @@ export const authService = {
    *      On retry, `users/{uid}` is missing, so the cleanup is skipped and
    *      only the Auth deletion is attempted.
    *
+   * The `partial: true` flag has a precise meaning (H-29):
+   *   `partial: true` is set ONLY when the failure occurred AFTER the
+   *   Firestore cleanup phase completed — that is, when the user's resume,
+   *   notification, session, settings, and subscription documents have
+   *   already been removed and only the Firebase Auth account remains. A
+   *   failure before that point (a rejected reauthentication, a failed
+   *   initial Firestore read, or a failure during the batch deletes
+   *   themselves) is reported WITHOUT the flag, so the UI presents a
+   *   plain retry rather than the misleading "Your resume data has been
+   *   removed" message that would otherwise be shown.
+   *
    * Residual risk (Spark plan, no Cloud Functions):
    *   There is no server-side actor that can delete an Auth account without
    *   the client's own token, and no server-side actor that can clean up
@@ -879,6 +890,13 @@ export const authService = {
    *   again and start over cleanly).
    */
   async deleteUserAccount(password) {
+    // Tracks whether the Firestore cleanup phase has completed for THIS
+    // call. Set to `true` immediately before the Firebase Auth deletion
+    // step — i.e. after the cleanup block ran (first attempt) or was
+    // correctly skipped because a previous attempt already cleaned up.
+    // Used in the catch block to decide whether `partial: true` applies.
+    let firestorePhaseCompleted = false;
+
     try {
       const user = getCurrentUserOrThrow();
 
@@ -945,18 +963,28 @@ export const authService = {
       // Else: retry after a partial failure - nothing left to clean up in
       // Firestore, proceed directly to the Auth deletion.
 
+      // Firestore phase is now complete (or was already complete on entry).
+      // Any failure after this line is a genuine "partial completion" and
+      // should be reported as such to the caller.
+      firestorePhaseCompleted = true;
+
       safeTrackEvent('account_deleted', { userId: user.uid });
       clearStoredSessionId();
       await firebaseDeleteUser(user);
       return { success: true };
     } catch (e) {
       const code = e?.code;
-      // If Auth deletion failed after the Firestore cleanup, mark the
-      // response so callers can offer a retry.
+      // If Auth deletion failed AFTER the Firestore cleanup, mark the
+      // response so callers can offer a retry. Failures before this point
+      // (reauthentication rejected, initial Firestore read failed, or a
+      // batch-delete failure) are NOT reported as partial, because nothing
+      // has been removed - the user should see a plain retry, not the
+      // "data already removed" message.
       const partial =
-        code === 'auth/requires-recent-login' ||
-        code === 'auth/user-token-expired' ||
-        code === 'auth/network-request-failed';
+        firestorePhaseCompleted &&
+        (code === 'auth/requires-recent-login' ||
+          code === 'auth/user-token-expired' ||
+          code === 'auth/network-request-failed');
       return {
         success: false,
         error: getErrorMessage(e),

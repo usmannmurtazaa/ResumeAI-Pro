@@ -21,6 +21,7 @@ import {
   FiCopy,
   FiEye,
   FiLoader,
+  FiZap,
 } from 'react-icons/fi';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
@@ -31,6 +32,7 @@ import Modal from '../../ui/Modal';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebouncedCallback } from '../../../hooks/useDebounce';
 import { storageService } from '../../../services/storageService';
+import aiService from '../../../services/aiService';
 import toast from 'react-hot-toast';
 
 // ── Form Field Configuration ─────────────────────────────────────────────
@@ -123,6 +125,39 @@ const COMPLETION_FIELDS = [
   'github',
 ];
 
+// Stable key used by `aiService` to deduplicate and supersede AI requests
+// for the summary field. A second click on "AI Suggest" aborts the
+// previous request so its response cannot overwrite newer content.
+const AI_SUMMARY_REQUEST_KEY = 'personal-info-summary';
+
+// The set of fields synced from the `data` prop into react-hook-form.
+// Used by both the initial `defaultValues` and the guarded sync effect so
+// the two lists can never drift apart.
+const SYNCED_FIELD_NAMES = [
+  'fullName',
+  'title',
+  'email',
+  'phone',
+  'location',
+  'website',
+  'linkedin',
+  'github',
+  'summary',
+];
+
+/**
+ * Builds the plain object react-hook-form expects from the `data` prop.
+ * All fields are normalized to strings so `JSON.stringify` produces a
+ * stable, comparable signature and `reset` never receives `undefined`.
+ */
+const buildFormValuesFromData = (data) => {
+  const values = {};
+  for (const key of SYNCED_FIELD_NAMES) {
+    values[key] = data?.[key] || '';
+  }
+  return values;
+};
+
 // ── Helper ────────────────────────────────────────────────────────────────
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -138,9 +173,33 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
   const [isSaving, setIsSaving] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
 
   const fileInputRef = useRef(null);
   const mountedRef = useRef(true);
+
+  // Snapshot of the last values we synced from the `data` prop into the
+  // form. The parent recomputes the section data on every render, so the
+  // `data` prop is a new object reference on every parent render even when
+  // its contents are unchanged. Without this guard, `reset` re-ran on
+  // every parent render, wiping any in-flight typing and (combined with
+  // the completion effect below) driving the "Maximum update depth
+  // exceeded" loop that React was reporting at this effect.
+  const lastResetSnapshotRef = useRef('');
+
+  // Snapshot of the last payload we sent to `onValidationChange`. See the
+  // completion effect below for why this guard exists.
+  const lastValidationSignatureRef = useRef('');
+
+  // Ref that always holds the latest `onValidationChange` callback. The
+  // parent passes a fresh inline arrow on every render, which would
+  // otherwise force the completion effect to fire on every parent render
+  // even when the values it cares about have not changed.
+  const onValidationChangeRef = useRef(onValidationChange);
+
+  useEffect(() => {
+    onValidationChangeRef.current = onValidationChange;
+  });
 
   // `handleSubmit` is intentionally not destructured here. The component
   // does not render a <form> and does not use react-hook-form's submit
@@ -154,36 +213,24 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
     formState: { errors, isDirty },
     reset,
   } = useForm({
-    defaultValues: {
-      fullName: data.fullName || '',
-      title: data.title || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      location: data.location || '',
-      website: data.website || '',
-      linkedin: data.linkedin || '',
-      github: data.github || '',
-      summary: data.summary || '',
-    },
+    defaultValues: buildFormValuesFromData(data),
     mode: 'onChange',
   });
 
   const watchedFields = watch();
 
   // ── Sync external data changes ────────────────────────────────────────
+  // Guarded: only reset when the incoming values actually differ from the
+  // last reset. Same pattern as the sibling sections (Experience,
+  // Education, Projects, Skills, Certifications) - PersonalInfo was the
+  // only section that reset unconditionally.
 
   useEffect(() => {
-    reset({
-      fullName: data.fullName || '',
-      title: data.title || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      location: data.location || '',
-      website: data.website || '',
-      linkedin: data.linkedin || '',
-      github: data.github || '',
-      summary: data.summary || '',
-    });
+    const next = buildFormValuesFromData(data);
+    const snapshot = JSON.stringify(next);
+    if (snapshot === lastResetSnapshotRef.current) return;
+    lastResetSnapshotRef.current = snapshot;
+    reset(next);
   }, [data, reset]);
 
   useEffect(() => {
@@ -196,6 +243,10 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      // Cancel any in-flight AI request so its late response cannot set
+      // state on an unmounted component. `aiService.cancel` is a no-op
+      // when there is nothing in flight.
+      aiService.cancel(AI_SUMMARY_REQUEST_KEY);
     };
   }, []);
 
@@ -221,6 +272,16 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
   }, []);
 
   // ── Completion Calculation ────────────────────────────────────────────
+  //
+  // `watch()` returns a new object reference on every render, and the
+  // parent passes a fresh inline arrow for `onValidationChange`. Without
+  // the signature guard below, this effect fired on every render, called
+  // the parent's `setSectionErrors`, forced the parent to re-render, and
+  // re-triggered the effect - the exact loop React reported.
+  //
+  // The `setCompletionPercentage` call still runs on every fire (it is
+  // cheap; React bails out when the value has not changed), but the
+  // parent callback is only invoked when the meaningful values change.
 
   useEffect(() => {
     const filled = COMPLETION_FIELDS.filter((field) =>
@@ -228,11 +289,17 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
     ).length;
     const percentage = Math.round((filled / COMPLETION_FIELDS.length) * 100);
     setCompletionPercentage(percentage);
-    onValidationChange?.({
-      isValid: Object.keys(errors).length === 0,
+
+    const hasErrors = Object.keys(errors).length > 0;
+    const signature = `${filled}|${hasErrors}`;
+    if (signature === lastValidationSignatureRef.current) return;
+    lastValidationSignatureRef.current = signature;
+
+    onValidationChangeRef.current?.({
+      isValid: !hasErrors,
       completionPercentage: percentage,
     });
-  }, [watchedFields, errors, onValidationChange]);
+  }, [watchedFields, errors]);
 
   // ── Save Handler ──────────────────────────────────────────────────────
 
@@ -334,18 +401,133 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
     setValue('profileImage', null);
   }, [setValue]);
 
-  // ── Summary Generator ─────────────────────────────────────────────────
+  // ── Local Summary Generator (unchanged behaviour, kept as fallback) ───
+
+  /**
+   * Builds the local fallback summary text from the user's name and title.
+   * Returns `null` when either field is missing, so callers can decide
+   * whether to show an error or fall back silently.
+   *
+   * Extracted from the previous inline implementation so the AI handler
+   * and the local "Generate Suggestion" button can share the same string
+   * without duplicating it.
+   */
+  const buildLocalSummary = useCallback(() => {
+    const { fullName, title } = watchedFields;
+    if (!fullName || !title) return null;
+    return `${fullName} is a dedicated ${title} with a proven track record of delivering high-quality results. Passionate about innovation and continuous improvement, with strong problem-solving abilities and excellent communication skills.`;
+  }, [watchedFields]);
 
   const generateSummarySuggestion = useCallback(() => {
-    const { fullName, title } = watchedFields;
-    if (fullName && title) {
-      const suggestion = `${fullName} is a dedicated ${title} with a proven track record of delivering high-quality results. Passionate about innovation and continuous improvement, with strong problem-solving abilities and excellent communication skills.`;
+    const suggestion = buildLocalSummary();
+    if (suggestion) {
       setValue('summary', suggestion, { shouldValidate: true });
       toast.success('Summary suggestion generated!');
     } else {
       toast.error('Please enter your name and title first');
     }
-  }, [watchedFields, setValue]);
+  }, [buildLocalSummary, setValue]);
+
+  // ── AI Summary Generator (C-04) ───────────────────────────────────────
+
+  /**
+   * Requests a summary suggestion from the AI endpoint.
+   *
+   * Task selection:
+   *   • When the summary field already has content, use `improve_summary`
+   *     so the model rewrites the existing text rather than starting over.
+   *   • When the summary field is empty, use `generate_summary` so the
+   *     model produces a fresh summary from name and title.
+   *
+   * Fallback:
+   *   On any non-success result — network, timeout, rate limit, upstream
+   *   error, or auth — the AI button reverts to idle and the local
+   *   generator is invoked so the user still gets a suggestion. A single
+   *   toast informs the user that the AI path was unavailable; the local
+   *   generator's own success toast is suppressed in this path to avoid
+   *   two competing messages.
+   *
+   * Aborting:
+   *   A second click on "AI Suggest" while a request is in flight is
+   *   ignored because the button is disabled. The request key is stable
+   *   across the component's lifetime; if the component unmounts, the
+   *   cleanup in the lifecycle effect cancels the pending request.
+   */
+  const handleGenerateSummaryWithAi = useCallback(async () => {
+    if (isAiGenerating) return;
+
+    const { fullName, title, summary } = watchedFields;
+    const hasExistingSummary = Boolean(summary && summary.trim().length > 0);
+
+    // Input pre-flight: for a fresh summary, we need at least name and
+    // title, otherwise the AI response will be a generic placeholder. For
+    // an improve request, we only need the existing text.
+    if (!hasExistingSummary && (!fullName || !title)) {
+      toast.error('Please enter your name and title first');
+      return;
+    }
+
+    setIsAiGenerating(true);
+
+    let result;
+    try {
+      if (hasExistingSummary) {
+        result = await aiService.improveSummary(
+          { text: summary, title: title || '' },
+          { requestKey: AI_SUMMARY_REQUEST_KEY }
+        );
+      } else {
+        result = await aiService.generateSummary(
+          { fullName, title },
+          { requestKey: AI_SUMMARY_REQUEST_KEY }
+        );
+      }
+    } catch (error) {
+      // The service layer is designed never to throw, but a future change
+      // there must not break this component. Treat an unexpected throw as
+      // an upstream failure.
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('aiService threw unexpectedly:', error);
+      }
+      result = {
+        success: false,
+        error: 'AI service is temporarily unavailable.',
+        code: 'upstream',
+      };
+    }
+
+    if (!mountedRef.current) return;
+
+    // A superseded or aborted request is not a user-visible error. Either
+    // a newer request is taking over, or the component is unmounting.
+    if (!result.success && (result.code === 'aborted' || result.code === 'superseded')) {
+      setIsAiGenerating(false);
+      return;
+    }
+
+    if (result.success) {
+      setValue('summary', result.text, { shouldValidate: true, shouldDirty: true });
+      toast.success('Summary generated with AI!');
+      setIsAiGenerating(false);
+      return;
+    }
+
+    // Fall back to the local generator. If the local generator cannot run
+    // (because name/title are missing, which the pre-flight should have
+    // caught), show the AI error directly.
+    const fallbackText = buildLocalSummary();
+    if (fallbackText) {
+      setValue('summary', fallbackText, { shouldValidate: true, shouldDirty: true });
+      toast(result.error || 'AI is unavailable — used local suggestion.', {
+        icon: 'ℹ️',
+        duration: 4000,
+      });
+    } else {
+      toast.error(result.error || 'AI service is temporarily unavailable.');
+    }
+
+    setIsAiGenerating(false);
+  }, [isAiGenerating, watchedFields, setValue, buildLocalSummary]);
 
   // ── Copy to Clipboard ─────────────────────────────────────────────────
 
@@ -525,19 +707,33 @@ const PersonalInfo = ({ data = {}, onChange, onValidationChange }) => {
 
           {/* Summary */}
           <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Professional Summary
               </label>
               {isEditing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={generateSummarySuggestion}
-                  className="text-xs"
-                >
-                  Generate Suggestion
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleGenerateSummaryWithAi}
+                    loading={isAiGenerating}
+                    disabled={isAiGenerating}
+                    icon={<FiZap className="w-3.5 h-3.5" />}
+                    className="text-xs"
+                  >
+                    {isAiGenerating ? 'Generating…' : 'AI Suggest'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={generateSummarySuggestion}
+                    className="text-xs"
+                    disabled={isAiGenerating}
+                  >
+                    Generate Suggestion
+                  </Button>
+                </div>
               )}
             </div>
             <textarea

@@ -1,406 +1,31 @@
-// ── Industry Keywords ─────────────────────────────────────────────────────
+// ── Shared data (imported from ./atsData) ─────────────────────────────────
+//
+// The keyword, verb, and passive-phrase constants live in `atsData.js` so
+// that `atsScoring.js` can import them without creating a module cycle
+// through this file. They are re-exported here for backward compatibility
+// with existing consumers; new code should import them directly from
+// `./atsData`.
 
-export const industryKeywords = {
-  technology: [
-    'JavaScript',
-    'Python',
-    'Java',
-    'C++',
-    'C#',
-    'TypeScript',
-    'Go',
-    'Rust',
-    'React',
-    'Angular',
-    'Vue',
-    'Node.js',
-    'Express',
-    'Django',
-    'Flask',
-    'AWS',
-    'Azure',
-    'GCP',
-    'Docker',
-    'Kubernetes',
-    'CI/CD',
-    'DevOps',
-    'SQL',
-    'MongoDB',
-    'PostgreSQL',
-    'Redis',
-    'Microservices',
-    'REST API',
-    'GraphQL',
-    'Agile',
-    'Scrum',
-    'Git',
-    'Linux',
-    'System Design',
-    'Cloud Computing',
-    'Machine Learning',
-    'AI',
-    'Data Science',
-    'TensorFlow',
-    'PyTorch',
-    'Pandas',
-    'NumPy',
-    'Scikit-learn',
-    'Big Data',
-    'Hadoop',
-    'Spark',
-    'Kafka',
-    'Elasticsearch',
-    'Terraform',
-    'Ansible',
-    'Jenkins',
-    'GitHub Actions',
-  ],
-  marketing: [
-    'SEO',
-    'SEM',
-    'Social Media',
-    'Content Marketing',
-    'Email Marketing',
-    'Google Analytics',
-    'PPC',
-    'CRM',
-    'Marketing Automation',
-    'Brand Strategy',
-    'Market Research',
-    'Digital Advertising',
-    'Campaign Management',
-    'Copywriting',
-    'Lead Generation',
-    'B2B Marketing',
-    'B2C Marketing',
-    'Growth Hacking',
-    'Marketing Analytics',
-    'Conversion Optimization',
-    'A/B Testing',
-    'Inbound Marketing',
-    'Outbound Marketing',
-    'Marketing Funnel',
-    'Customer Acquisition',
-    'Retention Marketing',
-    'Brand Management',
-  ],
-  finance: [
-    'Financial Analysis',
-    'Budgeting',
-    'Forecasting',
-    'Risk Management',
-    'Investment',
-    'Portfolio Management',
-    'Excel',
-    'Bloomberg',
-    'SAP',
-    'Financial Modeling',
-    'Auditing',
-    'Tax Planning',
-    'Valuation',
-    'M&A',
-    'Financial Reporting',
-    'Compliance',
-    'Regulatory Reporting',
-    'Corporate Finance',
-    'Equity Research',
-    'Debt Financing',
-    'Cash Flow Management',
-    'Financial Strategy',
-    'Due Diligence',
-  ],
-  healthcare: [
-    'Patient Care',
-    'EMR',
-    'HIPAA',
-    'Clinical Research',
-    'Healthcare Management',
-    'Medical Terminology',
-    'Patient Safety',
-    'Healthcare Compliance',
-    'Epic Systems',
-    'Nursing',
-    'Diagnosis',
-    'Treatment Planning',
-    'Public Health',
-    'Healthcare Administration',
-    'Health Informatics',
-    'Medical Records',
-    'Clinical Documentation',
-    'Healthcare Analytics',
-    'Population Health',
-    'Patient Experience',
-    'Quality Improvement',
-    'Healthcare Regulations',
-  ],
-  sales: [
-    'Business Development',
-    'Account Management',
-    'Lead Generation',
-    'B2B Sales',
-    'B2C Sales',
-    'Negotiation',
-    'CRM',
-    'Salesforce',
-    'Pipeline Management',
-    'Revenue Growth',
-    'Market Expansion',
-    'Cold Calling',
-    'Consultative Selling',
-    'Sales Strategy',
-    'Client Relationships',
-    'Prospecting',
-    'Closing',
-    'Sales Analytics',
-    'Quota Achievement',
-    'Customer Success',
-  ],
-  education: [
-    'Curriculum Development',
-    'Classroom Management',
-    'Lesson Planning',
-    'Student Assessment',
-    'Special Education',
-    'Educational Technology',
-    'Teaching',
-    'Instructional Design',
-    'E-Learning',
-    'Distance Learning',
-    'Educational Leadership',
-    'Student Engagement',
-    'Differentiated Instruction',
-    'Learning Management Systems',
-    'Academic Advising',
-    'Assessment Design',
-    'Professional Development',
-    'Educational Research',
-  ],
-  engineering: [
-    'CAD',
-    'SolidWorks',
-    'AutoCAD',
-    'MATLAB',
-    'Simulink',
-    'FEA',
-    'CFD',
-    'Mechanical Design',
-    'Electrical Engineering',
-    'Civil Engineering',
-    'Structural Analysis',
-    'Thermodynamics',
-    'Manufacturing',
-    'Quality Control',
-    'Six Sigma',
-    'Lean Manufacturing',
-    'PLC',
-    'Robotics',
-    'Automation',
-    'HVAC',
-    'Project Engineering',
-    'Systems Engineering',
-    'Product Design',
-  ],
-  design: [
-    'UI/UX',
-    'Figma',
-    'Sketch',
-    'Adobe XD',
-    'Photoshop',
-    'Illustrator',
-    'Wireframing',
-    'Prototyping',
-    'User Research',
-    'Usability Testing',
-    'Design Systems',
-    'Visual Design',
-    'Interaction Design',
-    'Product Design',
-    'Graphic Design',
-    'Motion Design',
-    'Branding',
-    'Typography',
-    'User Flows',
-    'Design Thinking',
-    'Responsive Design',
-    'Accessibility',
-  ],
-  consulting: [
-    'Strategy Consulting',
-    'Management Consulting',
-    'Business Analysis',
-    'Process Improvement',
-    'Change Management',
-    'Stakeholder Management',
-    'Client Relations',
-    'Problem Solving',
-    'Data Analysis',
-    'Presentation Skills',
-    'Business Strategy',
-    'Operational Excellence',
-    'Digital Transformation',
-    'Project Management',
-    'Market Analysis',
-    'Competitive Strategy',
-  ],
-  general: [
-    'Communication',
-    'Leadership',
-    'Teamwork',
-    'Problem Solving',
-    'Time Management',
-    'Project Management',
-    'Critical Thinking',
-    'Analytical Skills',
-    'Organization',
-    'Attention to Detail',
-    'Adaptability',
-    'Creativity',
-    'Initiative',
-    'Reliability',
-    'Collaboration',
-    'Decision Making',
-    'Conflict Resolution',
-    'Emotional Intelligence',
-    'Strategic Planning',
-    'Continuous Improvement',
-    'Mentoring',
-  ],
-};
+import { industryKeywords, actionVerbs, passivePhrases } from './atsData';
 
-// ── Action Verbs ──────────────────────────────────────────────────────────
+export { industryKeywords, actionVerbs, passivePhrases };
 
-export const actionVerbs = {
-  leadership: [
-    'Led',
-    'Managed',
-    'Directed',
-    'Supervised',
-    'Coordinated',
-    'Spearheaded',
-    'Orchestrated',
-    'Headed',
-    'Guided',
-    'Mentored',
-    'Trained',
-    'Delegated',
-    'Oversaw',
-    'Chaired',
-    'Facilitated',
-  ],
-  achievement: [
-    'Achieved',
-    'Increased',
-    'Decreased',
-    'Improved',
-    'Reduced',
-    'Generated',
-    'Delivered',
-    'Exceeded',
-    'Surpassed',
-    'Boosted',
-    'Maximized',
-    'Optimized',
-    'Accomplished',
-    'Attained',
-    'Realized',
-  ],
-  development: [
-    'Developed',
-    'Created',
-    'Designed',
-    'Built',
-    'Implemented',
-    'Launched',
-    'Established',
-    'Founded',
-    'Engineered',
-    'Architected',
-    'Crafted',
-    'Formulated',
-    'Devised',
-    'Pioneered',
-    'Innovated',
-  ],
-  analysis: [
-    'Analyzed',
-    'Evaluated',
-    'Assessed',
-    'Researched',
-    'Investigated',
-    'Identified',
-    'Reviewed',
-    'Audited',
-    'Examined',
-    'Scrutinized',
-    'Interpreted',
-    'Diagnosed',
-    'Forecasted',
-    'Projected',
-    'Measured',
-  ],
-  collaboration: [
-    'Collaborated',
-    'Partnered',
-    'Facilitated',
-    'Negotiated',
-    'Communicated',
-    'Presented',
-    'Advised',
-    'Consulted',
-    'Liaised',
-    'Coordinated',
-    'Mediated',
-    'Networked',
-    'United',
-    'Allied',
-  ],
-  optimization: [
-    'Optimized',
-    'Streamlined',
-    'Enhanced',
-    'Automated',
-    'Restructured',
-    'Revitalized',
-    'Transformed',
-    'Modernized',
-    'Refined',
-    'Upgraded',
-    'Overhauled',
-    'Reorganized',
-    'Simplified',
-    'Consolidated',
-    'Integrated',
-  ],
-};
+// ── Canonical scorer (imported from ./atsScoring) ─────────────────────────
+//
+// `calculateATSScore` below delegates to `atsScoring.calculateDetailedScore`
+// so that every ATS score in the application is produced by the same
+// algorithm, regardless of which module computes it.
 
-// ── Passive Voice Phrases ──────────────────────────────────────────────
-
-export const passivePhrases = [
-  'was responsible for',
-  'was tasked with',
-  'was in charge of',
-  'was involved in',
-  'was assigned to',
-  'was selected to',
-  'was given the opportunity to',
-  'was able to',
-  'was asked to',
-  'was required to',
-  'was expected to',
-  'was supposed to',
-  'was responsible for',
-  'was in charge of',
-  'was part of',
-];
+import { calculateDetailedScore } from './atsScoring';
 
 // ── Memoized Helpers ──────────────────────────────────────────────────────
 // These two flat arrays are computed once at module load and reused by the
 // public helpers below.
 //   - ALL_KEYWORDS is consumed by `suggestKeywords` when a job description
 //     is provided.
-//   - ALL_VERBS is consumed by `calculateATSScore` and `detectWeakVerbs`.
-// The `passivePhrases` array above is consumed directly (by `atsScoring.js`),
-// so no local alias is needed for it.
+//   - ALL_VERBS is consumed by `detectWeakVerbs`.
+// `passivePhrases` is re-exported for backward compatibility and is not
+// consumed inside this module.
 
 const ALL_KEYWORDS = Object.values(industryKeywords).flat();
 const ALL_VERBS = Object.values(actionVerbs).flat();
@@ -573,70 +198,28 @@ export const getKeywordCategories = (resumeData = null) => {
 };
 
 /**
- * Calculates ATS compatibility score (0-100) based on resume sections.
+ * Calculates the ATS compatibility score (0-100) for a resume.
+ *
+ * Delegates to `atsScoring.calculateDetailedScore` — the canonical
+ * scorer used throughout the application — so that the same resume
+ * produces the same score regardless of which module computes it.
+ *
+ * Behavior preserved from the previous implementation:
+ *   • Empty / nullish input returns 0.
+ *   • The function never throws. Circular-reference input (which would
+ *     throw inside the canonical scorer's `JSON.stringify`) is caught
+ *     and returns 0.
+ *
  * @param {Object} resumeData - The complete resume data.
- * @returns {number} The ATS score.
+ * @returns {number} The ATS score in the range [0, 100].
  */
 export const calculateATSScore = (resumeData) => {
   if (!resumeData) return 0;
-
-  let score = 0;
-  const breakdown = {};
-
-  // Personal Information (20 points)
-  if (resumeData.personal) {
-    let pts = 0;
-    if (resumeData.personal.fullName) pts += 5;
-    if (resumeData.personal.email) pts += 5;
-    if (resumeData.personal.phone) pts += 4;
-    if (resumeData.personal.location) pts += 3;
-    if (resumeData.personal.linkedin) pts += 2;
-    if (resumeData.personal.summary?.length > 50) pts += 1;
-    breakdown.personal = Math.min(pts, 20);
-    score += breakdown.personal;
+  try {
+    return calculateDetailedScore(resumeData).overall;
+  } catch {
+    return 0;
   }
-
-  // Experience (25 points)
-  if (resumeData.experience?.length > 0) {
-    let pts = Math.min(resumeData.experience.length * 5, 15);
-
-    const desc = resumeData.experience.map((e) => e.description || '').join(' ');
-    if (ALL_VERBS.some((v) => desc.toLowerCase().includes(v.toLowerCase()))) pts += 5;
-    if (/(\d+%|\$\d+|\d+\s*(people|users|clients|team))/i.test(desc)) pts += 5;
-
-    breakdown.experience = Math.min(pts, 25);
-    score += breakdown.experience;
-  }
-
-  // Education (15 points)
-  if (resumeData.education?.length > 0) {
-    breakdown.education = Math.min(resumeData.education.length * 5, 15);
-    score += breakdown.education;
-  }
-
-  // Skills (20 points)
-  if (resumeData.skills) {
-    let pts = 0;
-    if (resumeData.skills.technical?.length > 0)
-      pts += Math.min(resumeData.skills.technical.length * 2, 12);
-    if (resumeData.skills.soft?.length > 0) pts += Math.min(resumeData.skills.soft.length * 2, 8);
-    breakdown.skills = Math.min(pts, 20);
-    score += breakdown.skills;
-  }
-
-  // Projects (10 points)
-  if (resumeData.projects?.length > 0) {
-    breakdown.projects = Math.min(resumeData.projects.length * 3, 10);
-    score += breakdown.projects;
-  }
-
-  // Certifications (10 points)
-  if (resumeData.certifications?.length > 0) {
-    breakdown.certifications = Math.min(resumeData.certifications.length * 3, 10);
-    score += breakdown.certifications;
-  }
-
-  return Math.min(score, 100);
 };
 
 /**

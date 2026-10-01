@@ -1,6 +1,20 @@
 /**
  * Export Service
- * Handles exporting resume data in multiple formats: PDF, JSON, TXT, DOCX-like HTML.
+ *
+ * Aggregates all user-facing export formats. The three data-format
+ * exporters (JSON, TXT, DOCX-like HTML) implement their own file
+ * serialization. The PDF exporter is a thin shim that delegates to
+ * `pdfGenerator.generateElementPDF` — the single, canonical
+ * DOM-element-to-PDF implementation in the codebase. That implementation
+ * embeds both a visual layer (via html2canvas) and a machine-readable
+ * text layer (via jsPDF text APIs), so exported PDFs are ATS-parseable
+ * as well as visually faithful.
+ *
+ * Do NOT re-inline a html2canvas/jsPDF pipeline into this file. Doing so
+ * would produce image-only PDFs and silently bypass the text-layer fix
+ * — the exact defect that was previously present in `exportAsPDF` and
+ * fixed by delegating to `pdfGenerator`.
+ *
  * All heavy dependencies are lazy-loaded for optimal bundle size.
  */
 
@@ -23,82 +37,35 @@ const sanitizeFilename = (name) => {
 
 // ── PDF Export ────────────────────────────────────────────────────────────
 
+/**
+ * Generates a PDF from a rendered DOM element and triggers a download.
+ *
+ * Delegates to `pdfGenerator.generateElementPDF`, which captures the
+ * element as a canvas (visual layer) AND extracts its text content into a
+ * machine-readable text layer placed underneath the image. The text layer
+ * makes the resulting PDF parseable by ATS scanners and readable by screen
+ * readers, while the visual layer preserves the element's exact styling.
+ *
+ * The filename is sanitized before it is passed to the delegate:
+ * `pdfGenerator.normalizeFilename` only ensures a `.pdf` suffix and does
+ * not strip special characters, so a raw filename like `my/resume:2024`
+ * would reach the download step with slashes and colons intact. The
+ * sanitized value is the safe, download-friendly form the previous
+ * in-file implementation produced.
+ *
+ * @param {HTMLElement} element - The DOM node to render.
+ * @param {string} [filename='resume.pdf'] - The requested download filename.
+ * @returns {Promise<true>} Resolves on success; rejects on failure with a
+ *   message suitable for user display.
+ */
 const exportAsPDF = async (element, filename = 'resume.pdf') => {
   if (!element) throw new Error('No element provided for PDF export');
 
+  const safeFilename = sanitizeFilename(filename);
+
   try {
-    // Lazy load heavy dependencies
-    const [html2canvasModule, jsPDFModule] = await Promise.all([
-      import('html2canvas'),
-      import('jspdf'),
-    ]);
-
-    const html2canvas = html2canvasModule.default;
-    const jsPDF = jsPDFModule.default;
-
-    // Higher scale for better quality (3x for print)
-    const canvas = await html2canvas(element, {
-      scale: 3,
-      backgroundColor: '#ffffff',
-      logging: false,
-      useCORS: true,
-      allowTaint: true,
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
-    });
-
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-
-    // Handle multi-page content
-    const scaledWidth = imgWidth * ratio;
-    const scaledHeight = imgHeight * ratio;
-    let remainingHeight = scaledHeight;
-    let position = 0;
-    let page = 1;
-
-    while (remainingHeight > 0) {
-      if (page > 1) pdf.addPage();
-
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = imgWidth;
-      pageCanvas.height = Math.min(imgHeight - position / ratio, pdfHeight / ratio);
-
-      const ctx = pageCanvas.getContext('2d');
-      ctx.drawImage(
-        canvas,
-        0,
-        position / ratio,
-        imgWidth,
-        pageCanvas.height,
-        0,
-        0,
-        imgWidth,
-        pageCanvas.height
-      );
-
-      const pageImgData = pageCanvas.toDataURL('image/png');
-      pdf.addImage(
-        pageImgData,
-        'PNG',
-        (pdfWidth - scaledWidth) / 2,
-        0,
-        scaledWidth,
-        Math.min(scaledHeight, pdfHeight)
-      );
-
-      remainingHeight -= pdfHeight;
-      position += pdfHeight;
-      page++;
-    }
-
-    pdf.save(sanitizeFilename(filename));
-    return true;
+    const { generateElementPDF } = await import('./pdfGenerator');
+    return await generateElementPDF(element, { filename: safeFilename });
   } catch (error) {
     console.error('PDF export failed:', error);
     throw new Error('Failed to generate PDF. Please try again.');

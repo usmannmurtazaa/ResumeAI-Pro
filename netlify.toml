@@ -31,6 +31,38 @@
   # list - it belongs in server-side Netlify Function environment variables.
   SECRETS_SCAN_OMIT_KEYS = "REACT_APP_ENVIRONMENT,REACT_APP_NAME,REACT_APP_VERSION,REACT_APP_SUPPORT_EMAIL,REACT_APP_SITE_URL,REACT_APP_RESUME_API_URL"
 
+# ── Local Development (netlify dev only) ──────────────────────────────────
+#
+# The `[dev]` block is read ONLY by `netlify dev` when a developer runs
+# `npm run dev`. It has no effect on production deploys, deploy previews,
+# or branch deploys - Netlify's build pipeline ignores it entirely.
+#
+# It exists so that local development can exercise the Netlify Functions
+# under `netlify/functions/*` (AI proxy, Stripe checkout, resume creation,
+# user deletion, admin-claim sync) on the same origin as the app.
+#
+# Without this workflow, requests to `/.netlify/functions/ai` hit CRA's
+# webpack-dev-server, which knows nothing about the function runtime, and
+# return a 404. `aiService.js` falls back to the local generator in that
+# case, so the UI still works - but the Gemini path is never exercised
+# locally.
+#
+# How it works:
+#   1. `npm run dev` invokes `netlify dev`.
+#   2. `netlify dev` runs `command` (the CRA dev server) on `targetPort`.
+#   3. It runs the function runtime alongside it.
+#   4. It proxies everything on `port` (8888) - app assets AND functions.
+#   5. The developer visits http://localhost:8888.
+#
+# Environment variables for the function runtime are read from `.env` in
+# the project root, or pulled from the linked Netlify site via
+# `netlify link` + `netlify env:pull`.
+[dev]
+  command = "npm start"
+  targetPort = 3000
+  port = 8888
+  autoLaunch = false
+
 # ── Redirects ─────────────────────────────────────────────────────────────
 
 # SPA fallback

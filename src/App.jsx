@@ -82,6 +82,13 @@ const MyResumes = createLazyPage(() => import('./pages/MyResumes'));
 const Preview = createLazyPage(() => import('./pages/Preview'));
 const Billing = createLazyPage(() => import('./pages/Billing'));
 const NotFound = createLazyPage(() => import('./pages/NotFound'));
+// Notifications page added to fix M-01. The route below registers it.
+// Prefetch hint is applied because the notification panel on the global
+// Navbar links to this page from any authenticated route, making it one
+// click away from anywhere in the app.
+const Notifications = createLazyPage(
+  () => import(/* webpackPrefetch: true */ './pages/Notifications')
+);
 
 // ── Route Definitions ───────────────────────────────────────────────────────
 const PUBLIC_ROUTES = [
@@ -113,6 +120,7 @@ const PROTECTED_ROUTES = [
   { path: '/profile', component: Profile },
   { path: '/settings', component: Settings },
   { path: '/my-resumes', component: MyResumes },
+  { path: '/notifications', component: Notifications },
   { path: '/preview/:id', component: Preview },
   { path: '/ats-scanner', component: ATSScannerPage },
   { path: '/billing', component: Billing },

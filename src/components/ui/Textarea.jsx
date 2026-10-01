@@ -8,9 +8,18 @@ const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
+// Mobile-safe font sizing:
+//   • `text-base` (16px) is the mobile-first default. iOS Safari auto-zooms
+//     when a focused form field renders below 16px, so this prevents that
+//     behaviour on phones and small tablets.
+//   • `sm:text-sm` (14px at ≥640px) preserves the desktop visual scale that
+//     the pre-migration raw textareas used, so existing page layouts are
+//     unchanged at desktop widths.
+//   • `lg` already renders at 18px, which does not trigger autozoom; it is
+//     left untouched.
 const SIZES = {
-  sm: 'px-3 py-2 text-sm rounded-lg',
-  md: 'px-4 py-3 text-base rounded-xl',
+  sm: 'px-3 py-2 text-base sm:text-sm rounded-lg',
+  md: 'px-4 py-3 text-base sm:text-sm rounded-xl',
   lg: 'px-5 py-4 text-lg rounded-xl',
 };
 
@@ -20,16 +29,30 @@ const VARIANTS = {
   outline: 'border-2 border-gray-300 dark:border-gray-600 bg-transparent',
 };
 
-const BASE_TEXTAREA =
-  'w-full outline-none transition-all duration-200 resize-y text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed read-only:bg-gray-50 dark:read-only:bg-gray-900';
+// Applied separately from BASE_TEXTAREA so callers cannot accidentally end
+// up with two conflicting `resize-*` utilities in the same class string.
+// `resize` defaults to `'none'` — this matches every existing raw
+// textarea in the codebase and prevents the native resize handle from
+// creating layout problems inside cards and grids.
+const RESIZE_CLASSES = {
+  none: 'resize-none',
+  vertical: 'resize-y',
+  horizontal: 'resize-x',
+  both: 'resize',
+};
 
-// Focus-ring classes are applied on top of the active variant, so every
-// standard variant shows a visible focus indicator. Do NOT rewrite this as
-// `VARIANTS[variant] || VARIANTS.default + ' focus:...'` - the `+` operator
-// binds tighter than `||`, so the focus classes would only be applied in
-// the fallback branch (i.e. for an unknown variant name), and every known
-// variant would lose its focus ring.
+const BASE_TEXTAREA =
+  'w-full outline-none transition-all duration-200 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed read-only:bg-gray-50 dark:read-only:bg-gray-900 break-words';
+
+// Focus ring is applied identically to the default, error, and success
+// branches. Previously the error and success branches only set the ring
+// colour and relied on `globals.css`'s `:focus-visible` box-shadow — which
+// uses the primary colour — so an errored textarea would show a *primary*
+// focus ring, not red. Adding `focus:ring-2` to those branches keeps the
+// ring width consistent across all states.
 const FOCUS_CLASSES = 'focus:ring-2 focus:ring-primary-500 focus:border-transparent';
+const ERROR_CLASSES = '!border-red-500 focus:!ring-2 focus:!ring-red-500';
+const SUCCESS_CLASSES = '!border-green-500 focus:!ring-2 focus:!ring-green-500';
 
 // ── Textarea Component ────────────────────────────────────────────────────
 
@@ -44,6 +67,7 @@ const Textarea = forwardRef(
       rows = 4,
       size = 'md',
       variant = 'default',
+      resize = 'none',
       disabled,
       readOnly,
       required,
@@ -79,6 +103,8 @@ const Textarea = forwardRef(
       }
     }, [value, autoResize]);
 
+    const resizeClass = RESIZE_CLASSES[resize] || RESIZE_CLASSES.none;
+
     return (
       <div className={cn('space-y-1', wrapperClassName)}>
         {label && (
@@ -106,12 +132,14 @@ const Textarea = forwardRef(
             maxLength={maxLength}
             className={cn(
               BASE_TEXTAREA,
-              autoResize && 'resize-none overflow-hidden',
+              // autoResize disables the native handle and hides overflow;
+              // otherwise the caller-selected resize mode applies.
+              autoResize ? 'resize-none overflow-hidden' : resizeClass,
               SIZES[size] || SIZES.md,
               error
-                ? '!border-red-500 focus:!ring-red-500'
+                ? ERROR_CLASSES
                 : success
-                  ? '!border-green-500 focus:!ring-green-500'
+                  ? SUCCESS_CLASSES
                   : `${VARIANTS[variant] || VARIANTS.default} ${FOCUS_CLASSES}`,
               className
             )}
@@ -123,7 +151,10 @@ const Textarea = forwardRef(
           {showCount && maxLength && (
             <div
               className={cn(
-                'absolute bottom-2 right-3 text-xs rounded px-1.5 py-0.5',
+                'absolute text-xs rounded px-1.5 py-0.5',
+                // When the native resize handle is present, shift the badge
+                // up-and-left so it does not overlap the corner grab area.
+                resize === 'none' && !autoResize ? 'bottom-2 right-3' : 'bottom-1 right-6',
                 currentLength > maxLength * 0.9
                   ? 'text-red-500 bg-red-50 dark:bg-red-900/20'
                   : 'text-gray-400 bg-white/80 dark:bg-gray-800/80'

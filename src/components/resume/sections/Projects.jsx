@@ -28,6 +28,7 @@ import Badge from '../../ui/Badge';
 import Card from '../../ui/Card';
 import Progress from '../../ui/Progress';
 import Modal from '../../ui/Modal';
+import aiService from '../../../services/aiService';
 import toast from 'react-hot-toast';
 
 // ── Constants (Module Level) ─────────────────────────────────────────────
@@ -69,6 +70,12 @@ const TECH_CATEGORIES = {
   mobile: ['React Native', 'Flutter', 'Swift', 'Kotlin', 'iOS', 'Android', 'Expo'],
   ai: ['TensorFlow', 'PyTorch', 'OpenAI', 'LangChain', 'Scikit-learn', 'Pandas', 'NumPy'],
 };
+
+// Builds the `aiService` request key for a project's description field.
+// `fieldId` is the stable internal id from `useFieldArray`, so the key
+// survives reordering — a request that was started against project A
+// stays associated with project A even if the user moves it.
+const projectDescriptionRequestKey = (fieldId) => `project-description-${fieldId}`;
 
 // ── Utility Functions ────────────────────────────────────────────────────
 
@@ -119,6 +126,19 @@ const createEmptyProject = () => ({
   featured: false,
 });
 
+/**
+ * Parses the comma-separated `technologies` string into a clean array of
+ * non-empty, trimmed strings. Used to build the AI input payload from the
+ * current form state.
+ */
+const parseTechnologies = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return [];
+  return value
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+};
+
 // ── Simple Debounce Hook ──────────────────────────────────────────────────
 
 const useDebounce = (callback, delay) => {
@@ -160,9 +180,20 @@ const Projects = ({ data = [], onChange, onValidationChange }) => {
     withLinks: 0,
     techCount: 0,
   });
+  // Tracks which project entries currently have an AI request in flight,
+  // keyed by `field.id` (the stable useFieldArray id). Multiple projects
+  // can be generating concurrently; each entry is independent.
+  const [aiLoadingIds, setAiLoadingIds] = useState(() => new Set());
 
   const mountedRef = useRef(true);
   const previousDataRef = useRef(data);
+  // Ref mirror of `fields` used by the AI response handler to look up the
+  // current index of a project by its stable `field.id`, in case the user
+  // reordered the list while the request was in flight.
+  const fieldsRef = useRef([]);
+  // Keys of in-flight AI requests originated by this section, tracked so
+  // they can be cancelled on unmount.
+  const aiRequestKeysRef = useRef(new Set());
 
   const {
     register,
@@ -182,8 +213,14 @@ const Projects = ({ data = [], onChange, onValidationChange }) => {
 
   useEffect(() => {
     mountedRef.current = true;
+    const keys = aiRequestKeysRef.current;
     return () => {
       mountedRef.current = false;
+      // Cancel any in-flight AI request this section started, so a late
+      // response cannot call `setValue` against a stale index after the
+      // component has unmounted.
+      keys.forEach((key) => aiService.cancel(key));
+      keys.clear();
     };
   }, []);
 
@@ -195,6 +232,13 @@ const Projects = ({ data = [], onChange, onValidationChange }) => {
       );
     }
   }, [data, setValue]);
+
+  // Keep the `fieldsRef` in sync with the current field array so the AI
+  // response handler can resolve `field.id → current index` without
+  // capturing a stale `fields` array in its closure.
+  useEffect(() => {
+    fieldsRef.current = fields;
+  }, [fields]);
 
   // ── FIXED: Handle Save ────────────────────────────────────────────────
 
@@ -324,6 +368,8 @@ const Projects = ({ data = [], onChange, onValidationChange }) => {
     [watchedFields, setValue]
   );
 
+  // ── Local Description Generator (kept as fallback) ────────────────────
+
   const handleGenerateDescription = useCallback(
     (index) => {
       const proj = watchedFields[index];
@@ -332,6 +378,133 @@ const Projects = ({ data = [], onChange, onValidationChange }) => {
       toast.success('Description generated!');
     },
     [watchedFields, setValue]
+  );
+
+  // ── AI Description Generator (C-04) ───────────────────────────────────
+
+  /**
+   * Requests a project description suggestion from the AI endpoint.
+   *
+   * Task selection:
+   *   • When the description field already has content, use
+   *     `improve_project` so the model rewrites the existing text.
+   *   • When the description is empty, use `generate_project` so the
+   *     model produces a fresh description grounded in the project name
+   *     and technologies.
+   *
+   * Identity:
+   *   The `fieldId` argument is the stable `useFieldArray` id of the
+   *   project entry the button belongs to. It is used as the request key
+   *   so a second click on the same entry supersedes the first, and it
+   *   is used to re-look-up the project's index when the response comes
+   *   back — so a reorder that happens mid-request still writes the
+   *   result into the correct project.
+   *
+   * Fallback:
+   *   On any non-success result — network, timeout, rate limit, upstream
+   *   error, or auth — the AI button reverts to idle and the local
+   *   `generateDescriptionTemplate` result is written into the
+   *   description field, with a single informative toast.
+   */
+  const handleGenerateDescriptionWithAi = useCallback(
+    async (fieldId) => {
+      if (aiLoadingIds.has(fieldId)) return;
+
+      const index = fieldsRef.current.findIndex((f) => f.id === fieldId);
+      if (index === -1) return;
+
+      const proj = watchedFields[index] || {};
+      const existingDescription = (proj.description || '').trim();
+      const technologies = parseTechnologies(proj.technologies);
+
+      setAiLoadingIds((prev) => {
+        const next = new Set(prev);
+        next.add(fieldId);
+        return next;
+      });
+
+      const requestKey = projectDescriptionRequestKey(fieldId);
+      aiRequestKeysRef.current.add(requestKey);
+
+      let result;
+      try {
+        if (existingDescription) {
+          result = await aiService.improveProject(
+            {
+              projectName: proj.name || '',
+              currentDescription: existingDescription,
+              technologies,
+            },
+            { requestKey }
+          );
+        } else {
+          result = await aiService.generateProject(
+            {
+              name: proj.name || '',
+              technologies,
+            },
+            { requestKey }
+          );
+        }
+      } catch (error) {
+        // The service layer is designed never to throw, but a future
+        // change there must not break this component.
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('aiService threw unexpectedly:', error);
+        }
+        result = {
+          success: false,
+          error: 'AI service is temporarily unavailable.',
+          code: 'upstream',
+        };
+      } finally {
+        aiRequestKeysRef.current.delete(requestKey);
+      }
+
+      if (!mountedRef.current) return;
+
+      // Clear the loading flag for this project regardless of outcome.
+      setAiLoadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(fieldId);
+        return next;
+      });
+
+      // A superseded or aborted request is not a user-visible error.
+      if (!result.success && (result.code === 'aborted' || result.code === 'superseded')) {
+        return;
+      }
+
+      // Re-look-up the index in case the user reordered the list while the
+      // request was in flight. If the project was deleted in the meantime,
+      // do nothing — there is no field to write to.
+      const currentIndex = fieldsRef.current.findIndex((f) => f.id === fieldId);
+      if (currentIndex === -1) return;
+
+      if (result.success) {
+        setValue(`projects.${currentIndex}.description`, result.text, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+        toast.success('Description generated with AI!');
+        return;
+      }
+
+      // Fallback to the local generator. Use the freshest snapshot of the
+      // project (name and type may have changed while the request was
+      // running).
+      const currentProj = watchedFields[currentIndex] || {};
+      const fallbackText = generateDescriptionTemplate(currentProj.name, currentProj.type);
+      setValue(`projects.${currentIndex}.description`, fallbackText, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+      toast(result.error || 'AI is unavailable — used local suggestion.', {
+        icon: 'ℹ️',
+        duration: 4000,
+      });
+    },
+    [aiLoadingIds, watchedFields, setValue]
   );
 
   // ── Animation ─────────────────────────────────────────────────────────
@@ -434,6 +607,7 @@ const Projects = ({ data = [], onChange, onValidationChange }) => {
             const duration = calculateProjectDuration(proj.startDate, proj.endDate, proj.current);
             const isExpanded = expandedItems.has(index) || viewMode === 'detailed';
             const ProjectIcon = getProjectIcon(proj.type);
+            const isAiGenerating = aiLoadingIds.has(field.id);
 
             return (
               <motion.div
@@ -612,17 +786,32 @@ const Projects = ({ data = [], onChange, onValidationChange }) => {
                           {...register(`projects.${index}.role`)}
                         />
                         <div>
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                             <label className="text-sm font-medium">Description</label>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleGenerateDescription(index)}
-                              icon={<FiZap />}
-                            >
-                              Generate
-                            </Button>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant="primary"
+                                size="sm"
+                                onClick={() => handleGenerateDescriptionWithAi(field.id)}
+                                loading={isAiGenerating}
+                                disabled={isAiGenerating}
+                                icon={<FiZap className="w-3.5 h-3.5" />}
+                                className="text-xs"
+                              >
+                                {isAiGenerating ? 'Generating…' : 'AI Suggest'}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleGenerateDescription(index)}
+                                icon={<FiZap />}
+                                disabled={isAiGenerating}
+                              >
+                                Generate
+                              </Button>
+                            </div>
                           </div>
                           <textarea
                             {...register(`projects.${index}.description`, { required: 'Required' })}

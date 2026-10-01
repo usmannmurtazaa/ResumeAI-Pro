@@ -37,17 +37,25 @@ export const RESUME_STATUS = {
   ARCHIVED: 'archived',
 };
 
+// ── Safe ATS Score Calculation (H-31) ─────────────────────────────────────
+//
+// Delegates to `atsScoring.calculateDetailedScore` — the canonical scorer
+// used throughout the application. The previous implementation had a
+// fallback additive heuristic that produced a different score when the
+// delegate threw; that fallback is removed so every code path in the app
+// agrees on the score for the same input.
+//
+// Returning 0 on failure is correct: the only way to reach the catch is
+// circular-reference input (which throws inside the scorer's
+// `JSON.stringify`) or a genuine bug in the scorer. In either case a
+// meaningful score is impossible, and returning a fabricated one would
+// silently mislead the user.
+
 const calculateATSScoreSafe = (data) => {
   try {
     return calculateDetailedScore(data).overall;
   } catch {
-    let score = 50;
-    if (data?.personal?.fullName) score += 10;
-    if (data?.personal?.email) score += 5;
-    if (data?.experience?.length > 0) score += 15;
-    if (data?.education?.length > 0) score += 10;
-    if (data?.skills?.technical?.length >= 3) score += 10;
-    return Math.min(score, 100);
+    return 0;
   }
 };
 

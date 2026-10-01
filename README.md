@@ -7,7 +7,7 @@
 
 **Built by [Usman Murtaza](https://usmanmurtaza.netlify.app)** - Full Stack Developer
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-maniestacareeros.netlify.app-8b5cf6?style=for-the-badge)](https://maniestacareer.netlify.app)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-maniestacareer.netlify.app-8b5cf6?style=for-the-badge)](https://maniestacareer.netlify.app)
 [![Portfolio](https://img.shields.io/badge/Portfolio-usmanmurtaza.netlify.app-6366f1?style=for-the-badge)](https://usmanmurtaza.netlify.app)
 
 <p>
@@ -41,16 +41,18 @@ The project was designed and built end-to-end by **[Usman Murtaza](https://usman
 - Drag-and-drop reordering of resume sections
 
 ### AI Assistance
-- AI-driven content suggestions for summaries, bullet points, and skill descriptions
-- ATS-focused phrasing prompts
-- Suggestions served through a server-side proxy so API keys stay private
+- Task-oriented AI content suggestions for summaries, experience bullets, project descriptions, and skills
+- ATS-focused, factual phrasing prompts
+- Every prompt is constructed server-side from a fixed template per task; the client cannot inject a system prompt, override the model, or read the API key
+- Suggestions served through a server-side proxy (Netlify Function) so the API key never reaches the browser
+- Graceful fallback: if the AI service is unavailable, rate-limited, or returns an error, the local template generators in the resume editor remain available so the builder keeps working
 
 ### Authentication & Data
 - Email/password authentication via Firebase
 - Google sign-in via Firebase Auth
 - Per-user resume storage in Cloud Firestore
 - User dashboard for managing multiple resumes
-- Persistent offline cache via Firestore (persistentLocalCache)
+- Persistent offline cache via Firestore (`persistentLocalCache`)
 
 ### UI/UX
 - Responsive layout across mobile, tablet, and desktop
@@ -63,7 +65,7 @@ The project was designed and built end-to-end by **[Usman Murtaza](https://usman
 
 ## 🎬 Live Demo
 
-**[maniestacareeros.netlify.app](https://maniestacareer.netlify.app)**
+**[maniestacareer.netlify.app](https://maniestacareer.netlify.app)**
 
 The live demo is connected to a Firebase project and supports real sign-up. You can create a free account to explore the resume builder end to end.
 
@@ -78,8 +80,8 @@ The live demo is connected to a Firebase project and supports real sign-up. You 
 | Routing | React Router v6 |
 | Styling | Tailwind CSS |
 | Animations | Framer Motion |
-| Icons | Lucide React + React Icons |
-| State Management | Context API + Redux (for complex flows) |
+| Icons | React Icons |
+| State Management | React Context API |
 | Drag & Drop | React DnD |
 | Notifications | React Hot Toast |
 | PDF export | Client-side generation (see `src/utils/pdfGenerator.js`) |
@@ -94,11 +96,11 @@ The live demo is connected to a Firebase project and supports real sign-up. You 
 | Performance | Firebase Performance Monitoring |
 | Remote Config | Firebase Remote Config |
 | Messaging | Firebase Cloud Messaging |
-| Serverless Functions | Netlify Functions (Stripe, AI proxy, resume helpers) |
-| AI | OpenAI API (called through Netlify Functions, not from the browser) |
+| Serverless Functions | Netlify Functions (Stripe, Gemini AI proxy, resume helpers) |
+| AI | Google Gemini API (called through a Netlify Function; the API key never reaches the browser) |
 | Hosting | Netlify |
 
-> **Note on the Spark plan:** this project runs on Firebase's free Spark plan, which does not include Cloud Storage or Cloud Functions. File uploads and server-side logic are handled via Netlify Functions instead. Cloud Firestore is used for all persistent data.
+> **Note on the Spark plan:** this project runs on Firebase's free Spark plan, which does not include Cloud Storage or Cloud Functions. File uploads and all server-side logic — including the Gemini AI proxy — are handled via Netlify Functions instead. Cloud Firestore is used for all persistent data, including the per-user daily AI usage counter that protects the Gemini free tier.
 
 ---
 
@@ -110,7 +112,7 @@ The live demo is connected to a Firebase project and supports real sign-up. You 
 - npm 9 or higher
 - A Firebase project (Spark plan is sufficient)
 - A Netlify account (for functions and hosting, if deploying)
-- An OpenAI API key, if you enable AI features - keep this key server-side only (in Netlify environment variables), never in the browser
+- A Google Gemini API key if you enable AI features — obtain one from [Google AI Studio](https://aistudio.google.com/apikey). Keep it server-side only (in Netlify environment variables), never in the browser.
 
 ### Installation
 
@@ -132,12 +134,16 @@ npm start
 
 The app runs at `http://localhost:3000`.
 
+> **Testing Netlify Functions locally:** the CRA dev server (`npm start`) does not host Netlify Functions. To exercise the AI proxy, Stripe endpoints, and other serverless functions during development, use `netlify dev` instead — it serves the React app and the functions from a single origin.
+
 ### Environment Variables
+
+#### Client-side (`.env`)
 
 Create a `.env` file at the project root with:
 
 ```
-# Firebase (client-side, safe to expose - these are public identifiers)
+# Firebase (client-side, safe to expose — these are public identifiers)
 REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
 REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 REACT_APP_FIREBASE_PROJECT_ID=your_project_id
@@ -154,7 +160,65 @@ REACT_APP_FIREBASE_VAPID_KEY=your_vapid_key
 REACT_APP_SITE_URL=https://maniestacareer.netlify.app
 ```
 
-> **Server-side secrets (OpenAI API key, Stripe keys, etc.) go in Netlify's environment variables**, not in this file. See `netlify/functions/` for how those are consumed. Refer to `.env.example` for the full list.
+#### Server-side (Netlify environment variables)
+
+Server-side secrets **must not** appear in any `.env` file that is
+bundled into the client. Configure them in Netlify's dashboard at
+**Site configuration → Environment variables** (or, for local
+development, in `.env` at the project root — CRA only inlines
+`REACT_APP_*` variables into the client bundle; non-prefixed variables
+remain readable only by Netlify Functions).
+
+Required for the AI feature:
+
+```
+# Google Gemini — server-side only
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=your_configured_gemini_model
+```
+
+- `GEMINI_API_KEY` — the API key from Google AI Studio. The Netlify
+  Function reads it from the process environment; it is never sent to
+  the client, never logged, and never included in any API response.
+- `GEMINI_MODEL` — the exact model identifier returned by the current
+  [Gemini API documentation](https://ai.google.dev/gemini-api/docs/models).
+  The AI function does not hardcode a model name. If this variable is
+  missing, the function returns a clear configuration error rather than
+  silently falling back to a stale model.
+
+Optional overrides:
+
+```
+# Application-level daily AI limits per user (not Google's limits)
+AI_FREE_DAILY_LIMIT=10
+AI_PREMIUM_DAILY_LIMIT=100
+
+# Server-side timeout for the Gemini call (milliseconds)
+GEMINI_TIMEOUT_MS=20000
+```
+
+- `AI_FREE_DAILY_LIMIT` / `AI_PREMIUM_DAILY_LIMIT` — application-level
+  caps enforced server-side to protect the Gemini free tier. These are
+  **not** Google's limits; the actual Google limits are enforced by
+  Google when the function exceeds them.
+- `GEMINI_TIMEOUT_MS` — the maximum time the server will wait for
+  Gemini before returning a timeout response.
+
+Required for other server-side features:
+
+```
+# Firebase Admin SDK (used by every Netlify Function)
+FIREBASE_SERVICE_ACCOUNT={"type":"service_account",...}
+
+# Stripe (used by the billing Netlify Functions)
+STRIPE_SECRET_KEY=sk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRO_PRICE_ID=price_...
+STRIPE_BUSINESS_PRICE_ID=price_...
+```
+
+> See `netlify/functions/` for how each variable is consumed. Refer to
+> `.env.example` for the full list.
 
 ---
 
@@ -178,15 +242,23 @@ netlify deploy --prod
 Maniesta-careeros/
 ├── public/               # Static assets and index.html
 ├── netlify/
-│   └── functions/        # Serverless functions (Stripe, AI proxy, resume helpers)
+│   └── functions/        # Serverless functions (Stripe, Gemini AI proxy, resume helpers)
 ├── src/
 │   ├── components/       # Reusable UI components
+│   │   ├── auth/         # Login, signup, Google auth, private routes
+│   │   ├── common/       # Navbar, Footer, ErrorBoundary, Loaders
+│   │   ├── dashboard/    # User and admin dashboards
+│   │   ├── layouts/      # MainLayout, AuthLayout, DashboardLayout, AdminLayout
+│   │   ├── resume/       # Resume builder sections and preview
+│   │   │   ├── sections/ # PersonalInfo, Experience, Education, Skills, Projects, Certifications
+│   │   │   └── templates/# Template1 … Template5
+│   │   └── ui/           # Button, Input, Card, Modal, Badge, Progress, Tooltip
 │   ├── config/           # siteConfig and route metadata
 │   ├── contexts/         # React contexts (auth, theme, settings, notifications, resume)
 │   ├── data/             # Static data (blog posts, constants)
 │   ├── hooks/            # Custom React hooks
 │   ├── pages/            # Route-level pages
-│   ├── services/         # Firebase, analytics, storage, export services
+│   ├── services/         # Firebase, analytics, storage, export, AI service
 │   ├── styles/           # Global CSS and animations
 │   ├── utils/            # Helpers (pdfGenerator, atsScoring, validators, formatters)
 │   └── App.jsx           # Root component with routes
@@ -214,7 +286,7 @@ For larger changes, please open an issue first to discuss the proposal.
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 Copyright © 2026 Usman Murtaza
 

@@ -1,10 +1,10 @@
+import { getIdToken } from 'firebase/auth';
 import {
   collection,
   doc,
   getCountFromServer,
   getDoc,
   getDocs,
-  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -16,7 +16,8 @@ import {
   serverTimestamp,
   increment,
 } from 'firebase/firestore';
-import { db, logAnalyticsEvent } from './firebase';
+import { auth, db, logAnalyticsEvent } from './firebase';
+import { calculateDetailedScore } from '../utils/atsScoring';
 import { FREE_RESUME_LIMIT } from '../data/constants';
 const MAX_BATCH_SIZE = 400;
 
@@ -50,20 +51,20 @@ const ALLOWED_RESUME_UPDATE_FIELDS = new Set([
 ]);
 
 // ── Safe ATS Score Calculation ────────────────────────────────────────────
+//
+// Delegates to `atsScoring.calculateDetailedScore` — the canonical scorer
+// used throughout the application — so a resume produces the same score
+// regardless of whether it was computed here or in the builder. The
+// previous implementation used an additive heuristic that produced a
+// different value for the same input.
+//
+// The try/catch guards against circular-reference input, which would
+// throw inside the scorer's `JSON.stringify`. Non-object input is
+// tolerated by the scorer's own optional chaining.
 
 const calculateATSScoreSafe = (data) => {
   try {
-    // Dynamic import with fallback
-    // If the utility module is available, use it. Otherwise, use basic calculation.
-    let score = 50;
-    if (data?.personal?.fullName) score += 10;
-    if (data?.personal?.email) score += 5;
-    if (Array.isArray(data?.experience) && data.experience.length > 0) score += 15;
-    if (Array.isArray(data?.education) && data.education.length > 0) score += 10;
-    if (Array.isArray(data?.skills?.technical) && data.skills.technical.length >= 3) score += 10;
-    if (Array.isArray(data?.projects) && data.projects.length > 0) score += 5;
-    if (Array.isArray(data?.certifications) && data.certifications.length > 0) score += 5;
-    return Math.min(score, 100);
+    return calculateDetailedScore(data).overall;
   } catch {
     return 0;
   }
@@ -148,72 +149,139 @@ const reportCounterFailure = (counterName, resumeId, error) => {
 
 export const resumeService = {
   // ── Create ─────────────────────────────────────────────────────────────
+  //
+  // Server-side delegation (C-09):
+  //   Direct client-side resume creation is denied by `firestore.rules`
+  //   (`allow create: if isPrivilegedAdmin()`). The Netlify Function
+  //   `/.netlify/functions/create-resume` performs the write with the
+  //   Firebase Admin SDK, which bypasses rules, so this method works for
+  //   every authenticated user.
+  //
+  //   The `userId` parameter is retained for API compatibility. Ownership
+  //   is derived server-side from the verified ID token, so a client
+  //   cannot spoof a different user.
 
   async createResume(userId, resumeData) {
-    try {
-      const resumeRef = doc(collection(db, 'resumes'));
-      const atsScore = calculateATSScoreSafe(resumeData.data || {});
+    // `userId` is intentionally not used for ownership. See the block
+    // comment above. The parameter is kept so existing callers do not
+    // need to change.
+    void userId;
 
-      const data = {
-        ...resumeData,
-        userId,
-        atsScore,
-        downloadCount: 0,
-        viewCount: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        status: atsScore >= 80 ? 'completed' : 'draft',
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      const token = await getIdToken(currentUser, true);
+
+      const payload = {
+        name: resumeData?.name || 'Untitled Resume',
+        template: resumeData?.template || 'modern',
+        data: resumeData?.data || {},
+        atsScore:
+          typeof resumeData?.atsScore === 'number'
+            ? resumeData.atsScore
+            : calculateATSScoreSafe(resumeData?.data || {}),
       };
 
-      await setDoc(resumeRef, data);
+      const response = await fetch('/.netlify/functions/create-resume', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.message || 'Failed to create resume');
+        error.status = response.status;
+        throw error;
+      }
+
+      const newResume = await response.json();
+
       logAnalyticsEvent('resume_created', {
-        resumeId: resumeRef.id,
-        template: resumeData.template,
-        atsScore,
+        resumeId: newResume.id,
+        template: newResume.template,
+        atsScore: newResume.atsScore,
       });
 
       return {
-        id: resumeRef.id,
-        ...data,
+        id: newResume.id,
+        ...newResume,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
     } catch (error) {
       console.error('Error creating resume:', error);
-      throw new Error('Failed to create resume');
+      throw error;
     }
   },
 
+  // ── Duplicate ──────────────────────────────────────────────────────────
+  //
+  // Server-side delegation (C-09):
+  //   Same reason as `createResume`. The server reads the original via
+  //   the Admin SDK, checks ownership, clones the document, and returns
+  //   the new record. A client cannot duplicate a resume they do not
+  //   own — the server returns 403.
+  //
+  //   The `userId` parameter is retained for API compatibility and is
+  //   not used. Ownership is derived server-side from the verified ID
+  //   token.
+
   async duplicateResume(resumeId, userId) {
+    // `userId` is intentionally not used for ownership. See the block
+    // comment above.
+    void userId;
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+
+    if (!resumeId || typeof resumeId !== 'string') {
+      throw new Error('A valid resumeId is required');
+    }
+
     try {
-      const original = await this.getResume(resumeId);
-      if (!original) throw new Error('Original resume not found');
+      const token = await getIdToken(currentUser, true);
 
-      // Destructure-to-exclude: the `_`-prefixed bindings below are declared
-      // only so their keys are stripped from `rest`. `createResume` will
-      // regenerate all five on the duplicated document. The underscore prefix
-      // is required by the ESLint `varsIgnorePattern: '^_'` rule - do not
-      // remove these bindings, they are load-bearing.
-      const {
-        id: _id,
-        createdAt: _createdAt,
-        updatedAt: _updatedAt,
-        downloadCount: _downloadCount,
-        viewCount: _viewCount,
-        ...rest
-      } = original;
-
-      const duplicated = await this.createResume(userId, {
-        ...rest,
-        name: `${rest.name || 'Untitled'} (Copy)`,
-        status: 'draft',
+      const response = await fetch('/.netlify/functions/duplicate-resume', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ resumeId }),
       });
 
-      logAnalyticsEvent('resume_duplicated', { originalId: resumeId, newId: duplicated.id });
-      return duplicated;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.message || 'Failed to duplicate resume');
+        error.status = response.status;
+        throw error;
+      }
+
+      const duplicated = await response.json();
+
+      logAnalyticsEvent('resume_duplicated', {
+        originalId: resumeId,
+        newId: duplicated.id,
+      });
+
+      return {
+        id: duplicated.id,
+        ...duplicated,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
     } catch (error) {
       console.error('Error duplicating resume:', error);
-      throw new Error('Failed to duplicate resume');
+      throw error;
     }
   },
 
@@ -553,9 +621,7 @@ export const resumeService = {
       const total = totalSnap.data().count || 0;
       const sample = sampleSnap.docs.map(formatResume);
 
-      const completed = sample.filter(
-        (r) => r.status === 'completed' || r.atsScore >= 80
-      ).length;
+      const completed = sample.filter((r) => r.status === 'completed' || r.atsScore >= 80).length;
       const scores = sample.map((r) => r.atsScore || 0).filter((s) => s > 0);
       const avgScore = scores.length
         ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)

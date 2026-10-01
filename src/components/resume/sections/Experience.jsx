@@ -17,6 +17,7 @@ import {
   FiMove,
   FiFileText,
   FiHeart,
+  FiLoader,
 } from 'react-icons/fi';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
@@ -26,6 +27,7 @@ import Progress from '../../ui/Progress';
 import toast from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { useDebouncedCallback } from '../../../hooks/useDebounce';
+import aiService from '../../../services/aiService';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -115,6 +117,13 @@ const ATS_TIPS = [
   'Aim for 3-5 bullet points per position',
 ];
 
+// Stable key used by `aiService` to deduplicate and supersede in-flight
+// AI requests for the Experience section. Only one AI bullet-generation
+// request is allowed at a time across the section (the "Suggest" button
+// is disabled while a request is in flight), so a single shared key is
+// sufficient and simpler than per-index keys.
+const AI_BULLET_REQUEST_KEY = 'experience-ai-bullets';
+
 // ── Utility Functions ─────────────────────────────────────────────────────
 
 const calculateDuration = (startDate, endDate, isCurrent) => {
@@ -184,6 +193,29 @@ const generateBullet = (title, company, category) => {
   return `• ${templates[Math.floor(Math.random() * templates.length)]}`;
 };
 
+/**
+ * Normalises the AI's bullet output into a form that matches the local
+ * generator's style: one bullet per line, each prefixed with `• `, with
+ * any leading markdown bullet, dash, asterisk, or number stripped first.
+ *
+ * This guarantees that after appending an AI response, the description
+ * field has a consistent visual format regardless of which path produced
+ * it. It also means the ATS analysis (which counts bullet characters)
+ * sees a uniform shape.
+ */
+const normalizeBulletsText = (raw) => {
+  if (typeof raw !== 'string' || !raw.trim()) return '';
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const stripped = line.replace(/^(?:[•\-*]|\d+\.)\s+/, '').trim();
+      return `• ${stripped}`;
+    })
+    .join('\n');
+};
+
 const createEmptyExperience = () => ({
   company: '',
   title: '',
@@ -213,6 +245,10 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
   const [sortOrder, setSortOrder] = useState('custom');
   const [showBulletSuggestions, setShowBulletSuggestions] = useState({});
   const [totalExperience, setTotalExperience] = useState({ years: 0, months: 0 });
+  // Index of the experience entry whose AI bullet request is in flight, or
+  // `null` when no AI request is running. Used to disable the outer
+  // "Suggest" button across the section and to show a per-index spinner.
+  const [aiLoadingIndex, setAiLoadingIndex] = useState(null);
 
   const mountedRef = useRef(true);
   const previousDataRef = useRef(data);
@@ -237,6 +273,10 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      // Cancel any in-flight AI bullet request so its late response cannot
+      // set state on an unmounted component. `aiService.cancel` is a no-op
+      // when there is nothing in flight.
+      aiService.cancel(AI_BULLET_REQUEST_KEY);
     };
   }, []);
 
@@ -380,6 +420,120 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
       toast.success('Achievement bullet added!');
     },
     [watchedFields, setValue]
+  );
+
+  // ── AI Bullet Generator (C-04) ────────────────────────────────────────
+
+  /**
+   * Requests bullet-point suggestions from the AI endpoint for the given
+   * experience entry.
+   *
+   * Task selection:
+   *   • When the description field already has content, use
+   *     `improve_experience` so the model rewrites the existing text.
+   *   • When the description field is empty, use `generate_experience`
+   *     so the model produces fresh bullets from role, company, and any
+   *     location text.
+   *
+   * Concurrency:
+   *   Only one AI bullet request is allowed per component instance at a
+   *   time. The outer "Suggest" button is disabled while a request is in
+   *   flight, and `aiLoadingIndex` is used to render a spinner on the
+   *   specific entry being processed. This is enforced at the state
+   *   level so a rapid double-click cannot start two requests.
+   *
+   * Failure behaviour:
+   *   On any non-success result — network, timeout, rate limit,
+   *   upstream error, or auth — the button reverts to idle and a single
+   *   toast is shown. The six verb-category items below remain fully
+   *   usable as the user's local fallback. This differs from the
+   *   PersonalInfo section, which auto-falls back to its local
+   *   generator, because the local bullet generator produces
+   *   placeholder-laden text (`[project]`, `[X]%`) that is better
+   *   chosen explicitly by the user than appended automatically.
+   */
+  const handleGenerateBulletWithAi = useCallback(
+    async (index) => {
+      if (aiLoadingIndex !== null) return;
+
+      const exp = watchedFields?.[index] || {};
+      const currentDesc = (exp.description || '').trim();
+      const hasExisting = currentDesc.length > 0;
+
+      // Pre-flight: for a fresh generation we need at least one anchor
+      // field, otherwise the AI has nothing to work with.
+      if (!hasExisting && !exp.title && !exp.company) {
+        toast.error('Please enter a job title or company first');
+        return;
+      }
+
+      setAiLoadingIndex(index);
+      // Close the dropdown so its content is not visible during the
+      // request.
+      setShowBulletSuggestions((prev) => ({ ...prev, [index]: false }));
+
+      let result;
+      try {
+        if (hasExisting) {
+          result = await aiService.improveExperience(
+            { text: currentDesc },
+            { requestKey: AI_BULLET_REQUEST_KEY }
+          );
+        } else {
+          result = await aiService.generateExperience(
+            {
+              role: exp.title || '',
+              company: exp.company || '',
+              context: exp.location || '',
+            },
+            { requestKey: AI_BULLET_REQUEST_KEY }
+          );
+        }
+      } catch (error) {
+        // `aiService` is designed never to throw, but a future change
+        // there must not break this component. Treat an unexpected throw
+        // as an upstream failure.
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('aiService threw unexpectedly:', error);
+        }
+        result = {
+          success: false,
+          error: 'AI service is temporarily unavailable.',
+          code: 'upstream',
+        };
+      }
+
+      if (!mountedRef.current) return;
+
+      // A superseded or aborted request is not a user-visible error.
+      if (!result.success && (result.code === 'aborted' || result.code === 'superseded')) {
+        setAiLoadingIndex(null);
+        return;
+      }
+
+      if (result.success) {
+        const normalized = normalizeBulletsText(result.text);
+        if (!normalized) {
+          // Guard against a server that returned `success: true` but with
+          // effectively empty content. Should not happen given the server
+          // rejects empty responses, but treat defensively.
+          toast.error('AI returned no bullets. Please try again.');
+          setAiLoadingIndex(null);
+          return;
+        }
+        const newDesc = currentDesc ? `${currentDesc}\n${normalized}` : normalized;
+        setValue(`experience.${index}.description`, newDesc, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+        toast.success('AI bullets added!');
+      } else {
+        toast.error(result.error || 'AI service is temporarily unavailable.');
+      }
+
+      setAiLoadingIndex(null);
+    },
+    [aiLoadingIndex, watchedFields, setValue]
   );
 
   // ── Drag and Drop ──────────────────────────────────────────────────────
@@ -713,15 +867,22 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
                                             type="button"
                                             variant="ghost"
                                             size="sm"
+                                            disabled={aiLoadingIndex !== null}
                                             onClick={() =>
                                               setShowBulletSuggestions((prev) => ({
                                                 ...prev,
                                                 [index]: !prev[index],
                                               }))
                                             }
-                                            icon={<FiZap />}
+                                            icon={
+                                              aiLoadingIndex === index ? (
+                                                <FiLoader className="w-4 h-4 animate-spin" />
+                                              ) : (
+                                                <FiZap />
+                                              )
+                                            }
                                           >
-                                            Suggest
+                                            {aiLoadingIndex === index ? 'Generating…' : 'Suggest'}
                                           </Button>
                                           <AnimatePresence>
                                             {showBulletSuggestions[index] && (
@@ -732,6 +893,28 @@ const Experience = ({ data = [], onChange, onValidationChange }) => {
                                                 className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border z-10"
                                               >
                                                 <div className="p-2">
+                                                  {/* AI option — always first, visually distinct */}
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleGenerateBulletWithAi(index)
+                                                    }
+                                                    className="w-full px-3 py-2 text-left text-sm hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg flex items-center justify-between gap-2"
+                                                  >
+                                                    <span className="flex items-center gap-2">
+                                                      <FiZap className="w-3.5 h-3.5 text-primary-500" />
+                                                      <span>AI Suggest</span>
+                                                    </span>
+                                                    <Badge variant="primary" size="sm">
+                                                      AI
+                                                    </Badge>
+                                                  </button>
+
+                                                  {/* Divider between the AI option and the
+                                                      local verb templates below */}
+                                                  <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+
+                                                  {/* Local verb templates — unchanged */}
                                                   {Object.keys(ACTION_VERBS).map((cat) => (
                                                     <button
                                                       key={cat}

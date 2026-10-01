@@ -25,6 +25,11 @@ const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
  * The function reads `users/{callerUid}` server-side; it never accepts the
  * claim from the request body. The caller's ID token is passed as the
  * Bearer token.
+ *
+ * NOTE (M-02): The function can return `{ success: true, synced: false }`
+ * when it executed but did NOT actually update the custom claim. We must
+ * key off `synced`, not `success`, otherwise the caller mounts the admin
+ * panel with a token that cannot satisfy list/aggregation rules.
  */
 const syncAdminClaims = async (user) => {
   if (!user) return false;
@@ -41,7 +46,7 @@ const syncAdminClaims = async (user) => {
       return false;
     }
     const body = await response.json().catch(() => ({}));
-    return body?.success === true;
+    return body?.synced === true;
   } catch (error) {
     console.error('syncAdminClaims failed:', error);
     return false;
