@@ -29,7 +29,7 @@
   # scanner to skip these specific keys. Any env var that is a genuine
   # secret MUST NOT use the REACT_APP_ prefix and MUST NOT be added to this
   # list - it belongs in server-side Netlify Function environment variables.
-  SECRETS_SCAN_OMIT_KEYS = "REACT_APP_ENVIRONMENT,REACT_APP_NAME,REACT_APP_VERSION,REACT_APP_SUPPORT_EMAIL,REACT_APP_SITE_URL,REACT_APP_RESUME_API_URL"
+  SECRETS_SCAN_OMIT_KEYS = "REACT_APP_ENVIRONMENT,REACT_APP_NAME,REACT_APP_VERSION,REACT_APP_SUPPORT_EMAIL,REACT_APP_SITE_URL,REACT_APP_RESUME_API_URL,REACT_APP_FIREBASE_PROJECT_ID"
 
 # ── Local Development (netlify dev only) ──────────────────────────────────
 #

@@ -603,12 +603,30 @@ const DashboardLayout = ({ children, showWelcome = true }) => {
               onClick={() => setSidebarOpen(false)}
               aria-hidden="true"
             >
+              {/*
+                FIX 3 — sidebar width was `w-full`, which meant on any viewport
+                above ~360 px the drawer filled the entire overlay and hid the
+                backdrop. Capped at `max-w-[80vw]` so the backdrop remains
+                visible and the drawer reads as a slide-in overlay.
+
+                FIX 4 — `initial` and `exit` used a hardcoded `x: -320`. That
+                value no longer matched the drawer width after FIX 3 and never
+                matched it in the original code on viewports below 320 px.
+                Using a percentage of the drawer's own width (`-100%`) slides
+                it fully off-screen at any width.
+
+                FIX 5 — `h-screen` maps to `100vh`, which on iOS/Android is the
+                maximum viewport height (bigger than the currently visible
+                area). The bottom of the drawer (logout, storage bar) could
+                become unreachable. `h-[100dvh]` uses the dynamic viewport
+                height, which shrinks/grows with the browser chrome.
+              */}
               <motion.aside
-                initial={{ x: -320 }}
+                initial={{ x: '-100%' }}
                 animate={{ x: 0 }}
-                exit={{ x: -320 }}
+                exit={{ x: '-100%' }}
                 transition={{ type: 'spring', damping: 24, stiffness: 240 }}
-                className="relative flex h-screen w-full flex-col overflow-y-auto bg-white shadow-xl dark:bg-gray-800"
+                className="relative flex h-[100dvh] w-72 max-w-[80vw] flex-col overflow-y-auto bg-white shadow-xl dark:bg-gray-800"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
@@ -675,7 +693,12 @@ const DashboardLayout = ({ children, showWelcome = true }) => {
                       <FiChevronLeft className="h-5 w-5" />
                     )}
                   </button>
-                  <div className="relative hidden md:block">
+                  {/*
+                    FIX 6 — search input was gated behind `md:block` (768 px),
+                    which is too late. Tablets between 640 and 767 px have
+                    plenty of header space for it. Changed to `sm:block`.
+                  */}
+                  <div className="relative hidden sm:block">
                     <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <input
                       id="global-search"
@@ -706,12 +729,17 @@ const DashboardLayout = ({ children, showWelcome = true }) => {
                       <FiCommand className="h-5 w-5" />
                     </button>
                   </Tooltip>
+                  {/*
+                    FIX 7 — the refresh button is the least-used control in the
+                    group. Hiding it below `sm:` frees ~40 px and lets the
+                    remaining icons fit at 320 px.
+                  */}
                   <Tooltip content="Refresh">
                     <button
                       type="button"
                       onClick={handleRefresh}
                       disabled={isRefreshing}
-                      className="rounded-lg p-2 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800"
+                      className="hidden rounded-lg p-2 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800 sm:inline-flex"
                       aria-label="Refresh"
                     >
                       <FiRefreshCw className={cn('h-5 w-5', isRefreshing && 'animate-spin')} />
@@ -736,11 +764,20 @@ const DashboardLayout = ({ children, showWelcome = true }) => {
                     </Tooltip>
                     <AnimatePresence>
                       {showQuickActions && (
+                        /*
+                          FIX 2 — the quick-actions panel was `absolute right-0
+                          w-72`, anchored to a button that sits ~100 px from
+                          the right edge on phones. The panel's left edge landed
+                          off-screen on every viewport below ~430 px. It is now
+                          `fixed left-4 right-4` on mobile (fills the viewport
+                          minus 32 px) and reverts to `absolute right-0 w-72`
+                          on `sm:` and up.
+                        */
                         <motion.div
                           initial={{ opacity: 0, scale: 0.96, y: -8 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.96, y: -8 }}
-                          className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                          className="fixed left-4 right-4 top-20 z-50 w-auto rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-72"
                           role="menu"
                         >
                           <div className="p-2">
@@ -800,11 +837,19 @@ const DashboardLayout = ({ children, showWelcome = true }) => {
                     </button>
                     <AnimatePresence>
                       {showNotifications && (
+                        /*
+                          FIX 1 — same overflow problem as FIX 2. The panel
+                          was `w-80` (320 px) anchored `right-0` to a button
+                          that is ~140 px from the right edge; its left edge
+                          fell off-screen on every viewport below ~425 px.
+                          Responsive positioning: viewport-width on mobile,
+                          anchored `w-80` panel on `sm:` and up.
+                        */
                         <motion.div
                           initial={{ opacity: 0, scale: 0.96, y: -8 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.96, y: -8 }}
-                          className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                          className="fixed left-4 right-4 top-20 z-50 w-auto rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80"
                           role="menu"
                         >
                           <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
