@@ -91,6 +91,23 @@ const Notifications = createLazyPage(
 );
 
 // ── Route Definitions ───────────────────────────────────────────────────────
+//
+// NOTE ON `/builder`:
+//
+// The route was previously declared as `{ path: '/builder/:id?' }`. React
+// Router 6.21's path compiler does not support the trailing-`?` optional
+// segment syntax reliably across patch versions; on this version it produces
+// a malformed regular expression and throws `SyntaxError: Invalid regular
+// expression` at render time, taking the whole `/builder` route down.
+//
+// The fix is to declare two explicit routes that render the same component:
+//   • `/builder`       — collection view; Builder reads `useParams().id`
+//                        as `undefined` and treats it as "new resume".
+//   • `/builder/:id`   — edit view; Builder reads the id and loads it.
+//
+// This matches `src/config/routes.js`, which already lists `/builder` and
+// `/builder/:id` as two separate entries in both `PROTECTED_PATHS` and
+// `routeDefinitions`.
 const PUBLIC_ROUTES = [
   { path: '/', component: Home },
   { path: '/features', component: Features },
@@ -116,7 +133,8 @@ const AUTH_ROUTES = [
 
 const PROTECTED_ROUTES = [
   { path: '/dashboard', component: Dashboard },
-  { path: '/builder/:id?', component: Builder },
+  { path: '/builder', component: Builder },
+  { path: '/builder/:id', component: Builder },
   { path: '/profile', component: Profile },
   { path: '/settings', component: Settings },
   { path: '/my-resumes', component: MyResumes },
