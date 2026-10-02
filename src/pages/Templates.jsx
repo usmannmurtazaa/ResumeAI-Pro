@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../components/layouts/DashboardLayout';
@@ -90,13 +90,20 @@ const Templates = () => {
     description: 'Browse ATS-optimized resume templates for every industry.',
   });
 
-  const filteredTemplates = TEMPLATES.filter((t) => {
-    const matchesSearch =
-      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || t.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // FIX 6 — Memoized filter. Recomputes only when the search term or the
+  // selected category actually changes, matching the pattern used by the
+  // other list components in this project (ResumeList, TemplateSelector).
+  const filteredTemplates = useMemo(
+    () =>
+      TEMPLATES.filter((t) => {
+        const matchesSearch =
+          t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory === 'All' || t.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+      }),
+    [searchTerm, selectedCategory]
+  );
 
   const handleUseTemplate = useCallback(
     async (templateId) => {
@@ -151,11 +158,16 @@ const Templates = () => {
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
+                type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                // FIX 2 — dark-mode hover now matches the rest of the app.
+                // FIX 5 — explicit focus-visible ring for parity with other
+                //          interactive elements. `focus:outline-none` lets
+                //          the ring replace the global focus outline.
+                className={`px-3 py-1.5 rounded-full text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
                   selectedCategory === cat
                     ? 'bg-primary-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
                 {cat}
@@ -167,13 +179,35 @@ const Templates = () => {
         {/* Templates Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTemplates.map((template, index) => (
+            /*
+             * FIX 4 — The outer motion.div now owns the entrance + stagger
+             * animation. Card is rendered with `animate={false}` so it does
+             * not stack a second `initial={{ y: 20 }}` on top of this one
+             * (which was producing a net y: +40 offset and a heavier
+             * entrance than the code implied).
+             *
+             * The tap scale feedback that Card used to supply via
+             * `whileTap` is now applied here, so nothing is lost.
+             */
             <motion.div
               key={template.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{
+                opacity: { delay: index * 0.05, duration: 0.3 },
+                y: { delay: index * 0.05, duration: 0.3 },
+                scale: { duration: 0.1 },
+              }}
             >
               <Card
+                // FIX 3 — `clickable` adds role="button", tabIndex=0,
+                // cursor-pointer, and Enter/Space keyboard handling. The
+                // card body is now reachable and actionable by keyboard
+                // users, matching the visual affordance the hover lift
+                // already suggested to mouse users.
+                clickable
+                animate={false}
                 className={`p-6 h-full flex flex-col transition-all ${
                   selectedTemplate === template.id ? 'ring-2 ring-primary-500' : 'hover:shadow-lg'
                 }`}
@@ -196,8 +230,19 @@ const Templates = () => {
                   {template.description}
                 </p>
 
-                <div className="flex items-center justify-between mt-auto">
-                  <Badge variant="default">{template.category}</Badge>
+                {/*
+                 * FIX 1 — At 320–414 px the badge and both buttons cannot
+                 * fit on one line (~325 px of content in ~240 px of
+                 * available space). Stack them vertically below `sm`:
+                 * badge on its own row, buttons side-by-side underneath.
+                 * From `sm` upward, revert to the original horizontal
+                 * layout. Each button gets `flex-1 sm:flex-none` so they
+                 * share the row equally on mobile.
+                 */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-auto">
+                  <Badge variant="default" className="self-start">
+                    {template.category}
+                  </Badge>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -207,6 +252,7 @@ const Templates = () => {
                         handlePreview(template.id);
                       }}
                       icon={<FiEye />}
+                      className="flex-1 sm:flex-none"
                     >
                       Preview
                     </Button>
@@ -217,6 +263,7 @@ const Templates = () => {
                         handleUseTemplate(template.id);
                       }}
                       icon={<FiCheck />}
+                      className="flex-1 sm:flex-none"
                     >
                       {selectedTemplate === template.id ? 'Selected' : 'Use'}
                     </Button>
