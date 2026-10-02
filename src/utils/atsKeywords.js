@@ -8,8 +8,6 @@
 
 import { industryKeywords, actionVerbs, passivePhrases } from './atsData';
 
-export { industryKeywords, actionVerbs, passivePhrases };
-
 // ── Canonical scorer (imported from ./atsScoring) ─────────────────────────
 //
 // `calculateATSScore` below delegates to `atsScoring.calculateDetailedScore`
@@ -17,6 +15,8 @@ export { industryKeywords, actionVerbs, passivePhrases };
 // algorithm, regardless of which module computes it.
 
 import { calculateDetailedScore } from './atsScoring';
+
+export { industryKeywords, actionVerbs, passivePhrases };
 
 // ── Memoized Helpers ──────────────────────────────────────────────────────
 // These two flat arrays are computed once at module load and reused by the

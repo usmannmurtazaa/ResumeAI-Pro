@@ -21,7 +21,6 @@ import { formatDistanceToNow } from 'date-fns';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import Badge from '../components/ui/Badge';
 import { useNotifications } from '../contexts/NotificationContext';
 import { usePageTitle } from '../hooks/useDocumentTitle';
 import toast from 'react-hot-toast';
@@ -96,8 +95,8 @@ const EmptyState = () => (
       No notifications yet
     </h3>
     <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-      When you receive updates about your resumes, ATS scores, or account activity, they will appear
-      here.
+      When you receive updates about your resumes, ATS scores, or account activity,
+      they will appear here.
     </p>
   </Card>
 );
@@ -233,7 +232,6 @@ const Notifications = () => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    deleteMultiple,
     clearRead,
     loadMore,
   } = useNotifications();
@@ -324,7 +322,10 @@ const Notifications = () => {
 
   // ── Derived values ──────────────────────────────────────────────────────
 
-  const readCount = useMemo(() => notifications.filter((n) => n.read).length, [notifications]);
+  const readCount = useMemo(
+    () => notifications.filter((n) => n.read).length,
+    [notifications]
+  );
 
   const hasAnyUnread = unreadCount > 0;
   const hasAnyRead = readCount > 0;
@@ -343,7 +344,9 @@ const Notifications = () => {
             <div>
               <h1 className="text-2xl font-bold gradient-text">Notifications</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'}
+                {unreadCount > 0
+                  ? `${unreadCount} unread`
+                  : 'You are all caught up'}
               </p>
             </div>
           </div>
