@@ -653,17 +653,22 @@ export const getNavigationItem = (path) => {
  *   - Suffix wildcards         → '/admin/*'
  *   - Fallback to notFound     → for unmatched paths
  *
- * The previous implementation had two problems:
+ * ── How the regex is built ────────────────────────────────────────────
  *
- *   1. The optional-segment pattern `/builder/:id?` produced the regex
- *      `^/builder/[^/]+?$`, which requires at least one character after
- *      the slash. `/builder` without an id did not match and fell through
- *      to the notFound metadata.
+ * Each `:name` or `:name?` placeholder is rewritten to a regex fragment in
+ * a SINGLE `.replace()` pass. Two properties are essential:
  *
- *   2. Suffix wildcards (`/admin/*`) were handled in a separate loop after
- *      the dynamic-segment loop. The two loops are now merged into one
- *      pass, which also lets a hypothetical future pattern combine both
- *      forms (e.g. `/foo/:id/*`) without further changes.
+ *   1. `:name?` and `:name` MUST be matched by one alternation, not by two
+ *      sequential `.replace()` passes. When the two passes ran in sequence,
+ *      the second pass (`:name`) matched the `:[...]` inside the non-
+ *      capturing group that the first pass (`:name?`) had just emitted,
+ *      corrupting `(?:[^/]+)?` into `(?[^/]+/]+)?` and producing the
+ *      crash-invoking pattern `^/builder/(?[^/]+/]+)?$`.
+ *
+ *   2. The leading `/` before the segment MUST be part of the replacement,
+ *      so that `:name?` becomes `(?:/[^/]+)?` — a slash AND the segment,
+ *      both optional. Otherwise `/builder` (no trailing slash) would not
+ *      match, and the SEO metadata would fall through to notFound.
  *
  * Literal regex metacharacters in the pattern (`+`, `.`, etc.) are escaped
  * before the placeholder substitutions. `?`, `*`, and `:` are intentionally
@@ -689,9 +694,15 @@ export const getSeoForPath = (pathname) => {
     const regexStr =
       '^' +
       escaped
-        .replace(/:([^/?]+)\?/g, '(?:[^/]+)?') // ':name?' → optional segment
-        .replace(/:([^/?]+)/g, '[^/]+') // ':name'  → required segment
-        .replace(/\/\*$/, '(?:/.*)?') + // '/*'     → optional suffix
+        // '/:name?' → optional segment. The leading slash is folded into the
+        // optional group so both `/path` and `/path/id` match. See the
+        // docstring above for why the alternation must be single-pass.
+        .replace(/\/:([^/?]+)\?/g, '(?:/[^/]+)?')
+        // '/:name'  → required segment. The slash is now part of the match,
+        // so it must be re-emitted in the replacement.
+        .replace(/\/:([^/?]+)/g, '/[^/]+')
+        // '/*' at end → optional trailing path, slash included.
+        .replace(/\/\*$/, '(?:/.*)?') +
       '$';
 
     if (new RegExp(regexStr).test(pathname)) return routes[pattern];
