@@ -345,7 +345,7 @@ self.addEventListener('fetch', (event) => {
 
   // Skip cross-origin requests (except Google Fonts).
   // Uses exact origin comparison instead of substring includes() to avoid
-  // matching attacker-controlled hostnames like maniestacareeros.netlify.app.evil.com
+  // matching attacker-controlled hostnames like maniesta-careeros.netlify.app.evil.com
   const isSameOrigin = url.origin === self.location.origin;
   const isGoogleFonts =
     url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';

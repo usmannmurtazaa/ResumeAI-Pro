@@ -11,9 +11,11 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-DNS-Prefetch-Control" content="on" />
     
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#3b82f6" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)" />
+    <!-- Theme Color — brand indigo (#6366f1) for light mode; the dark-mode
+         value matches --bg-primary in globals.css (.dark) so the OS chrome
+         blends with the actual page background. -->
+    <meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -23,7 +25,7 @@
     
     <!-- Google Search Console site verification.
          IMPORTANT: This credential MUST belong to the property
-         https://maniestacareer.netlify.app in Google Search Console.
+         https://maniesta-career.netlify.app in Google Search Console.
          Each property has its own unique credential - do not reuse
          the one from another site, or verification will fail. -->
     <meta name="google-site-verification" content="8tNUALDy2r2_UlsW_1cTKj2dwBiSn_0urgZbIVqXFcM" />
@@ -44,10 +46,13 @@
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://maniestacareer.netlify.app" />
+    <meta property="og:url" content="https://maniesta-career.netlify.app" />
     <meta property="og:title" content="Maniesta Career OS - AI-Powered ATS Resume Builder" />
     <meta property="og:description" content="Create professional, ATS-optimized resumes with AI-powered suggestions. 25+ premium templates, real-time scoring, and instant PDF download." />
-    <meta property="og:image" content="https://maniestacareer.netlify.app/og-image.png" />
+    <!-- NOTE: /og-image.png does not currently exist in public/. Add the
+         image or remove this reference. Until then, social shares fall
+         back to a blank preview card. -->
+    <meta property="og:image" content="https://maniesta-career.netlify.app/og-image.png" />
     <meta property="og:image:alt" content="Maniesta Career OS - Professional Resume Builder Interface" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -58,38 +63,49 @@
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://maniestacareer.netlify.app" />
+    <meta name="twitter:url" content="https://maniesta-career.netlify.app" />
     <meta name="twitter:title" content="Maniesta Career OS - AI-Powered ATS Resume Builder" />
     <meta name="twitter:description" content="Create professional, ATS-optimized resumes with AI-powered suggestions. 25+ premium templates and real-time scoring." />
-    <meta name="twitter:image" content="https://maniestacareer.netlify.app/twitter-image.png" />
+    <!-- NOTE: /twitter-image.png does not currently exist in public/. Same
+         caveat as og-image.png. -->
+    <meta name="twitter:image" content="https://maniesta-career.netlify.app/twitter-image.png" />
     <meta name="twitter:image:alt" content="Maniesta Career OS - Professional Resume Builder Interface" />
-    <meta name="twitter:site" content="@maniestacareeros" />
+    <meta name="twitter:site" content="@maniesta-careeros" />
     <meta name="twitter:creator" content="@usmannmurtazaa" />
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://maniestacareer.netlify.app" />
+    <link rel="canonical" href="https://maniesta-career.netlify.app" />
     
-    <!-- Favicon and Icons - FIXED: Using proper PNG format for PWA & Apple icons -->
+    <!-- Favicon and Icons
+         NOTE: These reference /favicon-32x32.png, /favicon-16x16.png,
+         /safari-pinned-tab.svg, /mstile-144x144.png, and /browserconfig.xml.
+         None of those files exist in public/ today. The browser falls back
+         to /favicon.ico. Add the assets or trim the references. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#3b82f6" />
-    <meta name="msapplication-TileColor" content="#3b82f6" />
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#6366f1" />
+    <meta name="msapplication-TileColor" content="#6366f1" />
     <meta name="msapplication-TileImage" content="/mstile-144x144.png" />
     <meta name="msapplication-config" content="/browserconfig.xml" />
     
     <!-- Web App Manifest -->
     <link rel="manifest" href="/manifest.json" />
     
-    <!-- Preconnect to External Domains -->
+    <!-- Preconnect to External Domains
+         Only includes services actually used at runtime. Preconnects that
+         were pointing at unused services (sentry.io with no DSN, storage.
+         googleapis.com before the Cloudinary migration) were removed -
+         each unused preconnect costs a DNS/TLS round-trip for no benefit.
+         Cloudinary entries added for the avatar upload / delivery path. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://firestore.googleapis.com" />
-    <link rel="preconnect" href="https://storage.googleapis.com" />
     <link rel="preconnect" href="https://www.googleapis.com" />
-    <link rel="preconnect" href="https://sentry.io" />
+    <link rel="preconnect" href="https://api.cloudinary.com" />
+    <link rel="preconnect" href="https://res.cloudinary.com" />
     <link rel="preconnect" href="https://www.google-analytics.com" />
     <link rel="preconnect" href="https://www.googletagmanager.com" />
     
@@ -97,25 +113,27 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
-    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
     <link rel="dns-prefetch" href="https://www.googleapis.com" />
-    <link rel="dns-prefetch" href="https://sentry.io" />
+    <link rel="dns-prefetch" href="https://api.cloudinary.com" />
+    <link rel="dns-prefetch" href="https://res.cloudinary.com" />
     <link rel="dns-prefetch" href="https://www.google-analytics.com" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     
-    <!-- Preload Critical Font with matching crossorigin -->
-    <link 
-      rel="preload" 
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
-      as="style"
-      crossorigin
-    />
-    
-    <!-- Fonts stylesheet with matching crossorigin -->
-    <link 
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
+    <!-- Inter stylesheet.
+         Uses the variable-font form (`wght@300..900`) rather than the
+         discrete list (`wght@300;400;500;...;900`). Google serves a single
+         file for the variable form, covering every weight between 300 and
+         900 - typically 40-60% smaller than the seven-file discrete form.
+         The previous duplicate <link rel="preload" as="style"> was removed;
+         the stylesheet below is discovered immediately and the preload
+         added no benefit. The `crossorigin` attribute was removed because
+         it forces a CORS-mode fetch of the CSS, which Google Fonts allows
+         but which is unnecessary for a same-context stylesheet and can
+         produce a spurious console warning if the response headers ever
+         change. -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300..900&display=swap"
       rel="stylesheet"
-      crossorigin
     />
     
     <!-- Process polyfill for browser -->
@@ -160,6 +178,17 @@
         text-rendering: optimizeLegibility;
         background-color: #f9fafb;
         color: #111827;
+        /*
+         * NOTE: `overflow-x: hidden` is a band-aid. It hides horizontal
+         * overflow rather than fixing its source, which can mask real bugs
+         * that appear only after specific interactions (opening a dropdown,
+         * scrolling to a certain section, etc.). The responsive work
+         * currently in progress - Sidebar.jsx, DashboardLayout.jsx,
+         * Textarea.jsx - is intended to remove the need for it. Once those
+         * changes are verified across 320 / 375 / 390 / 414 / 430 / 480 /
+         * 768 / 1024 / 1280 px, remove this declaration and audit any
+         * remaining overflow. Keep it for now to avoid shipping a regression.
+         */
         overflow-x: hidden;
       }
       
@@ -171,32 +200,35 @@
         }
       }
       
-      /* Focus visible styles */
+      /* Focus visible styles — brand indigo, matches --color-primary
+         in globals.css. */
       *:focus-visible {
-        outline: 2px solid #3b82f6;
+        outline: 2px solid #6366f1;
         outline-offset: 2px;
         border-radius: 2px;
       }
       
-      /* Selection styles */
+      /* Selection styles — brand indigo background. */
       ::selection {
-        background-color: #3b82f6;
+        background-color: #6366f1;
         color: white;
       }
       
       ::-moz-selection {
-        background-color: #3b82f6;
+        background-color: #6366f1;
         color: white;
       }
       
-      /* Scrollbar styles */
+      /* Scrollbar styles. The track is transparent to match the
+         equivalent rule in globals.css and to avoid a visible seam on
+         short scroll containers. */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
       
       ::-webkit-scrollbar-track {
-        background: #f1f1f1;
+        background: transparent;
         border-radius: 4px;
       }
       
@@ -211,21 +243,12 @@
       }
       
       @media (prefers-color-scheme: dark) {
-        ::-webkit-scrollbar-track {
-          background: #1f2937;
-        }
-        
         ::-webkit-scrollbar-thumb {
           background: #4b5563;
         }
         
         ::-webkit-scrollbar-thumb:hover {
           background: #6b7280;
-        }
-        
-        body.dark {
-          background-color: #111827;
-          color: #f9fafb;
         }
       }
       
@@ -265,7 +288,7 @@
         width: 40px;
         height: 40px;
         border: 3px solid #e5e7eb;
-        border-top-color: #3b82f6;
+        border-top-color: #6366f1;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
@@ -273,7 +296,7 @@
       @media (prefers-color-scheme: dark) {
         .initial-loader .spinner {
           border-color: #374151;
-          border-top-color: #60a5fa;
+          border-top-color: #818cf8;
         }
       }
       
@@ -317,14 +340,23 @@
       }
     </style>
     
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD Structured Data
+         NOTE: The previous version of this block declared an
+         `aggregateRating` of 4.9 stars from 5000 ratings. That data was
+         fabricated - the app has no review system and no way to produce
+         such counts. Google's structured-data guidelines explicitly
+         prohibit fake aggregate ratings, and a manual action can be
+         issued if the violation is detected. The block has been removed.
+         If a real rating source is ever added (G2, Capterra, Trustpilot),
+         populate the field from that source only.
+    -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "Maniesta Career OS",
         "alternateName": ["ATS Resume Builder", "AI Resume Builder"],
-        "url": "https://maniestacareer.netlify.app",
+        "url": "https://maniesta-career.netlify.app",
         "description": "AI-powered ATS resume builder with professional templates and real-time optimization.",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "All",
@@ -337,20 +369,13 @@
           "availability": "https://schema.org/InStock",
           "validFrom": "2024-01-01"
         },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.9",
-          "ratingCount": "5000",
-          "bestRating": "5",
-          "worstRating": "1"
-        },
         "author": {
           "@type": "Person",
           "name": "Usman Murtaza",
           "url": "https://usmanmurtaza.netlify.app",
           "sameAs": [
             "https://twitter.com/usmannmurtazaa",
-            "https://linkedin.com/in/usmanmurtaza",
+            "https://linkedin.com/in/usmannmurtazaa",
             "https://github.com/usmannmurtazaa"
           ]
         },
@@ -361,17 +386,17 @@
         "publisher": {
           "@type": "Organization",
           "name": "Maniesta Career OS",
-          "url": "https://maniestacareer.netlify.app",
+          "url": "https://maniesta-career.netlify.app",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://maniestacareer.netlify.app/logo.png",
+            "url": "https://maniesta-career.netlify.app/logo.png",
             "width": "512",
             "height": "512"
           },
           "sameAs": [
-            "https://twitter.com/maniestacareeros",
-            "https://linkedin.com/company/maniestacareeros",
-            "https://github.com/maniestacareeros"
+            "https://x.com/usmann_murtazaa",
+            "https://linkedin.com/in/usmanmurtaza",
+            "https://github.com/maniesta-careeros"
           ]
         },
         "featureList": [
@@ -395,20 +420,20 @@
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": "Maniesta Career OS",
-        "url": "https://maniestacareer.netlify.app",
-        "logo": "https://maniestacareer.netlify.app/logo.png",
+        "url": "https://maniesta-career.netlify.app",
+        "logo": "https://maniesta-career.netlify.app/logo.png",
         "sameAs": [
-          "https://twitter.com/maniestacareeros",
-          "https://linkedin.com/company/maniestacareeros",
-          "https://github.com/maniestacareeros",
-          "https://facebook.com/maniestacareeros",
-          "https://instagram.com/maniestacareeros"
+          "https://x.com/usmann_murtazaa",
+          "https://linkedin.com/in/usmanmurtaza",
+          "https://github.com/maniesta-careeros",
+          "https://facebook.com/maniesta-careeros",
+          "https://instagram.com/maniesta-careeros"
         ],
         "contactPoint": {
           "@type": "ContactPoint",
           "contactType": "customer support",
           "email": "usmanmurtazaportfolio@gmail.com",
-          "url": "https://maniestacareer.netlify.app/contact",
+          "url": "https://maniesta-career.netlify.app/contact",
           "availableLanguage": ["English"]
         },
         "foundingDate": "2024",
@@ -419,7 +444,12 @@
       }
     </script>
     
-    <!-- FAQ Structured Data -->
+    <!-- FAQ Structured Data.
+         NOTE: the "Is Maniesta Career OS free to use?" answer was updated
+         from "one resume" to "5 resumes" to match the actual free tier
+         (FREE_RESUME_LIMIT = 5 in the app's source). Structured data must
+         accurately reflect the product; a mismatch can also trigger a
+         structured-data warning in Search Console. -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -446,7 +476,7 @@
             "name": "Is Maniesta Career OS free to use?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes, Maniesta Career OS offers a free plan that includes one resume, access to basic templates, and ATS scoring. Premium plans start at $9.99/month and unlock unlimited resumes, advanced templates, cover letter builder, and priority support."
+              "text": "Yes, Maniesta Career OS offers a free plan that includes up to 5 resumes, access to basic templates, and ATS scoring. Premium plans unlock unlimited resumes, advanced templates, cover letter builder, and priority support."
             }
           },
           {
@@ -523,7 +553,7 @@
     <!-- NoScript Fallback -->
     <noscript>
       <div style="padding: 40px 20px; max-width: 600px; margin: 0 auto; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <h1 style="color: #3b82f6; font-size: 24px; margin-bottom: 16px;">Maniesta Career OS</h1>
+        <h1 style="color: #6366f1; font-size: 24px; margin-bottom: 16px;">Maniesta Career OS</h1>
         <h2 style="color: #333; font-size: 18px; margin-bottom: 12px;">JavaScript Required</h2>
         <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
           Maniesta Career OS requires JavaScript to provide you with the best resume building experience.
@@ -532,7 +562,7 @@
         <p style="color: #666; font-size: 14px;">
           Please enable JavaScript in your browser settings and refresh the page.
           <br />
-          <a href="https://www.enable-javascript.com/" style="color: #3b82f6; text-decoration: none;">
+          <a href="https://www.enable-javascript.com/" style="color: #6366f1; text-decoration: none;">
             Learn how to enable JavaScript →
           </a>
         </p>

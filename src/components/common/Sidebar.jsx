@@ -26,7 +26,6 @@ import {
   FiDatabase,
   FiKey,
   FiTerminal,
-  FiX,
   FiBarChart2,
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
@@ -36,6 +35,10 @@ import Tooltip from '../ui/Tooltip';
 import Avatar from '../ui/Avatar';
 import Progress from '../ui/Progress';
 import toast from 'react-hot-toast';
+
+// ── Utility ────────────────────────────────────────────────────────────────
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -191,15 +194,17 @@ const Sidebar = ({
             }
           }}
           className={({ isActive: navActive }) =>
-            `group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
+            cn(
+              'group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150',
               active || navActive
                 ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-md'
                 : item.highlight
                   ? 'text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30'
                   : isLocked
                     ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-            } ${isCollapsed ? 'justify-center' : ''}`
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
+              isCollapsed && 'justify-center'
+            )
           }
           aria-current={active || isActive(item.path, item.exact) ? 'page' : undefined}
         >
@@ -233,197 +238,171 @@ const Sidebar = ({
     );
   };
 
+  // ── Render ────────────────────────────────────────────────────────────
+  //
+  // Positioning and width are owned by the PARENT layout, not this
+  // component:
+  //
+  //   • On desktop, `DashboardLayout` / `AdminLayout` wrap this Sidebar in
+  //     `<aside className="fixed left-0 top-0 z-30 h-full w-20|w-64">`.
+  //     Sidebar's own `<aside>` is therefore `relative`, `w-full`, `h-full`.
+  //
+  //   • On mobile, the parent wraps it in a `motion.aside` drawer that owns
+  //     the width (`w-72 max-w-[80vw]`), the slide-in animation, the header
+  //     bar, and the close button. Sidebar is `w-full` and lets its content
+  //     flow; the parent's `overflow-y-auto` handles scrolling.
+  //
+  // Sidebar does NOT render its own backdrop overlay, close button, or
+  // `pt-16` offset when mobile, because the parent already provides them.
+  // This removes the duplicate overlay, duplicate close button, and the
+  // "fixed element escapes the parent wrapper" bug that caused the 32 px
+  // gap on small screens.
+
   return (
-    <>
-      {/* Mobile Overlay */}
-      {isMobile && (
-        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={onCloseMobile} />
+    <aside
+      className={cn(
+        'flex flex-col bg-white dark:bg-gray-900 w-full',
+        !isMobile && 'h-full border-r border-gray-200 dark:border-gray-700'
+      )}
+      role="navigation"
+      aria-label="Sidebar navigation"
+    >
+      {/* Collapse Toggle (Desktop only — mobile close is owned by parent) */}
+      {!isMobile && (
+        <button
+          onClick={onToggle}
+          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm z-50"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? (
+            <FiChevronRight className="w-3 h-3" />
+          ) : (
+            <FiChevronLeft className="w-3 h-3" />
+          )}
+        </button>
       )}
 
-      <aside
-        className={`fixed left-0 top-0 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 z-40
-        transition-all duration-300 ease-in-out flex flex-col
-        ${isCollapsed && !isMobile ? 'w-20' : 'w-64'}
-        ${isMobile ? 'w-64 translate-x-0' : isCollapsed ? '' : ''}`}
-        role="navigation"
-        aria-label="Sidebar navigation"
-      >
-        {/* Mobile Close Button */}
-        {isMobile && (
-          <div className="absolute top-4 right-4 z-50">
-            <button
-              onClick={onCloseMobile}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              aria-label="Close sidebar"
-            >
-              <FiX className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            </button>
+      {/* Content — fills height and clips overflow only on desktop. On
+          mobile, content flows so the parent drawer's scroll handles it. */}
+      <div className={cn('flex flex-col', !isMobile && 'h-full pt-16 overflow-hidden')}>
+        {/* User Profile */}
+        {!isCollapsed && user && (
+          <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <Avatar
+                src={user?.photoURL}
+                name={user?.displayName || user?.email || 'User'}
+                size="md"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white truncate text-sm">
+                  {user?.displayName?.split(' ')[0] || 'User'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {isAdminMode ? (
+                    <Badge variant="danger" size="sm">
+                      Admin
+                    </Badge>
+                  ) : isPremium ? (
+                    <Badge variant="warning" size="sm">
+                      Pro
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" size="sm">
+                      Free
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            {!isAdminMode && stats && (
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <div className="text-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    {stats.total || 0}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Resumes</p>
+                </div>
+                <div className="text-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    {stats.avgScore || 0}%
+                  </p>
+                  <p className="text-[10px] text-gray-500">ATS Score</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Collapse Toggle (Desktop) */}
-        {!isMobile && (
-          <button
-            onClick={onToggle}
-            className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm z-50"
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <FiChevronRight className="w-3 h-3" />
-            ) : (
-              <FiChevronLeft className="w-3 h-3" />
-            )}
-          </button>
+        {/* Upgrade Prompt */}
+        {!isPremium && !isAdminMode && !isCollapsed && showUpgradePrompt && (
+          <div className="px-4 py-3 flex-shrink-0">
+            <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-2">
+                <FiAward className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                    Upgrade to Pro
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                    Unlimited resumes, AI features & more
+                  </p>
+                  <NavLink
+                    to="/pricing"
+                    onClick={onCloseMobile}
+                    className="inline-block mt-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                  >
+                    Upgrade Now →
+                  </NavLink>
+                </div>
+                <button
+                  onClick={handleHideUpgradePrompt}
+                  className="text-amber-500 hover:text-amber-600 flex-shrink-0 p-1 -m-1"
+                  aria-label="Dismiss upgrade prompt"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Content */}
-        <div className="h-full flex flex-col pt-16 overflow-hidden">
-          {/* User Profile */}
-          {!isCollapsed && user && (
-            <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <Avatar
-                  src={user?.photoURL}
-                  name={user?.displayName || user?.email || 'User'}
-                  size="md"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 dark:text-white truncate text-sm">
-                    {user?.displayName?.split(' ')[0] || 'User'}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    {isAdminMode ? (
-                      <Badge variant="danger" size="sm">
-                        Admin
-                      </Badge>
-                    ) : isPremium ? (
-                      <Badge variant="warning" size="sm">
-                        Pro
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" size="sm">
-                        Free
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Stats */}
-              {!isAdminMode && stats && (
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  <div className="text-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">
-                      {stats.total || 0}
-                    </p>
-                    <p className="text-[10px] text-gray-500">Resumes</p>
-                  </div>
-                  <div className="text-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">
-                      {stats.avgScore || 0}%
-                    </p>
-                    <p className="text-[10px] text-gray-500">ATS Score</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Upgrade Prompt */}
-          {!isPremium && !isAdminMode && !isCollapsed && showUpgradePrompt && (
-            <div className="px-4 py-3 flex-shrink-0">
-              <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-                <div className="flex items-start gap-2">
-                  <FiAward className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-                      Upgrade to Pro
-                    </p>
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                      Unlimited resumes, AI features & more
-                    </p>
-                    <NavLink
-                      to="/pricing"
-                      onClick={onCloseMobile}
-                      className="inline-block mt-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700"
-                    >
-                      Upgrade Now →
-                    </NavLink>
-                  </div>
+        {/* Navigation — internal scroll only on desktop. On mobile, the
+            parent drawer already provides `overflow-y-auto`; adding a
+            second scroll region here produces nested scrolling. */}
+        <nav className={cn('flex-1 px-2 py-4 space-y-4', !isMobile && 'overflow-y-auto')}>
+          {isAdminMode ? (
+            adminMenuItems.map((section) => (
+              <div key={section.section}>
+                {!isCollapsed && (
                   <button
-                    onClick={handleHideUpgradePrompt}
-                    className="text-amber-500 hover:text-amber-600 flex-shrink-0"
-                    aria-label="Dismiss upgrade prompt"
+                    onClick={() => toggleSection(section.section)}
+                    className="w-full flex items-center justify-between px-3 py-1 mb-1 text-left"
+                    aria-expanded={expandedSections[section.section]}
                   >
-                    <FiX className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation */}
-          <nav className="flex-1 px-2 py-4 space-y-4 overflow-y-auto">
-            {isAdminMode ? (
-              adminMenuItems.map((section) => (
-                <div key={section.section}>
-                  {!isCollapsed && (
-                    <button
-                      onClick={() => toggleSection(section.section)}
-                      className="w-full flex items-center justify-between px-3 py-1 mb-1 text-left"
-                      aria-expanded={expandedSections[section.section]}
-                    >
-                      <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {section.label}
-                      </span>
-                      {expandedSections[section.section] ? (
-                        <FiChevronUp className="w-3 h-3 text-gray-400" />
-                      ) : (
-                        <FiChevronDown className="w-3 h-3 text-gray-400" />
-                      )}
-                    </button>
-                  )}
-
-                  <AnimatePresence initial={false}>
-                    {(isCollapsed || expandedSections[section.section]) && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="space-y-1 overflow-hidden"
-                      >
-                        {section.items.map((item) => renderMenuItem(item))}
-                      </motion.div>
+                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      {section.label}
+                    </span>
+                    {expandedSections[section.section] ? (
+                      <FiChevronUp className="w-3 h-3 text-gray-400" />
+                    ) : (
+                      <FiChevronDown className="w-3 h-3 text-gray-400" />
                     )}
-                  </AnimatePresence>
-                </div>
-              ))
-            ) : (
-              <div className="space-y-1">{userMenuItems.map((item) => renderMenuItem(item))}</div>
-            )}
-
-            {/* Account Section */}
-            {!isCollapsed && (
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => toggleSection('account')}
-                  className="w-full flex items-center justify-between px-3 py-1 mb-1 text-left"
-                  aria-expanded={expandedSections.account}
-                >
-                  <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Account
-                  </span>
-                  {expandedSections.account ? (
-                    <FiChevronUp className="w-3 h-3 text-gray-400" />
-                  ) : (
-                    <FiChevronDown className="w-3 h-3 text-gray-400" />
-                  )}
-                </button>
+                  </button>
+                )}
 
                 <AnimatePresence initial={false}>
-                  {expandedSections.account && (
+                  {(isCollapsed || expandedSections[section.section]) && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
@@ -431,52 +410,86 @@ const Sidebar = ({
                       transition={{ duration: 0.15 }}
                       className="space-y-1 overflow-hidden"
                     >
-                      {accountItems.map((item) => renderMenuItem(item))}
+                      {section.items.map((item) => renderMenuItem(item))}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
-            )}
-          </nav>
+            ))
+          ) : (
+            <div className="space-y-1">{userMenuItems.map((item) => renderMenuItem(item))}</div>
+          )}
 
-          {/* Footer */}
-          <div className="px-2 py-4 border-t border-gray-200 dark:border-gray-700 space-y-3 flex-shrink-0">
-            {isPremium && !isAdminMode && !isCollapsed && (
-              <div className="px-3 py-2">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-500">Storage</span>
-                  <span className="text-gray-700 dark:text-gray-300">2.4 GB / 10 GB</span>
-                </div>
-                <Progress value={24} size="sm" />
-              </div>
-            )}
-
-            {/* Logout */}
-            <Tooltip
-              content={isCollapsed ? 'Logout' : null}
-              position="right"
-              disabled={!isCollapsed}
-            >
+          {/* Account Section */}
+          {!isCollapsed && (
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
-                onClick={handleLogout}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all ${
-                  isCollapsed ? 'justify-center' : ''
-                }`}
+                onClick={() => toggleSection('account')}
+                className="w-full flex items-center justify-between px-3 py-1 mb-1 text-left"
+                aria-expanded={expandedSections.account}
               >
-                <FiLogOut className="w-5 h-5 flex-shrink-0" />
-                {!isCollapsed && <span className="text-sm font-medium">Logout</span>}
+                <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Account
+                </span>
+                {expandedSections.account ? (
+                  <FiChevronUp className="w-3 h-3 text-gray-400" />
+                ) : (
+                  <FiChevronDown className="w-3 h-3 text-gray-400" />
+                )}
               </button>
-            </Tooltip>
 
-            {!isCollapsed && (
-              <p className="text-center text-[10px] text-gray-400">
-                v{process.env.REACT_APP_VERSION || '3.1.3'}
-              </p>
-            )}
-          </div>
+              <AnimatePresence initial={false}>
+                {expandedSections.account && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="space-y-1 overflow-hidden"
+                  >
+                    {accountItems.map((item) => renderMenuItem(item))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </nav>
+
+        {/* Footer */}
+        <div className="px-2 py-4 border-t border-gray-200 dark:border-gray-700 space-y-3 flex-shrink-0">
+          {isPremium && !isAdminMode && !isCollapsed && (
+            <div className="px-3 py-2">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-gray-500">Storage</span>
+                <span className="text-gray-700 dark:text-gray-300">2.4 GB / 10 GB</span>
+              </div>
+              <Progress value={24} size="sm" />
+            </div>
+          )}
+
+          {/* Logout — min-h keeps the touch target at or above 44px on
+              mobile, matching the iOS/Android guidance. */}
+          <Tooltip content={isCollapsed ? 'Logout' : null} position="right" disabled={!isCollapsed}>
+            <button
+              onClick={handleLogout}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-3 min-h-[44px] rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all',
+                isCollapsed && 'justify-center'
+              )}
+            >
+              <FiLogOut className="w-5 h-5 flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Logout</span>}
+            </button>
+          </Tooltip>
+
+          {!isCollapsed && (
+            <p className="text-center text-[10px] text-gray-400">
+              v{process.env.REACT_APP_VERSION || '3.1.3'}
+            </p>
+          )}
         </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 };
 

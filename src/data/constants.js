@@ -15,7 +15,7 @@ import {
 export const APP_NAME = 'Maniesta Career OS';
 export const APP_VERSION = '3.1.3';
 export const APP_DESCRIPTION = 'AI-powered ATS resume builder';
-export const APP_URL = 'https://maniestacareer.netlify.app';
+export const APP_URL = 'https://maniesta-career.netlify.app';
 export const SUPPORT_EMAIL = 'usmanmurtazaportfolio@gmail.com';
 export const PRIVACY_EMAIL = 'usmanmurtazaportfolio@gmail.com';
 export const LEGAL_EMAIL = 'usmanmurtazaportfolio@gmail.com';

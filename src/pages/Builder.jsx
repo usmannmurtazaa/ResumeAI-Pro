@@ -819,6 +819,15 @@ const Builder = () => {
 
               <div className="min-w-0">
                 {isEditingName ? (
+                  /*
+                    FIX 3 — `min-w-0` (previously `min-w-[220px]`) lets the
+                    input shrink below 220px when the toolbar is squeezed at
+                    320px viewport widths. `w-full` already stretches the
+                    input to fill its flex container; the min-width was the
+                    only thing forcing horizontal pressure on small screens.
+                    On iOS, a focused input with content + on-screen keyboard
+                    can push past the toolbar if the input refuses to shrink.
+                  */
                   <input
                     ref={nameInputRef}
                     type="text"
@@ -829,7 +838,7 @@ const Builder = () => {
                     }}
                     onBlur={() => void handleNameSave()}
                     onKeyDown={handleNameKeyDown}
-                    className="w-full min-w-[220px] border-b-2 border-primary-500 bg-transparent px-1 text-xl font-semibold outline-none"
+                    className="w-full min-w-0 border-b-2 border-primary-500 bg-transparent px-1 text-xl font-semibold outline-none"
                     aria-label="Resume name"
                   />
                 ) : (
@@ -936,6 +945,14 @@ const Builder = () => {
                 </Button>
               </Tooltip>
 
+              {/*
+                FIX 4 — the Fullscreen toolbar button is hidden below `sm:`.
+                On mobile the toolbar's action row already consumes 3–4
+                wrapped lines; the Fullscreen control is a desktop
+                affordance with a keyboard shortcut (Ctrl+F / ⌘F) and the
+                same toggle is also reachable from the preview pane's own
+                header, which appears once the preview is visible.
+              */}
               <Tooltip
                 content={`${
                   fullscreenPreview ? 'Exit' : 'Enter'
@@ -946,6 +963,7 @@ const Builder = () => {
                   size="sm"
                   onClick={handleToggleFullscreenPreview}
                   icon={fullscreenPreview ? <FiMinimize2 /> : <FiMaximize2 />}
+                  className="hidden sm:inline-flex"
                 >
                   {fullscreenPreview ? 'Exit Fullscreen' : 'Fullscreen'}
                 </Button>
@@ -957,11 +975,18 @@ const Builder = () => {
                 </Button>
               </Tooltip>
 
+              {/*
+                FIX 5 — `loadingText="Preparing…"` replaces the label during
+                download. Without it the Button keeps its "Download" text
+                while showing the spinner, which reads as "still available
+                to click" on mobile where the spinner is small.
+              */}
               <Tooltip content={`Download PDF (${shortcutPrefix}D)`}>
                 <Button
                   size="sm"
                   onClick={handleDownload}
                   loading={isDownloading}
+                  loadingText="Preparing…"
                   icon={<FiDownload />}
                   className="bg-gradient-to-r from-primary-500 to-accent-500"
                 >
@@ -1113,14 +1138,31 @@ const Builder = () => {
           confirmVariant="danger"
         />
 
-        {/* Premium Upgrade Banner */}
+        {/*
+          Premium upgrade banner.
+
+          FIX 1 — `z-40` → `z-30`. The mobile sidebar overlay in
+          `DashboardLayout` is `z-40`. Because the banner is rendered after
+          the sidebar overlay in the tree, a `z-40` on both made the banner
+          float above the dark overlay when the mobile sidebar opened. `z-30`
+          puts the banner below the overlay, so opening the sidebar hides it
+          as expected.
+          `pointer-events-none` on the outer wrapper lets clicks pass
+          through the full-width positioning box; `pointer-events-auto` on
+          the inner card restores interactivity for the Upgrade button.
+
+          FIX 2 — `bottom-4` → `bottom-[max(1rem,env(safe-area-inset-bottom))]`.
+          On iOS devices with a home indicator (~34 px tall) the fixed 16 px
+          offset placed the banner behind the indicator. `env(safe-area-inset-bottom)`
+          is 0 on devices without a home indicator, so this is a no-op there.
+        */}
         {!isPremium ? (
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed bottom-4 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4"
+            className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4"
           >
-            <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-lg dark:border-amber-800 dark:from-amber-900/30 dark:to-orange-900/30">
+            <div className="pointer-events-auto rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-lg dark:border-amber-800 dark:from-amber-900/30 dark:to-orange-900/30">
               <div className="flex items-center gap-3">
                 <FiAward className="h-8 w-8 text-amber-500" />
                 <div className="flex-1">

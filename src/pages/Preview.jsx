@@ -6,8 +6,6 @@ import {
   FiEdit3,
   FiArrowLeft,
   FiShare2,
-  FiMaximize2,
-  FiMinimize2,
   FiPrinter,
   FiCheck,
   FiLoader,
@@ -41,13 +39,11 @@ const Preview = () => {
   const [resume, setResume] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [fullscreen, setFullscreen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const mountedRef = useRef(true);
 
-  // Set page title
   usePageTitle({
     title: resume ? `Preview: ${resume.name || 'Resume'}` : 'Resume Preview',
     description: 'Preview your professional resume before downloading.',
@@ -91,16 +87,6 @@ const Preview = () => {
     loadResume();
   }, [id, getResume]);
 
-  // ── Fullscreen listener ─────────────────────────────────────────────
-
-  useEffect(() => {
-    const handleChange = () => {
-      setFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleChange);
-    return () => document.removeEventListener('fullscreenchange', handleChange);
-  }, []);
-
   // ── Handlers ─────────────────────────────────────────────────────────
 
   const handleGoBack = useCallback(() => {
@@ -128,105 +114,147 @@ const Preview = () => {
     window.print();
   }, []);
 
+  // ── Copy page link ──────────────────────────────────────────────────
+  //
+  // This button copies the current page URL. The `/preview/:id` route is
+  // behind `PrivateRoute`, so the URL is only useful to the signed-in
+  // owner of this resume — a recipient without that user's session will
+  // be redirected to `/login`. This is why the button is labelled
+  // "Copy Link" rather than "Share": the previous label and use of
+  // `navigator.share` implied the URL was publicly shareable.
+  //
+  // Only the toast confirms the copy. The tooltip is not swapped to
+  // "Copied!" — that produced two simultaneous feedbacks for one action.
+  // The icon swap (`FiShare2` → `FiCheck`) remains as ambient feedback.
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}/preview/${id}`;
-
-    // Try native share first
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: resume?.name || 'Resume', url });
-        return;
-      } catch {}
-    }
-
-    // Fallback: copy to clipboard
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      toast.success('Link copied!');
+      toast.success('Page link copied!');
       setTimeout(() => {
         if (mountedRef.current) setCopied(false);
       }, 2000);
     } catch {
       toast.error('Failed to copy link');
     }
-  }, [id, resume]);
+  }, [id]);
 
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch {
-      toast.error('Fullscreen not supported');
-    }
-  }, []);
+  // ── Reusable Back button ────────────────────────────────────────────
+  //
+  // Shared by the header toolbar, the loading shell, and the error shell
+  // so all three keep identical styling and behaviour.
+  const BackButton = () => (
+    <Tooltip content="Back">
+      <button
+        onClick={handleGoBack}
+        className="flex-shrink-0 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        aria-label="Go back"
+      >
+        <FiArrowLeft className="w-5 h-5" />
+      </button>
+    </Tooltip>
+  );
 
   // ── Loading State ────────────────────────────────────────────────────
+  //
+  // Previously rendered a bare centered spinner with no navigation — a
+  // hung load left the user stuck. The shell below shows a Back button
+  // so there is always an escape route.
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <FiLoader className="w-8 h-8 animate-spin text-primary-500 mx-auto mb-4" />
-          <p className="text-gray-500">Loading preview...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center">
+            <BackButton />
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  // ── Error / Not Found State ──────────────────────────────────────────
-
-  if (error || !resume) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="text-center">
-          <FiAlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            {error || 'Resume Not Found'}
-          </h2>
-          <p className="text-gray-500 mb-6">
-            The resume you're looking for doesn't exist or you don't have access.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Button onClick={handleGoBack} variant="outline" icon={<FiArrowLeft />}>
-              Go Back
-            </Button>
-            <Button onClick={() => navigate('/dashboard')} icon={<FiDownload />}>
-              Dashboard
-            </Button>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <FiLoader className="w-8 h-8 animate-spin text-primary-500 mx-auto mb-4" />
+            <p className="text-gray-500">Loading preview...</p>
           </div>
         </div>
       </div>
     );
   }
 
+  // ── Error / Not Found State ──────────────────────────────────────────
+  //
+  // Same shell pattern as the loading state.
+
+  if (error || !resume) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center">
+            <BackButton />
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <div className="text-center max-w-md">
+            <FiAlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {error || 'Resume Not Found'}
+            </h2>
+            <p className="text-gray-500 mb-6">
+              The resume you're looking for doesn't exist or you don't have access.
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button onClick={handleGoBack} variant="outline" icon={<FiArrowLeft />}>
+                Go Back
+              </Button>
+              <Button onClick={() => navigate('/dashboard')} icon={<FiDownload />}>
+                Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main Render ──────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       {/* Header Toolbar */}
       <div className="sticky top-0 z-30 glass border-b border-gray-200 dark:border-gray-700 print:hidden">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Tooltip content="Back">
-                <button
-                  onClick={handleGoBack}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <FiArrowLeft className="w-5 h-5" />
-                </button>
-              </Tooltip>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="flex h-16 items-center justify-between gap-2">
+            {/*
+              Left section: `min-w-0 flex-1` lets it shrink below the
+              intrinsic width of the title. Without it, a long resume
+              name pushed the right group of buttons off the viewport.
+              The title div also carries `min-w-0 flex-1` so the two
+              `truncate` classes below can take effect.
+            */}
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+              <BackButton />
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-xl font-semibold text-gray-900 dark:text-white">
                   {resume.name || 'Resume Preview'}
                 </h1>
-                <p className="text-xs text-gray-500">{resume.template || 'modern'} template</p>
+                <p className="truncate text-xs text-gray-500">
+                  {resume.template || 'modern'} template
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/*
+              Right section: `flex-shrink-0` prevents the buttons from
+              being squeezed by the truncating title on the left.
+
+              `gap-1 sm:gap-2` tightens the gaps on mobile to buy a few
+              more pixels of space.
+
+              The Print button is wrapped in `hidden sm:inline-flex` so it
+              disappears entirely below 640 px — matching the pattern used
+              by the DashboardLayout header, where the least-used control
+              yields its space first.
+            */}
+            <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
               <Tooltip content="Edit Resume">
                 <Button
                   variant="outline"
@@ -237,29 +265,23 @@ const Preview = () => {
                   <span className="hidden sm:inline">Edit</span>
                 </Button>
               </Tooltip>
-              <Tooltip content={copied ? 'Copied!' : 'Share Link'}>
+              <Tooltip content="Copy page link">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleShare}
                   icon={copied ? <FiCheck /> : <FiShare2 />}
                 >
-                  <span className="hidden sm:inline">Share</span>
+                  <span className="hidden sm:inline">Copy Link</span>
                 </Button>
               </Tooltip>
-              <Tooltip content="Print">
-                <Button variant="outline" size="sm" onClick={handlePrint} icon={<FiPrinter />}>
-                  <span className="hidden sm:inline">Print</span>
-                </Button>
-              </Tooltip>
-              <Tooltip content={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleFullscreen}
-                  icon={fullscreen ? <FiMinimize2 /> : <FiMaximize2 />}
-                />
-              </Tooltip>
+              <div className="hidden sm:inline-flex">
+                <Tooltip content="Print">
+                  <Button variant="outline" size="sm" onClick={handlePrint} icon={<FiPrinter />}>
+                    <span className="hidden sm:inline">Print</span>
+                  </Button>
+                </Tooltip>
+              </div>
               <Tooltip content="Download PDF">
                 <Button
                   size="sm"
@@ -286,28 +308,6 @@ const Preview = () => {
         >
           <ResumePreview data={resume.data} template={resume.template} />
         </motion.div>
-      </div>
-
-      {/* Mobile Download Bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 glass border-t border-gray-200 dark:border-gray-700 sm:hidden print:hidden z-30">
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(`/builder/${id}`)}
-            className="flex-1"
-          >
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleDownload}
-            loading={downloading}
-            className="flex-1 bg-gradient-to-r from-primary-500 to-accent-500"
-          >
-            Download PDF
-          </Button>
-        </div>
       </div>
     </div>
   );

@@ -7,19 +7,13 @@
 //
 //   • Firebase Auth        - available on Spark.
 //   • Cloud Firestore      - available on Spark.
-//   • Firebase Storage     - SDK is initialised here because both
-//                            `authService.js` and `storageService.js`
-//                            import `{ storage }` from this module. Actual
-//                            Storage reads/writes require the Firebase
-//                            project to have Storage enabled; if it is not
-//                            enabled, the failure is a permission/quota
-//                            error at upload time, not an import-time crash.
 //   • Cloud Functions      - NOT imported here. Server-side logic lives in
 //                            Netlify Functions (see `netlify/functions/`).
 //
-// If you later move away from Firebase Storage, remove the `firebase/storage`
-// import below and delete the corresponding imports in `authService.js` and
-// `storageService.js` at the same time.
+// File uploads (avatars) are handled by Cloudinary, not Firebase Storage.
+// See `src/services/storageService.js`. Firebase Storage was removed from
+// this project because it requires the Blaze (paid) plan; Cloudinary's free
+// tier covers the app's needs without a credit card.
 
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
@@ -42,7 +36,6 @@ import {
   persistentMultipleTabManager,
   waitForPendingWrites,
 } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 import { getPerformance, trace } from 'firebase/performance';
 import { fetchAndActivate, getRemoteConfig } from 'firebase/remote-config';
 import {
@@ -175,18 +168,6 @@ const createFirestore = () => {
 };
 
 export const db = createFirestore();
-
-// ── Storage ──────────────────────────────────────────────────────────────
-// Firebase Storage is used by `authService.js` (profile images) and
-// `storageService.js` (resume PDFs, avatars, generic files). The instance
-// below must be exported so those modules' `import { storage } from
-// './firebase'` resolves to a real SDK instance instead of `undefined`.
-//
-// `getStorage(app)` is a synchronous SDK instance creation and performs no
-// network I/O, so this line is safe even on a project where the Storage
-// backend has not yet been provisioned - failures surface later, at the
-// first upload attempt, as permission/quota errors.
-export const storage = getStorage(app);
 
 // ── App Check (Production Only) ──────────────────────────────────────────
 export let appCheck = null;
@@ -484,7 +465,6 @@ export const checkFirebaseHealth = async () => ({
   app: Boolean(app),
   auth: Boolean(auth),
   firestore: Boolean(db),
-  storage: Boolean(storage),
   analytics: Boolean(analytics),
   performance: Boolean(performance),
   remoteConfig: Boolean(remoteConfig),
@@ -502,9 +482,6 @@ const firebaseServices = {
   },
   get db() {
     return db;
-  },
-  get storage() {
-    return storage;
   },
   get analytics() {
     return analytics;

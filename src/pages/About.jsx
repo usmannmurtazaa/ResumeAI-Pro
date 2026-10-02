@@ -9,7 +9,6 @@ import {
   FiGlobe,
   FiMail,
   FiArrowRight,
-  FiUser,
   FiLayout,
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
@@ -297,8 +296,13 @@ const About = () => {
               <Card className="p-8 md:p-10">
                 <div className="flex flex-col md:flex-row items-center gap-8">
                   <div className="flex-shrink-0">
-                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-primary-500 via-purple-500 to-accent-500 flex items-center justify-center shadow-2xl">
-                      <FiUser className="w-20 h-20 md:w-24 md:h-24 text-white" aria-hidden="true" />
+                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-primary-500 via-purple-500 to-accent-500 p-1 shadow-2xl">
+                      <img
+                        src="/usman-founder.png"
+                        alt="Usman Murtaza"
+                        className="w-full h-full rounded-full object-cover"
+                        loading="lazy"
+                      />
                     </div>
                   </div>
                   <div className="flex-1 text-center md:text-left">

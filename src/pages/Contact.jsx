@@ -48,31 +48,31 @@ const CONTACT_INFO = [
 const SOCIAL_LINKS = [
   {
     icon: FiTwitter,
-    href: 'https://twitter.com/maniestacareeros',
+    href: 'https://x.com/usmann_murtazaa',
     label: 'Twitter',
     color: 'hover:text-blue-400',
   },
   {
     icon: FiLinkedin,
-    href: 'https://linkedin.com/company/maniestacareeros',
+    href: 'https://linkedin.com/in/usmannmurtazaa',
     label: 'LinkedIn',
     color: 'hover:text-blue-600',
   },
   {
     icon: FiGithub,
-    href: 'https://github.com/maniestacareeros',
+    href: 'https://github.com/usmannmurtazaa',
     label: 'GitHub',
     color: 'hover:text-gray-900 dark:hover:text-white',
   },
   {
     icon: FiFacebook,
-    href: 'https://facebook.com/maniestacareeros',
+    href: 'https://facebook.com/usmannmurtazaa',
     label: 'Facebook',
     color: 'hover:text-blue-600',
   },
   {
     icon: FiInstagram,
-    href: 'https://instagram.com/maniestacareeros',
+    href: 'https://instagram.com/usmannmurtazaa',
     label: 'Instagram',
     color: 'hover:text-pink-500',
   },

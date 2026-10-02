@@ -464,7 +464,7 @@ const AdminLayout = ({ children, title, description }) => {
       }
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        setActiveCommandIndex((prev) => (prev <= 0 ? filteredCommands.length - 1 : prev + 1));
+        setActiveCommandIndex((prev) => (prev <= 0 ? filteredCommands.length - 1 : prev - 1));
       }
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -513,12 +513,24 @@ const AdminLayout = ({ children, title, description }) => {
               onClick={() => setMobileSidebarOpen(false)}
               aria-hidden="true"
             >
+              {/*
+                FIX 1 — `initial`/`exit` used a hardcoded `x: -320`, which does
+                not match the drawer's real width (`w-72` = 288 px) and would
+                mis-slide on any viewport below 320 px. Using `-100%` slides
+                the drawer exactly off-screen at any width.
+
+                FIX 2 — `h-full` resolves to 100% of the `fixed inset-0`
+                parent, which is the layout viewport (includes the iOS URL bar
+                area). On mobile Safari the drawer's bottom edge could become
+                unreachable behind the URL bar. `h-[100dvh]` uses the dynamic
+                viewport height, which tracks the actual visible area.
+              */}
               <motion.aside
-                initial={{ x: -320 }}
+                initial={{ x: '-100%' }}
                 animate={{ x: 0 }}
-                exit={{ x: -320 }}
+                exit={{ x: '-100%' }}
                 transition={{ type: 'spring', damping: 24, stiffness: 240 }}
-                className="relative h-full w-72"
+                className="relative h-[100dvh] w-72 max-w-[80vw]"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Sidebar
@@ -573,7 +585,12 @@ const AdminLayout = ({ children, title, description }) => {
                       <FiChevronLeft className="h-5 w-5" />
                     )}
                   </button>
-                  <div className="relative hidden md:block">
+                  {/*
+                    FIX 5 — search input was gated behind `md:block` (768 px).
+                    Tablets from 640 to 767 px have room for it. Changed to
+                    `sm:block`.
+                  */}
+                  <div className="relative hidden sm:block">
                     <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <input
                       id="admin-global-search"
@@ -586,7 +603,16 @@ const AdminLayout = ({ children, title, description }) => {
                       Ctrl+/
                     </kbd>
                   </div>
-                  <div className="hidden min-w-0 sm:block">
+                  {/*
+                    FIX 6 — the header title competed with the search + icon
+                    stack at tablet widths. At `sm:` (640 px) the combined
+                    width of hamburger + search + title + icons exceeds the
+                    viewport, causing horizontal squish. Moving the title to
+                    `lg:block` frees that space; the mobile title that already
+                    exists in the main content area is extended to cover
+                    `sm:`–`lg:` too (see FIX 8 below).
+                  */}
+                  <div className="hidden min-w-0 lg:block">
                     <h1 className="truncate text-xl font-semibold gradient-text">
                       {title || 'Admin Dashboard'}
                     </h1>
@@ -617,11 +643,16 @@ const AdminLayout = ({ children, title, description }) => {
                       <FiCommand className="h-5 w-5" />
                     </button>
                   </Tooltip>
+                  {/*
+                    FIX 7 — refresh is the least-used control in the header.
+                    Hiding it below `sm:` frees ~40 px and lets the remaining
+                    icons fit at 320 px.
+                  */}
                   <Tooltip content="Refresh data">
                     <button
                       onClick={handleRefresh}
                       disabled={isRefreshing}
-                      className="rounded-lg p-2 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800"
+                      className="hidden rounded-lg p-2 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800 sm:inline-flex"
                       aria-label="Refresh data"
                     >
                       <FiRefreshCw className={cn('h-5 w-5', isRefreshing && 'animate-spin')} />
@@ -646,11 +677,18 @@ const AdminLayout = ({ children, title, description }) => {
                     </Tooltip>
                     <AnimatePresence>
                       {showQuickActions && (
+                        /*
+                          FIX 4 — the quick-actions panel was `absolute right-0
+                          w-72`, anchored to a button ~100 px from the right
+                          edge. Its left edge landed off-screen below ~430 px.
+                          Viewport-width on mobile, anchored `w-72` on `sm:`
+                          and up.
+                        */
                         <motion.div
                           initial={{ opacity: 0, scale: 0.96, y: -8 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.96, y: -8 }}
-                          className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                          className="fixed left-4 right-4 top-20 z-50 w-auto rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-72"
                           role="menu"
                         >
                           <div className="p-2">
@@ -701,11 +739,17 @@ const AdminLayout = ({ children, title, description }) => {
                     </button>
                     <AnimatePresence>
                       {showNotifications && (
+                        /*
+                          FIX 3 — same overflow problem as FIX 4. `w-80`
+                          (320 px) anchored `right-0` to a button ~140 px from
+                          the right edge; left edge landed off-screen below
+                          ~425 px. Responsive positioning applied.
+                        */
                         <motion.div
                           initial={{ opacity: 0, scale: 0.96, y: -8 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.96, y: -8 }}
-                          className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                          className="fixed left-4 right-4 top-20 z-50 w-auto rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80"
                           role="menu"
                         >
                           <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
@@ -878,7 +922,13 @@ const AdminLayout = ({ children, title, description }) => {
                 Admin Mode
               </Badge>
             </div>
-            <div className="mb-6 sm:hidden">
+            {/*
+              FIX 8 — the mobile title was `sm:hidden` (only below 640 px),
+              leaving 640–1023 px with no visible page title once the header
+              title moved to `lg:block`. Changed to `lg:hidden` so the title
+              is visible everywhere the header title is hidden.
+            */}
+            <div className="mb-6 lg:hidden">
               <h1 className="text-2xl font-bold gradient-text">{title || 'Admin Dashboard'}</h1>
               {description && <p className="text-sm text-gray-500">{description}</p>}
             </div>

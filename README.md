@@ -7,7 +7,7 @@
 
 **Built by [Usman Murtaza](https://usmanmurtaza.netlify.app)** - Full Stack Developer
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-maniestacareer.netlify.app-8b5cf6?style=for-the-badge)](https://maniestacareer.netlify.app)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-maniesta-career.netlify.app-8b5cf6?style=for-the-badge)](https://maniesta-career.netlify.app)
 [![Portfolio](https://img.shields.io/badge/Portfolio-usmanmurtaza.netlify.app-6366f1?style=for-the-badge)](https://usmanmurtaza.netlify.app)
 
 <p>
@@ -65,7 +65,7 @@ The project was designed and built end-to-end by **[Usman Murtaza](https://usman
 
 ## 🎬 Live Demo
 
-**[maniestacareer.netlify.app](https://maniestacareer.netlify.app)**
+**[maniestacareer.netlify.app](https://maniesta-career.netlify.app)**
 
 The live demo is connected to a Firebase project and supports real sign-up. You can create a free account to explore the resume builder end to end.
 
@@ -157,7 +157,7 @@ REACT_APP_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
 REACT_APP_FIREBASE_VAPID_KEY=your_vapid_key
 
 # Site URL (for canonical URLs and analytics)
-REACT_APP_SITE_URL=https://maniestacareer.netlify.app
+REACT_APP_SITE_URL=https://maniesta-career.netlify.app
 ```
 
 #### Server-side (Netlify environment variables)
@@ -300,7 +300,7 @@ Full Stack Developer · Creator of the Maniesta ecosystem
 - 🌐 Portfolio: [usmanmurtaza.netlify.app](https://usmanmurtaza.netlify.app)
 - 💻 GitHub: [github.com/Usmannmurtazaa](https://github.com/Usmannmurtazaa)
 - 💼 LinkedIn: [linkedin.com/in/Usmannmurtazaa](https://www.linkedin.com/in/Usmannmurtazaa/)
-- 🐦 Twitter/X: [@usman_murtazaa](https://twitter.com/usman_murtazaa)
+- 🐦 Twitter/X: [@usman_murtazaa](https://x.com/usmann_murtazaa)
 - ✍️ Dev.to: [dev.to/usmanmurtaza](https://dev.to/usmanmurtaza)
 
 ---

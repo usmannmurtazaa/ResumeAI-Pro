@@ -45,7 +45,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 // NOTE ON TOASTS IN THIS FILE:
 // The service layer is now silent for every operation whose callers provide
 // their own user-facing feedback. That covers: signUp, signIn,
@@ -62,7 +61,8 @@ import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebas
 //   • `revokeSession` / `revokeAllOtherSessions` - no visible caller.
 // Before removing any of these, wire the caller with its own toast.
 import toast from 'react-hot-toast';
-import { auth, db, storage, logAnalyticsEvent } from './firebase';
+import { auth, db, logAnalyticsEvent } from './firebase';
+import { storageService } from './storageService';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const COLLECTIONS = {
@@ -184,7 +184,7 @@ const sanitizeProfileData = (data = {}) =>
  * (notably the `data:image/...;base64,...` strings produced by
  * `FileReader.readAsDataURL`), are rejected by the server with HTTP 400.
  * Anything that fails this check should be skipped on the Auth side and -
- * if appropriate - handled through Firebase Storage instead.
+ * if appropriate - handled through Cloudinary instead.
  */
 const isSafeAuthPhotoURL = (value) => {
   if (typeof value !== 'string') return false;
@@ -773,25 +773,21 @@ export const authService = {
     }
   },
 
+  // ── Profile Image (Cloudinary-backed) ──────────────────────────────────
+  //
+  // Uploads via `storageService.uploadFile`, which posts to Cloudinary's
+  // unsigned upload endpoint. The `path` argument is retained for API
+  // symmetry with the Firebase Storage version - Cloudinary ignores it and
+  // uses the preset's configured asset folder instead.
+  //
+  // Note: Cloudinary URLs are typically well under the 2048-char cap
+  // enforced by `isSafeAuthPhotoURL`, so the URL is safe to forward to
+  // Firebase Auth as the profile photo.
+
   async uploadProfileImage(userId, file, onProgress) {
     try {
-      const task = uploadBytesResumable(
-        ref(storage, `avatars/${userId}/${generateUniqueFileName(file.name)}`),
-        file,
-        { contentType: file.type }
-      );
-      await new Promise((resolve, reject) =>
-        task.on(
-          'state_changed',
-          (snap) =>
-            onProgress?.(
-              snap.totalBytes > 0 ? Math.round((snap.bytesTransferred / snap.totalBytes) * 100) : 0
-            ),
-          reject,
-          resolve
-        )
-      );
-      const url = await getDownloadURL(task.snapshot.ref);
+      const path = `avatars/${userId}/${generateUniqueFileName(file.name)}`;
+      const url = await storageService.uploadFile(path, file, onProgress);
       await this.updateUserProfile(userId, { photoURL: url });
       // No visible caller; this is the only success feedback.
       toast.success('Profile picture updated!');
@@ -801,14 +797,20 @@ export const authService = {
     }
   },
 
+  // ── Delete Profile Image ───────────────────────────────────────────────
+  //
+  // Clears the `photoURL` on the Auth and Firestore user records. The
+  // underlying Cloudinary asset is NOT deleted: Cloudinary's unsigned upload
+  // flow cannot issue a signed destroy request, and there is no server-side
+  // secret store in this project. Avatars are tiny (~50 KB); orphaned assets
+  // are not a cost concern on the Cloudinary free tier.
+  //
+  // The `photoURL` parameter is retained for API compatibility with callers
+  // that still pass it, but it is no longer used.
+
   async deleteProfileImage(userId, photoURL) {
+    void photoURL;
     try {
-      if (photoURL) {
-        try {
-          const decoded = decodeURIComponent(new URL(photoURL).pathname.split('/o/')[1] || '');
-          if (decoded) await deleteObject(ref(storage, decoded)).catch(() => {});
-        } catch {}
-      }
       await this.updateUserProfile(userId, { photoURL: null });
       // No visible caller; this is the only success feedback.
       toast.success('Profile picture removed');

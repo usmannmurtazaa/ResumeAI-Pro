@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   FiGithub,
   FiTwitter,
@@ -17,23 +17,26 @@ import {
   FiAward,
   FiShield,
   FiCoffee,
-  FiChevronUp,
   FiMessageCircle,
   FiMapPin,
   FiClock,
-  FiX,
   FiExternalLink,
+  FiGitlab,
+  FiCodepen,
+  FiDribbble,
+  FiFigma,
+  FiTwitch,
 } from 'react-icons/fi';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Badge from '../ui/Badge';
 import Tooltip from '../ui/Tooltip';
+import Modal from '../ui/Modal';
 import toast from 'react-hot-toast';
 import { siteConfig } from '../../config/siteConfig';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 const CURRENT_YEAR = new Date().getFullYear();
-const SCROLL_THRESHOLD = 400;
 
 // ── Custom Hook: Online Status ────────────────────────────────────────────
 
@@ -68,7 +71,6 @@ const Footer = () => {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [subscribing, setSubscribing] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [feedbackType, setFeedbackType] = useState('suggestion');
@@ -83,27 +85,6 @@ const Footer = () => {
     } catch {
       // Ignore localStorage errors
     }
-  }, []);
-
-  useEffect(() => {
-    let ticking = false;
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          setShowScrollTop(window.scrollY > SCROLL_THRESHOLD);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleSubscribe = async (e) => {
@@ -202,14 +183,24 @@ const Footer = () => {
         { to: '/privacy', label: 'Privacy Policy' },
         { to: '/terms', label: 'Terms of Service' },
       ],
+      // Every entry is filtered out if its `href` is not set in `siteConfig`.
+      // Adding new platforms here is safe: unconfigured ones simply do not
+      // render. To enable a platform, add the corresponding key under
+      // `siteConfig.links.*` (or `siteConfig.authorLinks.*` for personal
+      // profiles) and it will appear automatically.
       social: [
         { href: config.links?.github, icon: FiGithub, label: 'GitHub' },
-        { href: config.links?.twitter, icon: FiTwitter, label: 'Twitter' },
         { href: config.authorLinks?.linkedin, icon: FiLinkedin, label: 'LinkedIn' },
+        { href: config.links?.twitter, icon: FiTwitter, label: 'Twitter / X' },
         { href: config.links?.facebook, icon: FiFacebook, label: 'Facebook' },
         { href: config.links?.instagram, icon: FiInstagram, label: 'Instagram' },
         { href: config.links?.youtube, icon: FiYoutube, label: 'YouTube' },
         { href: config.links?.discord, icon: FiMessageCircle, label: 'Discord' },
+        { href: config.links?.gitlab, icon: FiGitlab, label: 'GitLab' },
+        { href: config.links?.codepen, icon: FiCodepen, label: 'CodePen' },
+        { href: config.links?.dribbble, icon: FiDribbble, label: 'Dribbble' },
+        { href: config.links?.figma, icon: FiFigma, label: 'Figma' },
+        { href: config.links?.twitch, icon: FiTwitch, label: 'Twitch' },
       ].filter((link) => link.href),
     }),
     [config]
@@ -347,9 +338,13 @@ const Footer = () => {
               />
               <span className="text-xl font-bold gradient-text">Maniesta Career OS</span>
             </Link>
-            <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
+            <p className="text-gray-600 dark:text-gray-400 mb-3 text-sm leading-relaxed">
               AI-powered resume builder that helps you create ATS-optimized resumes, pass applicant
               tracking systems, and land your dream job faster.
+            </p>
+            <p className="text-gray-500 dark:text-gray-500 mb-4 text-xs leading-relaxed">
+              Built by job seekers, for job seekers. Every template is tested against real ATS
+              systems and reviewed by hiring professionals.
             </p>
 
             {/* Trust Badges */}
@@ -371,20 +366,25 @@ const Footer = () => {
             </div>
 
             {/* Social Links */}
-            <div className="flex flex-wrap gap-2" aria-label="Social media links">
-              {footerLinks.social.map((social, index) => (
-                <Tooltip key={index} content={social.label}>
-                  <a
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all hover:scale-110 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
-                    aria-label={social.label}
-                  >
-                    <social.icon className="w-4 h-4" />
-                  </a>
-                </Tooltip>
-              ))}
+            <div aria-label="Social media links">
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+                Follow Us
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {footerLinks.social.map((social, index) => (
+                  <Tooltip key={index} content={social.label}>
+                    <a
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all hover:scale-110 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+                      aria-label={social.label}
+                    >
+                      <social.icon className="w-4 h-4" />
+                    </a>
+                  </Tooltip>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -478,128 +478,81 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* Feedback Modal */}
-      <AnimatePresence>
-        {showFeedback && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowFeedback(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Feedback form"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.2 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6"
-              onClick={(e) => e.stopPropagation()}
+      {/* Feedback Modal — shared Modal so it inherits focus trap, scroll
+          lock, Escape handling, and correct overflow behavior on short
+          viewports. */}
+      <Modal
+        isOpen={showFeedback}
+        onClose={() => setShowFeedback(false)}
+        title="Share Your Feedback"
+        size="md"
+      >
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          We'd love to hear your thoughts, suggestions, or bug reports!
+        </p>
+
+        <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="feedback-type"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Share Your Feedback
-                </h3>
-                <button
-                  onClick={() => setShowFeedback(false)}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  aria-label="Close feedback form"
-                  type="button"
-                >
-                  <FiX className="w-5 h-5" />
-                </button>
-              </div>
+              Feedback Type
+            </label>
+            <select
+              id="feedback-type"
+              value={feedbackType}
+              onChange={(e) => setFeedbackType(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              disabled={submittingFeedback}
+            >
+              <option value="suggestion">Suggestion</option>
+              <option value="bug">Bug Report</option>
+              <option value="feature">Feature Request</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
 
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                We'd love to hear your thoughts, suggestions, or bug reports!
-              </p>
+          <div>
+            <label
+              htmlFor="feedback-message"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Your Feedback
+            </label>
+            <textarea
+              id="feedback-message"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              placeholder="Tell us what you think..."
+              required
+              disabled={submittingFeedback}
+              maxLength={1000}
+            />
+            <p className="text-xs text-gray-400 mt-1 text-right">{feedback.length}/1000</p>
+          </div>
 
-              <form onSubmit={handleFeedbackSubmit} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="feedback-type"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    Feedback Type
-                  </label>
-                  <select
-                    id="feedback-type"
-                    value={feedbackType}
-                    onChange={(e) => setFeedbackType(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    disabled={submittingFeedback}
-                  >
-                    <option value="suggestion">Suggestion</option>
-                    <option value="bug">Bug Report</option>
-                    <option value="feature">Feature Request</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="feedback-message"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    Your Feedback
-                  </label>
-                  <textarea
-                    id="feedback-message"
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Tell us what you think..."
-                    required
-                    disabled={submittingFeedback}
-                    maxLength={1000}
-                  />
-                  <p className="text-xs text-gray-400 mt-1 text-right">{feedback.length}/1000</p>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowFeedback(false)}
-                    disabled={submittingFeedback}
-                    type="button"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    loading={submittingFeedback}
-                    disabled={!feedback.trim() || submittingFeedback}
-                  >
-                    Submit Feedback
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Scroll to Top Button */}
-      <AnimatePresence>
-        {showScrollTop && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={scrollToTop}
-            className="fixed bottom-24 right-4 sm:right-6 z-40 p-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-            aria-label="Scroll to top of page"
-          >
-            <FiChevronUp className="w-5 h-5" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowFeedback(false)}
+              disabled={submittingFeedback}
+              type="button"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={submittingFeedback}
+              disabled={!feedback.trim() || submittingFeedback}
+            >
+              Submit Feedback
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </footer>
   );
 };

@@ -1,4 +1,5 @@
 import { FiLayout, FiFileText, FiStar, FiCpu, FiBook } from 'react-icons/fi';
+import { INDUSTRIES } from '../data/constants';
 
 export const siteConfig = {
   name: 'Maniesta Career OS',
@@ -19,7 +20,10 @@ export const siteConfig = {
     'job search',
   ],
 
-  url: process.env.REACT_APP_SITE_URL || 'https://maniestacareer.netlify.app',
+  url: (process.env.REACT_APP_SITE_URL || 'https://maniesta-career.netlify.app').replace(
+    /\/+$/,
+    ''
+  ),
   // apiUrl removed - the app uses the Firebase SDK directly, not a REST API.
   // Any code reading siteConfig.apiUrl will receive an empty string.
   apiUrl: '',
@@ -29,7 +33,7 @@ export const siteConfig = {
     github: 'https://github.com/Usmannmurtazaa',
     portfolio: 'https://usmanmurtaza.netlify.app',
     linkedin: 'https://www.linkedin.com/in/Usmannmurtazaa/',
-    twitter: 'https://twitter.com/usmann_murtazaa',
+    twitter: 'https://x.com/usmann_murtazaa',
     email: 'usmanmurtazaportfolio@gmail.com',
   },
 
@@ -66,7 +70,10 @@ export const siteConfig = {
     creator: '@usmann_murtazaa',
   },
 
-  themeColor: '#3b82f6',
+  // Matches `--color-primary` in `src/styles/globals.css` (#6366f1, indigo).
+  // The previous value (#3b82f6, blue-500) tinted the mobile browser chrome
+  // a different colour from the app's brand.
+  themeColor: '#6366f1',
   backgroundColor: '#ffffff',
   display: 'standalone',
   orientation: 'portrait',
@@ -195,10 +202,17 @@ export const siteConfig = {
   // component reads this via getSeoForPath(pathname) and injects the
   // correct <title>, <meta name="description">, <link rel="canonical">,
   // and <meta name="robots"> for the current route.
+  //
+  // `siteUrl` is derived from the same env var as `url` above so the two
+  // cannot drift apart. Every URL emitted by SeoManager, MainLayout, and
+  // the sitemap now resolves to the same origin.
   seo: {
     siteName: 'Maniesta Career OS',
-    siteUrl: 'https://maniestacareer.netlify.app',
-    defaultImage: 'https://maniestacareer.netlify.app/og-image.png',
+    siteUrl: (process.env.REACT_APP_SITE_URL || 'https://maniesta-career.netlify.app').replace(
+      /\/+$/,
+      ''
+    ),
+    defaultImage: `${(process.env.REACT_APP_SITE_URL || 'https://maniesta-career.netlify.app').replace(/\/+$/, '')}/og-image.png`,
     defaultImageAlt: 'Maniesta Career OS - AI-Powered ATS Resume Builder',
     twitterHandle: '@usmann_murtazaa',
     twitterCreator: '@usmann_murtazaa',
@@ -582,8 +596,19 @@ export const getTemplateById = (templateId) => {
   return siteConfig.templates.find((t) => t.id === templateId);
 };
 
+/**
+ * Returns the canonical casing of an industry name, or `undefined` if the
+ * input does not match any known industry.
+ *
+ * The previous implementation read `siteConfig.industries`, which was never
+ * declared in this config. Optional chaining prevented a crash, so the
+ * helper always returned `undefined`. It now reads the actual source of
+ * truth: the `INDUSTRIES` array exported from `src/data/constants.js`.
+ */
 export const getIndustryById = (industryId) => {
-  return siteConfig.industries?.find((i) => i.id === industryId);
+  if (!industryId) return undefined;
+  const needle = String(industryId).toLowerCase();
+  return INDUSTRIES.find((industry) => industry.toLowerCase() === needle);
 };
 
 export const getErrorMessage = (category, errorCode) => {
@@ -595,7 +620,8 @@ export const getSuccessMessage = (category, action) => {
 };
 
 export const getApiEndpoint = (endpoint, params = {}) => {
-  let url = siteConfig.api[endpoint.split('.')[0]]?.[endpoint.split('.')[1]] || endpoint;
+  const [category, action] = endpoint.split('.');
+  let url = siteConfig.api[category]?.[action] || endpoint;
 
   Object.keys(params).forEach((key) => {
     url = url.replace(`:${key}`, params[key]);
@@ -622,9 +648,28 @@ export const getNavigationItem = (path) => {
  *
  * Handles:
  *   - Exact matches            → '/pricing'
- *   - Dynamic segments         → '/blog/:slug', '/builder/:id?', '/preview/:id'
- *   - Prefix wildcards         → '/admin/*'
+ *   - Required segments        → '/blog/:slug', '/preview/:id'
+ *   - Optional segments        → '/builder/:id?'
+ *   - Suffix wildcards         → '/admin/*'
  *   - Fallback to notFound     → for unmatched paths
+ *
+ * The previous implementation had two problems:
+ *
+ *   1. The optional-segment pattern `/builder/:id?` produced the regex
+ *      `^/builder/[^/]+?$`, which requires at least one character after
+ *      the slash. `/builder` without an id did not match and fell through
+ *      to the notFound metadata.
+ *
+ *   2. Suffix wildcards (`/admin/*`) were handled in a separate loop after
+ *      the dynamic-segment loop. The two loops are now merged into one
+ *      pass, which also lets a hypothetical future pattern combine both
+ *      forms (e.g. `/foo/:id/*`) without further changes.
+ *
+ * Literal regex metacharacters in the pattern (`+`, `.`, etc.) are escaped
+ * before the placeholder substitutions. `?`, `*`, and `:` are intentionally
+ * left unescaped — they are part of the template syntax this function
+ * parses. Route table entries that need a literal `?` or `*` in a path
+ * segment would require a change here; none exists today.
  *
  * @param {string} pathname - The current route pathname (without search/hash).
  * @returns {{ title: string, description: string, robots: string }}
@@ -635,21 +680,24 @@ export const getSeoForPath = (pathname) => {
   // 1. Exact match
   if (routes[pathname]) return routes[pathname];
 
-  // 2. Dynamic segments - convert ':param' to a wildcard and test
+  // 2. Pattern match — dynamic segments and suffix wildcards.
   for (const pattern of Object.keys(routes)) {
-    if (!pattern.includes(':')) continue;
-    const regexStr = '^' + pattern.replace(/:[^/]+/g, '[^/]+').replace(/\?$/, '?') + '$';
+    if (!pattern.includes(':') && !pattern.endsWith('/*')) continue;
+
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+
+    const regexStr =
+      '^' +
+      escaped
+        .replace(/:([^/?]+)\?/g, '(?:[^/]+)?') // ':name?' → optional segment
+        .replace(/:([^/?]+)/g, '[^/]+') // ':name'  → required segment
+        .replace(/\/\*$/, '(?:/.*)?') + // '/*'     → optional suffix
+      '$';
+
     if (new RegExp(regexStr).test(pathname)) return routes[pattern];
   }
 
-  // 3. Prefix wildcards - e.g. '/admin/*'
-  for (const pattern of Object.keys(routes)) {
-    if (!pattern.endsWith('/*')) continue;
-    const prefix = pattern.slice(0, -2);
-    if (pathname === prefix || pathname.startsWith(prefix + '/')) return routes[pattern];
-  }
-
-  // 4. Fallback
+  // 3. Fallback
   return siteConfig.seo.notFound;
 };
 

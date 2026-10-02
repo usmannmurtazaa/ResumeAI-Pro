@@ -3,29 +3,30 @@
 /* ── Keyframes ──────────────────────────────────────────────────────────── */
 /*
  * `@keyframes float` and the `.animate-float` utility are intentionally
- * NOT defined in this file. They are owned by:
- *   • tailwind.config.js - theme.extend.keyframes.float / animation.float
- *                          generates both the keyframes and the 6s
- *                          `.animate-float` utility.
- *   • src/styles/globals.css - a 6s duplicate kept in sync with Tailwind.
- * Both remaining sources agree on `6s`, so the applied duration is
- * deterministic regardless of CSS bundle order. Adding a third copy here
- * (the previous version used `3s`) made the outcome depend on load order.
- * If a faster variant is needed, use `animate-float-fast` (4s) which is
- * already declared in tailwind.config.js.
+ * NOT defined in this file. They are owned by `tailwind.config.js`
+ * (theme.extend.keyframes.float / theme.extend.animation.float), which
+ * generates both the keyframes and the 6s `.animate-float` utility. If a
+ * faster variant is needed, use `animate-float-fast` (4s) which is already
+ * declared in tailwind.config.js.
+ *
+ * `@keyframes pulse-glow` and `.animate-pulse-glow` are intentionally NOT
+ * defined in this file. They are owned by `src/styles/globals.css`, which
+ * uses the brand-aligned shadow tokens `--shadow-glow` and
+ * `--shadow-glow-lg` (indigo #6366f1). A previous copy in this file used
+ * hardcoded Tailwind blue (rgba(59, 130, 246, ...)) plus an opacity dip
+ * that the globals.css version does not have. Since App.jsx imports
+ * globals.css before animations.css, the copy here always won - which
+ * meant the visible glow was blue, not the app's brand indigo. The
+ * duplicate has been removed so globals.css is the single source of truth.
+ *
+ * `@keyframes shimmer` is intentionally NOT defined in this file. It is
+ * owned by `tailwind.config.js` (theme.extend.keyframes.shimmer). The
+ * previous copy declared the keyframe in the opposite direction
+ * (-200% -> 200% instead of 200% -> -200%), and since both share the name
+ * `shimmer`, the later declaration won for every element using it -
+ * including Tailwind's own `.animate-shimmer`. Removing the local copy
+ * lets Tailwind's intended direction apply consistently.
  */
-
-@keyframes pulse-glow {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-  }
-  50% {
-    opacity: 0.8;
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
-  }
-}
 
 @keyframes slide-up {
   from {
@@ -100,20 +101,8 @@
   }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
 /* ── Animation Utility Classes ──────────────────────────────────────────── */
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
 .animate-slide-up {
   animation: slide-up 0.5s ease-out;
 }
@@ -178,8 +167,21 @@
   animation-delay: 1s;
 }
 
-/* ── Shimmer Loading Effect ─────────────────────────────────────────────── */
-
+/* ── Shimmer Loading Effect ───────────────────────────────────────────────
+ *
+ * The class name `.animate-shimmer` is also emitted by Tailwind from
+ * `theme.extend.animation.shimmer` in tailwind.config.js, which provides
+ * the `animation` shorthand only. The rule below adds the gradient
+ * background and background-size that turn the animation into a visible
+ * shimmer. Both rules share the same class name and merge at the cascade;
+ * this one wins on the `animation` property because App.jsx imports this
+ * file after globals.css.
+ *
+ * The timing function is set to `linear` to match Tailwind's declaration,
+ * so the two rules agree and the outcome is deterministic even if bundle
+ * order ever changes. The keyframe itself is resolved from
+ * tailwind.config.js, which is now the sole owner of `@keyframes shimmer`.
+ */
 .animate-shimmer {
   background: linear-gradient(
     90deg,
@@ -188,7 +190,7 @@
     transparent 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 2s infinite;
+  animation: shimmer 2s linear infinite;
 }
 
 .dark .animate-shimmer {
@@ -264,8 +266,13 @@
   animation-delay: 0.5s;
 }
 
-/* ── Reduced Motion ─────────────────────────────────────────────────────── */
-
+/* ── Reduced Motion ───────────────────────────────────────────────────────
+ *
+ * This block targets `.animate-pulse-glow` and `.animate-shimmer` by class
+ * name. Both classes are now defined outside this file (globals.css and
+ * tailwind.config.js respectively), but the class names themselves are
+ * unchanged, so the override still applies.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -1,74 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://maniestacareer.netlify.app/</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/features</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/features</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/pricing</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/pricing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/templates</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/templates</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/blog</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/blog</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/about</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/blog/resume-mistakes-costing-interviews</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maniesta-career.netlify.app/blog/optimize-resume-for-ats-systems-2025</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maniesta-career.netlify.app/blog/achievement-based-resume-bullets-guide</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maniesta-career.netlify.app/blog/top-20-action-verbs-resume</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maniesta-career.netlify.app/blog/write-cover-letter-complements-resume</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maniesta-career.netlify.app/blog/networking-strategies-2025</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maniesta-career.netlify.app/about</loc>
     <changefreq>yearly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/careers</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/careers</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/contact</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/help</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/help</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/faq</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/faq</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/privacy</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://maniestacareer.netlify.app/terms</loc>
-    <lastmod>2026-09-27</lastmod>
+    <loc>https://maniesta-career.netlify.app/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>

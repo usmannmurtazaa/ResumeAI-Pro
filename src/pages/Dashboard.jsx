@@ -28,7 +28,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Progress from '../components/ui/Progress';
 import Modal from '../components/ui/Modal';
-import { SkeletonCard } from '../components/ui/Skeleton';
+import Loader from '../components/common/Loader';
 import toast from 'react-hot-toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -189,24 +189,6 @@ const ResumeCardCompact = React.memo(({ resume, onClick }) => {
 
 ResumeCardCompact.displayName = 'ResumeCardCompact';
 
-// ── Loading Skeleton ──────────────────────────────────────────────────────
-
-const DashboardSkeleton = () => (
-  <div className="space-y-6">
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {[...Array(4)].map((_, i) => (
-        <SkeletonCard key={i} lines={2} />
-      ))}
-    </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {[...Array(4)].map((_, i) => (
-        <SkeletonCard key={i} lines={2} />
-      ))}
-    </div>
-    <SkeletonCard lines={4} />
-  </div>
-);
-
 // ── Main Component ────────────────────────────────────────────────────────
 
 const Dashboard = () => {
@@ -224,6 +206,12 @@ const Dashboard = () => {
   });
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showLimitWarning, setShowLimitWarning] = useState(false);
+
+  // FIX 5: Tracks which template is being created from the welcome modal.
+  // `null` means no creation is in flight. While non-null, all template
+  // buttons and the "Maybe Later" button are disabled, so a double-tap
+  // cannot fire two `createResume` calls before the modal closes.
+  const [creatingTemplate, setCreatingTemplate] = useState(null);
 
   // ── Welcome message from signup ─────────────────────────────────────
 
@@ -272,24 +260,59 @@ const Dashboard = () => {
 
   const handleUpgrade = useCallback(() => navigate('/pricing'), [navigate]);
 
-  // ── Loading State ────────────────────────────────────────────────────
+  // FIX 5: Welcome modal handler with single-flight guard.
+  const handleCreateFromWelcome = useCallback(
+    async (template) => {
+      if (creatingTemplate !== null) return;
+      setCreatingTemplate(template);
+      try {
+        const newResume = await createResume({
+          template,
+          name: `${template.charAt(0).toUpperCase() + template.slice(1)} Resume`,
+        });
+        if (newResume?.id) {
+          setShowWelcomeModal(false);
+          navigate(`/builder/${newResume.id}`);
+        }
+      } catch {
+        // Error handled in context
+      } finally {
+        setCreatingTemplate(null);
+      }
+    },
+    [creatingTemplate, createResume, navigate]
+  );
 
+  // ── Loading State ────────────────────────────────────────────────────
+  //
+  // FIX 4: Rendered without any layout wrapper. The previous version
+  // committed to `DashboardLayout` while auth was still initializing;
+  // when the user turned out to be an admin, the shell flipped to
+  // `AdminLayout`, producing a visible layout flash. The loading state
+  // now renders a plain centered spinner with no shell, so whichever
+  // layout mounts after loading is the first one the user sees.
+  //
+  // The previous `DashboardSkeleton` component (and the `SkeletonCard`
+  // import it relied on) is removed as dead code — it is no longer
+  // rendered anywhere in this file.
   if (loading) {
     return (
-      <DashboardLayout showWelcome={false}>
-        <DashboardSkeleton />
-      </DashboardLayout>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader variant="brand" size="lg" text="Loading your dashboard..." />
+      </div>
     );
   }
 
   // ── Admin View ───────────────────────────────────────────────────────
+  //
+  // FIX 3: `title` and `description` props removed. `AdminDashboard`
+  // already renders its own `<h1>Admin Dashboard</h1>` and a "Last
+  // updated" line, so passing them here produced two headings stacked
+  // on top of each other on every admin page load.
 
   if (userRole === 'admin') {
     return (
-      <AdminLayout
-        title="Admin Dashboard"
-        description="Manage users, resumes, and platform settings"
-      >
+      <AdminLayout>
         <AdminDashboard />
       </AdminLayout>
     );
@@ -373,11 +396,19 @@ const Dashboard = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800 flex items-center justify-between gap-4"
+              // FIX 1: The previous flex container placed a ~177px text
+              // block next to a ~112px button group with a 16px gap; at
+              // 320px viewport width that overflowed by ~50px and pushed
+              // the close button off-screen. Adding `flex-wrap` lets the
+              // button group drop onto its own line when space runs out,
+              // `min-w-0` on the text wrapper lets the text column shrink
+              // below its content width, and `flex-shrink-0` on the button
+              // group keeps the controls from being squeezed.
+              className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800 flex flex-wrap items-center justify-between gap-3 sm:gap-4"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <FiInfo className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     <strong>
                       {resumesRemaining === Infinity ? 'Unlimited' : resumesRemaining}
@@ -387,7 +418,7 @@ const Dashboard = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Button size="sm" variant="primary" onClick={handleUpgrade}>
                   Upgrade
                 </Button>
@@ -526,7 +557,13 @@ const Dashboard = () => {
       {/* Welcome Modal */}
       <Modal
         isOpen={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
+        onClose={() => {
+          // Do not allow closing while a creation is in flight; the modal
+          // must stay open so the user sees the result and, on failure,
+          // can retry.
+          if (creatingTemplate !== null) return;
+          setShowWelcomeModal(false);
+        }}
         title="Welcome to Maniesta Career OS!"
         size="md"
       >
@@ -535,30 +572,44 @@ const Dashboard = () => {
             Let's get you started with your first professional resume. Choose a template to begin.
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {['modern', 'classic', 'creative', 'tech'].map((template) => (
-              <button
-                key={template}
-                onClick={async () => {
-                  setShowWelcomeModal(false);
-                  try {
-                    const newResume = await createResume({
-                      template,
-                      name: `${template.charAt(0).toUpperCase() + template.slice(1)} Resume`,
-                    });
-                    if (newResume?.id) navigate(`/builder/${newResume.id}`);
-                  } catch {
-                    // Error handled in context
-                  }
-                }}
-                className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 text-left transition-all"
-              >
-                <p className="font-medium capitalize">{template}</p>
-                <p className="text-xs text-gray-500">Start with {template} template</p>
-              </button>
-            ))}
+            {['modern', 'classic', 'creative', 'tech'].map((template) => {
+              const isThisCreating = creatingTemplate === template;
+              const isAnyCreating = creatingTemplate !== null;
+              return (
+                <button
+                  key={template}
+                  onClick={() => handleCreateFromWelcome(template)}
+                  // FIX 5: All buttons disabled while any creation is in
+                  // flight. Prevents a double-tap from firing two
+                  // `createResume` calls before the modal closes.
+                  disabled={isAnyCreating}
+                  className={cn(
+                    'p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-left transition-all',
+                    !isAnyCreating && 'hover:border-primary-300',
+                    isAnyCreating && 'opacity-60 cursor-not-allowed'
+                  )}
+                >
+                  <p className="font-medium capitalize flex items-center gap-2">
+                    {isThisCreating ? (
+                      <>
+                        <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        <span>Creating…</span>
+                      </>
+                    ) : (
+                      template
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500">Start with {template} template</p>
+                </button>
+              );
+            })}
           </div>
           <div className="flex justify-end">
-            <Button variant="ghost" onClick={() => setShowWelcomeModal(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => setShowWelcomeModal(false)}
+              disabled={creatingTemplate !== null}
+            >
               Maybe Later
             </Button>
           </div>

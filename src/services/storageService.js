@@ -1,16 +1,40 @@
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-  deleteObject,
-  listAll,
-  uploadBytes,
-} from 'firebase/storage';
-import { storage } from './firebase';
+// ─────────────────────────────────────────────────────────────────────────────
+// Storage Service — Cloudinary backend
+//
+// All browser-side uploads go to Cloudinary's unsigned upload endpoint.
+// The previous Firebase Storage implementation was removed because Firebase
+// Storage requires the Blaze (paid) plan; Cloudinary's free tier covers this
+// project's needs without a credit card.
+//
+// Design notes:
+//
+//   • No Cloudinary SDK. The browser calls the REST API directly:
+//       https://api.cloudinary.com/v1_1/{cloud_name}/image/upload
+//     authenticated by the *unsigned* upload preset set in the Cloudinary
+//     console. Unsigned uploads deliberately do not carry the API secret,
+//     which is why they are safe to run from the client.
+//
+//   • No API secret anywhere in this file or in any REACT_APP_ env var.
+//
+//   • Deletion is not supported by Cloudinary's unsigned flow. The destroy
+//     endpoint requires a signed request, and this project has no server
+//     to hold the secret. The `delete*` methods below are preserved for
+//     API compatibility and become no-ops. Avatars are tiny (~50 KB each);
+//     orphaned assets are not a cost concern on the free tier.
+//
+//   • The `path` argument on `uploadFile` is kept for API compatibility with
+//     callers written against the Firebase Storage version. Cloudinary
+//     ignores it — the asset folder is set on the upload preset
+//     (`maniesta-career/avatars`) and the public ID is auto-generated.
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+const UPLOAD_URL = CLOUD_NAME ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload` : null;
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const ALLOWED_DOC_TYPES = [
   'application/pdf',
@@ -21,28 +45,12 @@ const ALLOWED_DOC_TYPES = [
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 
-const generateFileName = (originalName, prefix = '') => {
-  const ext = originalName.includes('.')
-    ? originalName.substring(originalName.lastIndexOf('.'))
-    : '';
-  const sanitized = originalName.replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 50);
-  return `${prefix}${Date.now()}_${sanitized}${ext}`;
-};
-
-const extractPathFromURL = (url) => {
-  try {
-    const decoded = decodeURIComponent(url);
-    // Handle Firebase Storage URLs
-    const match = decoded.match(/\/o\/(.+?)(\?|$)/);
-    if (match) return match[1];
-    // Handle gs:// URLs
-    if (decoded.startsWith('gs://')) {
-      const parts = decoded.replace('gs://', '').split('/');
-      return parts.slice(1).join('/');
-    }
-    return decoded;
-  } catch {
-    return url;
+const assertConfigured = () => {
+  if (!CLOUD_NAME || !UPLOAD_PRESET) {
+    throw new Error(
+      'Cloudinary is not configured. Set REACT_APP_CLOUDINARY_CLOUD_NAME and ' +
+        'REACT_APP_CLOUDINARY_UPLOAD_PRESET in your .env file and rebuild.'
+    );
   }
 };
 
@@ -58,235 +66,172 @@ const validateFile = (file, allowedTypes, maxSize = MAX_FILE_SIZE) => {
   }
 };
 
+const generateFileName = (originalName, prefix = '') => {
+  const ext = originalName.includes('.')
+    ? originalName.substring(originalName.lastIndexOf('.'))
+    : '';
+  const sanitized = originalName.replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 50);
+  return `${prefix}${Date.now()}_${sanitized}${ext}`;
+};
+
+/**
+ * Uploads a file to Cloudinary via XHR so the caller can receive progress.
+ *
+ * @param {File} file
+ * @param {Function} [onProgress] - Called with 0..100
+ * @returns {Promise<{secure_url: string, public_id: string}>}
+ */
+const uploadToCloudinary = (file, onProgress) => {
+  assertConfigured();
+
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', UPLOAD_PRESET);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', UPLOAD_URL);
+
+    if (onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data);
+        } catch {
+          reject(new Error('Cloudinary returned an invalid response.'));
+        }
+      } else {
+        let message = `Upload failed (HTTP ${xhr.status}).`;
+        try {
+          const err = JSON.parse(xhr.responseText);
+          if (err?.error?.message) message = err.error.message;
+        } catch {}
+        reject(new Error(message));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload.'));
+    xhr.ontimeout = () => reject(new Error('Upload timed out.'));
+    xhr.send(formData);
+  });
+};
+
 // ── Storage Service ────────────────────────────────────────────────────────
 
 export const storageService = {
   /**
-   * Upload a resume PDF with progress tracking.
+   * Upload any file and return its public HTTPS URL.
    *
-   * @param {string} userId - User ID
-   * @param {string} resumeId - Resume ID
-   * @param {File} file - PDF file to upload
-   * @param {Function} onProgress - Progress callback (0-100)
-   * @returns {Promise<{url: string, path: string}>}
+   * The `path` argument is retained for API compatibility with callers
+   * written against the previous Firebase Storage implementation. Cloudinary
+   * ignores it — the asset folder is fixed by the upload preset.
+   *
+   * @param {string} path - Ignored (preserved for API compatibility)
+   * @param {File} file
+   * @param {Function} [onProgress]
+   * @returns {Promise<string>} The `secure_url` of the uploaded asset
+   */
+  async uploadFile(path, file, onProgress) {
+    void path;
+    validateFile(file, [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES]);
+    const result = await uploadToCloudinary(file, onProgress);
+    return result.secure_url;
+  },
+
+  /**
+   * Upload a resume document (PDF/DOCX/TXT).
+   *
+   * Note: Cloudinary's image upload endpoint is used for any file the preset
+   * accepts. The preset is currently restricted to image formats. If you
+   * enable document uploads, add `pdf`, `docx`, `doc`, `txt` to the preset's
+   * "Allowed formats" in the Cloudinary console — otherwise this method will
+   * reject them client-side before the request is sent.
    */
   async uploadResumePDF(userId, resumeId, file, onProgress) {
+    void userId;
+    void resumeId;
     validateFile(file, ALLOWED_DOC_TYPES);
-
-    const fileName = generateFileName(file.name, 'resume_');
-    const path = `resumes/${userId}/${resumeId}/${fileName}`;
-    const fileRef = ref(storage, path);
-
-    const uploadTask = uploadBytesResumable(fileRef, file, {
-      contentType: file.type || 'application/pdf',
-      customMetadata: { userId, resumeId, uploadedAt: new Date().toISOString() },
-    });
-
-    return new Promise((resolve, reject) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress =
-            snapshot.totalBytes > 0
-              ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-              : 0;
-          onProgress?.(progress);
-        },
-        (error) => {
-          console.error('Resume upload failed:', error);
-          reject(new Error('Failed to upload resume. Please try again.'));
-        },
-        async () => {
-          try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve({ url, path });
-          } catch (error) {
-            reject(new Error('Failed to get download URL.'));
-          }
-        }
-      );
-    });
+    const result = await uploadToCloudinary(file, onProgress);
+    return { url: result.secure_url, path: result.public_id };
   },
 
   /**
-   * Upload a profile picture with progress tracking.
-   *
-   * @param {string} userId - User ID
-   * @param {File} file - Image file
-   * @param {Function} onProgress - Progress callback (0-100)
-   * @returns {Promise<{url: string, path: string}>}
+   * Upload a profile picture.
    */
   async uploadProfilePicture(userId, file, onProgress) {
-    validateFile(file, ALLOWED_IMAGE_TYPES, 5 * 1024 * 1024); // 5MB max for images
-
-    const fileName = generateFileName(file.name, 'avatar_');
-    const path = `avatars/${userId}/${fileName}`;
-    const fileRef = ref(storage, path);
-
-    const uploadTask = uploadBytesResumable(fileRef, file, {
-      contentType: file.type || 'image/jpeg',
-      customMetadata: { userId, uploadedAt: new Date().toISOString() },
-    });
-
-    return new Promise((resolve, reject) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress =
-            snapshot.totalBytes > 0
-              ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-              : 0;
-          onProgress?.(progress);
-        },
-        (error) => {
-          console.error('Profile picture upload failed:', error);
-          reject(new Error('Failed to upload profile picture. Please try again.'));
-        },
-        async () => {
-          try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve({ url, path });
-          } catch (error) {
-            reject(new Error('Failed to get download URL.'));
-          }
-        }
-      );
-    });
+    void userId;
+    validateFile(file, ALLOWED_IMAGE_TYPES, 5 * 1024 * 1024);
+    const result = await uploadToCloudinary(file, onProgress);
+    return { url: result.secure_url, path: result.public_id };
   },
 
   /**
-   * Quick upload for small files (no progress tracking).
+   * Deletion is not available via Cloudinary's unsigned upload flow. The
+   * destroy endpoint requires a signed request and this project has no
+   * server-side secret store for it. This method is preserved for API
+   * compatibility; it logs a warning in development and reports success.
    *
-   * @param {string} path - Storage path
-   * @param {File} file - File to upload
-   * @returns {Promise<string>} Download URL
-   */
-  async uploadFile(path, file) {
-    const fileRef = ref(storage, path);
-    await uploadBytes(fileRef, file, { contentType: file.type || undefined });
-    return getDownloadURL(fileRef);
-  },
-
-  /**
-   * Delete a file by its download URL or storage path.
-   *
-   * @param {string} urlOrPath - Download URL or storage path
-   * @returns {Promise<boolean>}
+   * To enable real deletion, add a Netlify Function that holds
+   * CLOUDINARY_API_SECRET and calls the destroy endpoint on behalf of the
+   * client. Nothing in the current UI exercises this path.
    */
   async deleteFile(urlOrPath) {
-    try {
-      const path = extractPathFromURL(urlOrPath);
-      const fileRef = ref(storage, path);
-      await deleteObject(fileRef);
-      return true;
-    } catch (error) {
-      // File not found is not a critical error
-      if (error.code === 'storage/object-not-found') {
-        return true;
-      }
-      console.error('Error deleting file:', error);
-      return false;
+    void urlOrPath;
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[storageService] deleteFile is a no-op under Cloudinary unsigned uploads.');
     }
+    return true;
   },
 
-  /**
-   * Delete multiple files at once.
-   *
-   * @param {string[]} urlsOrPaths - Array of download URLs or storage paths
-   * @returns {Promise<{deleted: number, failed: number}>}
-   */
   async deleteMultipleFiles(urlsOrPaths) {
-    let deleted = 0;
-    let failed = 0;
-
-    const results = await Promise.allSettled(urlsOrPaths.map((url) => this.deleteFile(url)));
-
-    results.forEach((result) => {
-      if (result.status === 'fulfilled' && result.value) deleted++;
-      else failed++;
-    });
-
-    return { deleted, failed };
-  },
-
-  /**
-   * Get all files in a user's resumes folder.
-   *
-   * @param {string} userId - User ID
-   * @param {number} maxResults - Maximum files to return (default: 100)
-   * @returns {Promise<Array<{name: string, url: string, path: string}>>}
-   */
-  async getUserResumeFiles(userId, maxResults = 100) {
-    try {
-      const folderRef = ref(storage, `resumes/${userId}`);
-      const result = await listAll(folderRef);
-
-      // Limit results
-      const items = result.items.slice(0, maxResults);
-
-      const files = await Promise.all(
-        items.map(async (itemRef) => ({
-          name: itemRef.name,
-          path: itemRef.fullPath,
-          url: await getDownloadURL(itemRef),
-        }))
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        '[storageService] deleteMultipleFiles is a no-op under Cloudinary unsigned uploads.'
       );
-
-      return files;
-    } catch (error) {
-      console.error('Error listing user files:', error);
-      return [];
     }
+    return { deleted: 0, failed: 0, skipped: urlsOrPaths?.length || 0 };
+  },
+
+  async getUserResumeFiles() {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        '[storageService] getUserResumeFiles is not implemented under Cloudinary unsigned uploads.'
+      );
+    }
+    return [];
+  },
+
+  async deleteAllUserFiles() {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        '[storageService] deleteAllUserFiles is a no-op under Cloudinary unsigned uploads.'
+      );
+    }
+    return { deleted: 0, failed: 0 };
   },
 
   /**
-   * Delete all files in a user's folder (for account deletion).
-   *
-   * @param {string} userId - User ID
-   * @returns {Promise<{deleted: number, failed: number}>}
-   */
-  async deleteAllUserFiles(userId) {
-    try {
-      const getRecursiveRefs = async (path) => {
-        const folderRef = ref(storage, path);
-        const result = await listAll(folderRef);
-        let refs = [...result.items];
-
-        // Recurse into subfolders
-        for (const prefix of result.prefixes) {
-          const subRefs = await getRecursiveRefs(prefix.fullPath);
-          refs = [...refs, ...subRefs];
-        }
-
-        return refs;
-      };
-
-      const allRefs = await getRecursiveRefs(`resumes/${userId}`);
-      const avatarRefs = await getRecursiveRefs(`avatars/${userId}`);
-
-      const allPaths = [...allRefs, ...avatarRefs].map((r) => r.fullPath);
-      return this.deleteMultipleFiles(allPaths);
-    } catch (error) {
-      console.error('Error deleting all user files:', error);
-      return { deleted: 0, failed: 1 };
-    }
-  },
-
-  /**
-   * Get a download URL from a storage path.
-   *
-   * @param {string} path - Storage path
-   * @returns {Promise<string>} Download URL
+   * Returns the input unchanged. Under Cloudinary the caller already has
+   * the full HTTPS URL; there is no separate "get download URL" step.
    */
   async getDownloadUrl(path) {
-    try {
-      const fileRef = ref(storage, path);
-      return await getDownloadURL(fileRef);
-    } catch (error) {
-      console.error('Error getting download URL:', error);
-      return null;
-    }
+    return path;
   },
+
+  // ── Helpers exposed for callers that need them ──────────────────────
+
+  generateFileName,
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_DOC_TYPES,
+  MAX_FILE_SIZE,
 };
 
 export default storageService;

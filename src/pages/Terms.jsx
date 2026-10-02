@@ -249,11 +249,11 @@ const Terms = () => {
                     Contact our legal team for questions about these terms.
                   </p>
                   <a
-                    href="mailto:legal@maniestacareeros.com"
+                    href="mailto:maniesta01@gmail.com"
                     className="flex items-center gap-2 text-sm text-primary-500 hover:text-primary-600"
                   >
                     <FiMail className="w-4 h-4" />
-                    legal@maniestacareeros.com
+                    maniesta01@gmail.com
                   </a>
                 </Card>
               </div>
@@ -312,10 +312,10 @@ const Terms = () => {
                     />
                     <span>Email:</span>{' '}
                     <a
-                      href="mailto:legal@maniestacareeros.com"
+                      href="mailto:maniesta01@gmail.com"
                       className="text-primary-500 hover:text-primary-600"
                     >
-                      legal@maniestacareeros.com
+                      maniesta01@gmail.com
                     </a>
                   </p>
                 </div>
